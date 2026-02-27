@@ -142,3 +142,68 @@ body {
   opacity: 0.85;
 }
 
+/* --- opciones pantalla --- */
+.option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0.9rem 0;
+  font-size: 1.2rem;
+}
+
+.toggle {
+  min-width: 90px;
+  padding: 0.55rem 1rem;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-weight: 800;
+  background: #ffce00;
+  color: #000;
+  transition: transform 0.15s, filter 0.15s;
+}
+.toggle:hover {
+  transform: scale(1.05);
+  filter: brightness(1.05);
+}
+.toggle.off {
+  background: #ffffff;
+}
+
+.slider {
+  width: 180px;
+}
+
+.small {
+  font-size: 1rem;
+  opacity: 0.9;
+  min-width: 48px;
+  text-align: right;
+}
+
+.controls-box {
+  margin-top: 1.4rem;
+  padding: 1rem 1.2rem;
+  background: rgba(255,255,255,0.18);
+  border-radius: 14px;
+  text-align: left;
+}
+
+.controls-title {
+  margin-bottom: 0.6rem;
+  font-size: 1.2rem;
+}
+
+.controls-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.controls-list li {
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+

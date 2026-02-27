@@ -41,6 +41,39 @@
     </div>
   </section>
 
+  <!-- Pantalla 3: Opciones -->
+  <section id="screen-options" class="screen">
+    <div class="card">
+      <h2 class="subtitle">Opciones</h2>
+
+      <div class="option-row">
+        <span>Música</span>
+        <button id="toggle-music" class="toggle">ON</button>
+      </div>
+
+      <div class="option-row">
+        <span>Sonidos</span>
+        <button id="toggle-sfx" class="toggle">ON</button>
+      </div>
+
+      <div class="option-row">
+        <span>Volumen</span>
+        <input id="volume" class="slider" type="range" min="0" max="100" value="70">
+        <span id="volume-value" class="small">70%</span>
+      </div>
+
+      <div class="controls-box">
+        <h3 class="controls-title">Controles</h3>
+        <ul class="controls-list">
+          <li><b>Jugador 1:</b> A/D mover · W saltar · Espacio chutar</li>
+          <li><b>Jugador 2:</b> ←/→ mover · ↑ saltar · Enter chutar</li>
+        </ul>
+      </div>
+
+      <button id="btn-options-back" class="link-btn">← Volver</button>
+    </div>
+  </section>
+
   <script src="main.js"></script>
 </body>
 </html>
