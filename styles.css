@@ -10,7 +10,7 @@ body {
   width: 100%;
   height: 100vh;
   /* usa una imagen de estadio más realista en lugar del degradado */
-  background: url("img/stadium-background2.jpeg") center bottom / cover no-repeat;
+  background: url("img/stadium-background2.jpeg") center center / cover no-repeat;
   font-family: 'Arial', sans-serif;
   display: flex;
   justify-content: center;
