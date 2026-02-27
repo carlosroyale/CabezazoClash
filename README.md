@@ -1,14 +1,99 @@
-"# CabezazoClash"
+# ⚽ Cabezazo Clash
 
-## Fondos y recursos
+**Juego de fútbol arcade 1v1 en navegador**, desarrollado en HTML5, CSS3 y JavaScript vanilla.
 
-Para usar la opción de imagen de estadio más realista, coloca un archivo con nombre `stadium-background.avif` en la carpeta `img/`. El CSS de `styles.css` ya está configurado para cargar la imagen desde `img/stadium-background.avif`.
+> **Estado:** Base funcional (Nivel BÁSICO jugable) | Arquitectura lista para expandir
 
-Puedes buscar imágenes tipo "cartoon football stadium background" o "2D football stadium game background" y renombrarlas según corresponda.
+---
 
-### Música de fondo
+## 🎮 Características
 
-Si quieres música de menú, añade un fichero `menu.mp3` (y opcionalmente `menu.ogg`) bajo `assets/audio/` y el HTML incluirá un `<audio id="bg-music">` que el script controla. El audio se reproduce tras la primera interacción del usuario y respeta el toggle "Música" y el volumen de las opciones.
+✅ **Menú interactivo** con navegación fluida entre pantallas  
+✅ **Nivel BÁSICO** jugable con física arcade  
+✅ **2 jugadores locales** con controles independientes  
+✅ **Sistema de goles** con reinicio automático  
+✅ **Música de fondo** con control ON/OFF y volumen  
+✅ **Menú Opciones** con ajustes guardados en localStorage  
+✅ **Código modular** separado UI/lógica de juego  
+✅ **Responsive** adaptado a diferentes tamaños de pantalla  
+
+---
+
+## 📁 Estructura del proyecto
+
+```
+CabezazoClash/
+├── index.html              # HTML principal (pantallas, canvas, audio)
+├── styles.css              # Estilos de UI (menús, HUD, canvas)
+├── main.js                 # Lógica de interfaz (pantallas, opciones)
+├── game.js                 # Motor del juego (física, colisiones)
+├── README.md               # Este archivo
+├── assets/
+│   ├── img/
+│   │   └── stadium-background2.jpeg  # Fondo del estadio
+│   └── audio/
+│       ├── SoundTrackHS.mp3          # Música de menú (MP3)
+│       └── SoundTrackHS.ogg          # Música de menú (OGG, opcional)
+└── img/
+    └── stadium-background1.avif      # Alternativa de fondo (no usada)
+```
+
+---
+
+## 🎯 Cómo jugar
+
+### Pantalla de inicio
+- **Jugar** → Avanza a selección de nivel
+- **Opciones** → Abre panel de configuración
+
+### Selección de nivel
+- **BÁSICO** → Inicia juego simple (implementado)
+- **AVANZADO** → En desarrollo
+
+### Gameplay (BÁSICO)
+
+#### Controles
+
+**Jugador 1 (izquierda, blanco)**
+- `A` / `D` → Mover izquierda/derecha
+- `W` → Saltar
+- Colisionar con la pelota → Impulso automático
+
+**Jugador 2 (derecha, amarillo)**
+- `←` / `→` → Mover izquierda/derecha
+- `↑` → Saltar
+- Colisionar con la pelota → Impulso automático
+
+**Durante el juego**
+- `ESC` → Volver al menú
+- `R` → Reiniciar ronda
+
+#### Objetivo
+- Golpear la pelota hacia la portería del rival
+- Marcar goles: la pelota entra en la zona de gol (fondo izquierda/derecha)
+- El marcador se actualiza automáticamente
+
+#### Mecánicas
+- **Gravedad** y **rebotes** realistas
+- **Colisión jugador-pelota** con impulso arcade
+- **Fricción en suelo** para evitar movimiento infinito
+- **Reinicio automático** tras cada gol
+
+---
+
+## ⚙️ Configuración
+
+### Música
+
+Para activar música de menú, coloca los archivos en `assets/audio/`:
+
+```
+assets/audio/
+├── SoundTrackHS.mp3   (obligatorio)
+└── SoundTrackHS.ogg   (opcional, mejor soporte)
+```
+
+El reproductor respeta los ajustes de "Música" (ON/OFF) y volumen desde Opciones.
 
 ### Fondo del estadio
 
@@ -130,4 +215,3 @@ Proyecto de práctica educativa. Libre para uso y modificación.
 **Versión**: 0.1.0 (Beta)  
 **Estado**: En desarrollo activo
 
- 
