@@ -28,14 +28,13 @@ CabezazoClash/
 ├── main.js                 # Lógica de interfaz (pantallas, opciones)
 ├── game.js                 # Motor del juego (física, colisiones)
 ├── README.md               # Este archivo
-├── assets/
-│   ├── img/
-│   │   └── stadium-background2.jpeg  # Fondo del estadio
-│   └── audio/
-│       ├── SoundTrackHS.mp3          # Música de menú (MP3)
-│       └── SoundTrackHS.ogg          # Música de menú (OGG, opcional)
-└── img/
-    └── stadium-background1.avif      # Alternativa de fondo (no usada)
+└── assets/
+    ├── img/
+        ├── stadium-background1.avif  # Alternativa de fondo (no usada)
+    │   └── stadium-background2.jpeg  # Fondo del estadio
+    └── audio/
+        ├── SoundTrackHS.mp3          # Música de menú (MP3)
+        └── SoundTrackHS.ogg          # Música de menú (OGG, opcional)
 ```
 
 ---
