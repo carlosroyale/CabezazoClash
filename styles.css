@@ -9,7 +9,6 @@
 body {
   width: 100%;
   height: 100vh;
-  /* usa una imagen de estadio más realista en lugar del degradado */
   background: url("assets/img/stadium-background2.jpeg") center center / cover no-repeat;
   font-family: 'Arial', sans-serif;
   display: flex;
@@ -53,6 +52,7 @@ body {
 .btn:hover {
   background: #ffd700;
   transform: scale(1.1);
+  filter: brightness(1.05);
 }
 
 /* texto inferior */
@@ -62,7 +62,7 @@ body {
   opacity: 0.8;
 }
 
-/* --- pantallas y tarjetas --- */
+/* pantallas y tarjetas */
 .screen {
   position: relative;
   width: 100%;
@@ -88,39 +88,10 @@ body {
   min-width: min(520px, 92vw);
 }
 
-.title {
-  font-size: 4rem;
-  font-weight: 800;
-  margin-bottom: 1.5rem;
-}
-
 .subtitle {
   font-size: 3rem;
   font-weight: 800;
   margin-bottom: 1.5rem;
-}
-
-.buttons {
-  margin: 1.2rem 0;
-}
-
-/* Botones arcade mejorados */
-.btn {
-  font-size: 1.6rem;
-  padding: 0.85rem 2.2rem;
-  margin: 0.6rem;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  font-weight: 800;
-  background: #ffce00;
-  color: #000;
-  transition: transform 0.15s, filter 0.15s;
-}
-
-.btn:hover {
-  transform: scale(1.08);
-  filter: brightness(1.05);
 }
 
 .btn-secondary {
@@ -142,7 +113,7 @@ body {
   opacity: 0.85;
 }
 
-/* --- opciones pantalla --- */
+/* opciones pantalla */
 .option-row {
   display: flex;
   align-items: center;
@@ -205,5 +176,3 @@ body {
   margin-bottom: 0.5rem;
   font-size: 1.1rem;
 }
-
-

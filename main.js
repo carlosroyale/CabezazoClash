@@ -91,6 +91,7 @@ toggleMusic.addEventListener("click", () => {
   settings.music = !settings.music;
   saveSettings();
   updateOptionsUI();
+  applyMusicSetting(); // cambiar reproducción al instante
 });
 
 toggleSfx.addEventListener("click", () => {
@@ -103,4 +104,92 @@ volumeSlider.addEventListener("input", () => {
   settings.volume = Number(volumeSlider.value);
   saveSettings();
   updateOptionsUI();
+  applyMusicSetting(); // actualizar música de fondo
 });
+
+// audio de fondo y funciones de control (autoplay via gesto)
+const bgMusic = document.getElementById("bg-music");
+
+let musicUnlocked = false; // para cumplir autoplay policies
+let fadeInterval = null;
+
+function clamp01(x) {
+  return Math.max(0, Math.min(1, x));
+}
+
+function setMusicVolumeFromSettings() {
+  const v = clamp01((settings.volume ?? 70) / 100);
+  bgMusic.volume = v;
+}
+
+function stopFade() {
+  if (fadeInterval) {
+    clearInterval(fadeInterval);
+    fadeInterval = null;
+  }
+}
+
+function fadeTo(targetVolume, durationMs = 350) {
+  stopFade();
+  const start = bgMusic.volume;
+  const target = clamp01(targetVolume);
+  const steps = Math.max(1, Math.floor(durationMs / 25));
+  let i = 0;
+
+  fadeInterval = setInterval(() => {
+    i++;
+    const t = i / steps;
+    bgMusic.volume = start + (target - start) * t;
+
+    if (i >= steps) {
+      bgMusic.volume = target;
+      stopFade();
+      if (target === 0) {
+        bgMusic.pause();
+        bgMusic.currentTime = 0;
+      }
+    }
+  }, 25);
+}
+
+async function tryStartMusic() {
+  if (!settings.music) return;
+  setMusicVolumeFromSettings();
+  try {
+    await bgMusic.play();
+  } catch (e) {
+    // autoplay blocked, se desbloqueará con gesto
+  }
+}
+
+function unlockMusicOnFirstUserGesture() {
+  if (musicUnlocked) return;
+  const handler = async () => {
+    musicUnlocked = true;
+    document.removeEventListener("pointerdown", handler);
+    document.removeEventListener("keydown", handler);
+    await tryStartMusic();
+  };
+  document.addEventListener("pointerdown", handler, { once: true });
+  document.addEventListener("keydown", handler, { once: true });
+}
+
+function applyMusicSetting() {
+  setMusicVolumeFromSettings();
+  if (!settings.music) {
+    fadeTo(0, 250);
+    return;
+  }
+  if (bgMusic.paused) {
+    const target = clamp01((settings.volume ?? 70) / 100);
+    bgMusic.volume = 0;
+    tryStartMusic().then(() => fadeTo(target, 350));
+  } else {
+    const target = clamp01((settings.volume ?? 70) / 100);
+    fadeTo(target, 150);
+  }
+}
+
+// iniciar desbloqueo y intentar reproducción
+unlockMusicOnFirstUserGesture();
+tryStartMusic();
