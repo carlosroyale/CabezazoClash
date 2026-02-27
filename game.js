@@ -1,16 +1,22 @@
-// game.js - se encarga únicamente del motor del nivel básico
+// game.js - motor del nivel básico, separado de UI
+// No busca elementos del DOM; recibe referencias como parámetros
 
-const canvas = document.getElementById("game-canvas");
-const ctx = canvas.getContext("2d");
-const scoreEl = document.getElementById("score");
-let game = null;
+// Namespace único para evitar contaminar global
+window.Game = {};
 
-// iniciar juego básico, recibiendo callback para volver al menú
-function startBasicGame(onExit) {
-  if (game) game.stop();
-  game = createBasicGame({ canvas, ctx, scoreEl, onExit });
-  game.start();
-}
+let currentGame = null; // control de ciclo de vida
+
+// iniciar juego básico
+// parámetros: { canvas, ctx, scoreEl, onExit }
+window.Game.startBasicGame = function({ canvas, ctx, scoreEl, onExit }) {
+  // detener juego anterior si existe
+  if (currentGame) {
+    currentGame.stop();
+  }
+
+  currentGame = createBasicGame({ canvas, ctx, scoreEl, onExit });
+  currentGame.start();
+};
 
 // crea la instancia de juego con físicas y lógica
 function createBasicGame({ canvas, ctx, scoreEl, onExit }) {

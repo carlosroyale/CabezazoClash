@@ -15,8 +15,11 @@ const toggleSfx = document.getElementById("toggle-sfx");
 const volumeSlider = document.getElementById("volume");
 const volumeValue = document.getElementById("volume-value");
 
-// elementos de la pantalla de juego
+// elementos de la pantalla de juego (UI management)
 const screenGame = document.getElementById("screen-game");
+const canvas = document.getElementById("game-canvas");
+const ctx = canvas.getContext("2d");
+const scoreEl = document.getElementById("score");
 
 function showScreen(screenToShow) {
   screenStart.classList.remove("active");
@@ -44,7 +47,13 @@ btnOptionsBack.addEventListener("click", () => {
 
 btnBasic.addEventListener("click", () => {
   showScreen(screenGame);
-  startBasicGame(() => showScreen(screenStart));
+  // pasar referencias de UI al motor de juego
+  window.Game.startBasicGame({
+    canvas,
+    ctx,
+    scoreEl,
+    onExit: () => showScreen(screenStart)
+  });
 });
 
 btnAdvanced.addEventListener("click", () => {
