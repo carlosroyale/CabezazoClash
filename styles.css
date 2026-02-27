@@ -9,7 +9,8 @@
 body {
   width: 100%;
   height: 100vh;
-  background: linear-gradient(135deg, #3186fc, #3cc0fc);
+  /* usa una imagen de estadio más realista en lugar del degradado */
+  background: url("img/stadium-background2.jpeg") center bottom / cover no-repeat;
   font-family: 'Arial', sans-serif;
   display: flex;
   justify-content: center;
