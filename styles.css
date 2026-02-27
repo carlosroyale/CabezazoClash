@@ -176,3 +176,38 @@ body {
   margin-bottom: 0.5rem;
   font-size: 1.1rem;
 }
+
+/* estilos para la pantalla de juego */
+.game-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.hud {
+  width: min(960px, 95vw);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+  font-weight: 800;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.4);
+}
+
+.score {
+  font-size: 2rem;
+}
+
+.hint {
+  opacity: 0.85;
+  font-size: 1rem;
+}
+
+#game-canvas {
+  width: min(960px, 95vw);
+  height: auto;
+  border-radius: 14px;
+  background: rgba(0,0,0,0.25);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+}
