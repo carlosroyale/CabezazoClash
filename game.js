@@ -232,9 +232,9 @@ function collidePlayerBall(p) {
 
         // impulso mejorado para crear una parábola
         const hitStrength = 520;
-        const upwardBoost = 1.2; // Factor para aumentar el componente vertical
+        const upwardBoost = 300; // Impulso vertical adicional fijo
         ball.vx += nx * hitStrength;
-        ball.vy += ny * hitStrength * upwardBoost;
+        ball.vy += ny * hitStrength - upwardBoost; // Asegurar que el balón se eleve
 
         // extra: si el jugador está moviéndose, transfiere velocidad
         ball.vx += p.vx * 0.35;
