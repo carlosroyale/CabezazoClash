@@ -126,6 +126,9 @@ function update(dt) {
     updatePlayer(p1, dt);
     updatePlayer(p2, dt);
 
+    // 2.1 Colisiones entre jugadores
+    collidePlayers(p1, p2);
+
     // 3. Física pelota
     updateBall(dt);
 
@@ -227,13 +230,23 @@ function collidePlayerBall(p) {
         ball.x += nx * overlap;
         ball.y += ny * overlap;
 
-        // impulso simple (arcade)
+        // impulso mejorado para crear una parábola
         const hitStrength = 520;
+        const upwardBoost = 1.2; // Factor para aumentar el componente vertical
         ball.vx += nx * hitStrength;
-        ball.vy += ny * hitStrength;
+        ball.vy += ny * hitStrength * upwardBoost;
 
         // extra: si el jugador está moviéndose, transfiere velocidad
         ball.vx += p.vx * 0.35;
+
+        // limitar la velocidad máxima del balón
+        const maxSpeed = 900;
+        const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+        if (speed > maxSpeed) {
+            const scale = maxSpeed / speed;
+            ball.vx *= scale;
+            ball.vy *= scale;
+        }
     }
 }
 
@@ -250,6 +263,34 @@ function checkGoal() {
         score.left += 1;
         updateScore();
         resetRound("left");
+    }
+}
+
+function collidePlayers(p1, p2) {
+    // Verificar si los rectángulos de los jugadores se superponen
+    const overlapX = Math.max(0, Math.min(p1.x + p1.w / 2, p2.x + p2.w / 2) - Math.max(p1.x - p1.w / 2, p2.x - p2.w / 2));
+    const overlapY = Math.max(0, Math.min(p1.y + p1.h / 2, p2.y + p2.h / 2) - Math.max(p1.y - p1.h / 2, p2.y - p2.h / 2));
+
+    if (overlapX > 0 && overlapY > 0) {
+        // Resolver la colisión separando a los jugadores
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const distance = Math.sqrt(dx * dx + dy * dy) || 0.0001;
+
+        const nx = dx / distance; // Normal en X
+        const ny = dy / distance; // Normal en Y
+
+        const resolveFactor = overlapX / 2; // Separar a ambos jugadores por igual
+        p1.x -= nx * resolveFactor;
+        p2.x += nx * resolveFactor;
+
+        // Ajustar velocidades para simular rebote
+        const bounceFactor = 0.5; // Factor de rebote (puedes ajustarlo)
+        const relativeVelocityX = p2.vx - p1.vx;
+        const impulseX = relativeVelocityX * bounceFactor;
+
+        p1.vx += impulseX;
+        p2.vx -= impulseX;
     }
 }
 
