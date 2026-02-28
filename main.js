@@ -1,25 +1,39 @@
+// main.js - Control de UI, menús y ajustes
+// Estructurado al estilo de volador.js
+
+/* ==========================================================================
+   CONFIGURACIÓN Y ELEMENTOS DEL DOM
+   ========================================================================== */
+
+// Pantallas
 const screenStart = document.getElementById("screen-start");
 const screenLevel = document.getElementById("screen-level");
 const screenOptions = document.getElementById("screen-options");
+const screenGame = document.getElementById("screen-game");
 
+// Botones de navegación
 const btnPlay = document.getElementById("btn-play");
 const btnBack = document.getElementById("btn-back");
 const btnBasic = document.getElementById("btn-basic");
 const btnAdvanced = document.getElementById("btn-advanced");
-
 const btnOptions = document.getElementById("btn-options");
 const btnOptionsBack = document.getElementById("btn-options-back");
 
+// Elementos de opciones
 const toggleMusic = document.getElementById("toggle-music");
 const toggleSfx = document.getElementById("toggle-sfx");
 const volumeSlider = document.getElementById("volume");
 const volumeValue = document.getElementById("volume-value");
 
-// elementos de la pantalla de juego (UI management)
-const screenGame = document.getElementById("screen-game");
+// Elementos del juego
 const canvas = document.getElementById("game-canvas");
 const ctx = canvas.getContext("2d");
 const scoreEl = document.getElementById("score");
+const bgMusic = document.getElementById("bg-music");
+
+/* ==========================================================================
+   GESTIÓN DE PANTALLAS (UI)
+   ========================================================================== */
 
 function showScreen(screenToShow) {
   screenStart.classList.remove("active");
@@ -29,25 +43,32 @@ function showScreen(screenToShow) {
   screenToShow.classList.add("active");
 }
 
-btnPlay.addEventListener("click", () => {
-  showScreen(screenLevel);
-});
+/* ==========================================================================
+   CONTROLES Y LISTENERS (Estilo robusto)
+   ========================================================================== */
 
-btnBack.addEventListener("click", () => {
-  showScreen(screenStart);
-});
+// Función auxiliar para botones táctiles/ratón (evita dobles clicks y problemas en móvil)
+function asignarBoton(elemento, callback) {
+  if (!elemento) return;
+  elemento.addEventListener('click', (e) => {
+    // Desbloquear audio si es la primera interacción
+    if (!musicUnlocked) unlockMusicOnFirstUserGestureHandler();
 
-btnOptions.addEventListener("click", () => {
-  showScreen(screenOptions);
-});
+    e.stopPropagation();
+    callback(e);
+  });
+}
 
-btnOptionsBack.addEventListener("click", () => {
-  showScreen(screenStart);
-});
+// Asignar navegación
+asignarBoton(btnPlay, () => showScreen(screenLevel));
+asignarBoton(btnBack, () => showScreen(screenStart));
+asignarBoton(btnOptions, () => showScreen(screenOptions));
+asignarBoton(btnOptionsBack, () => showScreen(screenStart));
 
-btnBasic.addEventListener("click", () => {
+// Lanzar niveles
+asignarBoton(btnBasic, () => {
   showScreen(screenGame);
-  // pasar referencias de UI al motor de juego
+  // Arrancar el motor del juego inyectando las dependencias
   window.Game.startBasicGame({
     canvas,
     ctx,
@@ -56,13 +77,16 @@ btnBasic.addEventListener("click", () => {
   });
 });
 
-btnAdvanced.addEventListener("click", () => {
-  // Aquí lanzarías el juego en modo avanzado
+asignarBoton(btnAdvanced, () => {
   alert("Nivel AVANZADO seleccionado");
   // startGame({ difficulty: "advanced" });
 });
 
-// opciones con guardado en localStorage
+
+/* ==========================================================================
+   SISTEMA DE AJUSTES (LOCALSTORAGE)
+   ========================================================================== */
+
 const settings = {
   music: true,
   sfx: true,
@@ -77,7 +101,9 @@ function loadSettings() {
       if (typeof parsed.music === "boolean") settings.music = parsed.music;
       if (typeof parsed.sfx === "boolean") settings.sfx = parsed.sfx;
       if (typeof parsed.volume === "number") settings.volume = parsed.volume;
-    } catch {}
+    } catch (e) {
+      console.warn("Error leyendo settings:", e);
+    }
   }
 }
 
@@ -96,17 +122,15 @@ function updateOptionsUI() {
   volumeValue.textContent = `${settings.volume}%`;
 }
 
-loadSettings();
-updateOptionsUI();
-
-toggleMusic.addEventListener("click", () => {
+// Listeners de los ajustes (usamos el evento normal para el input)
+asignarBoton(toggleMusic, () => {
   settings.music = !settings.music;
   saveSettings();
   updateOptionsUI();
-  applyMusicSetting(); // cambiar reproducción al instante
+  applyMusicSetting();
 });
 
-toggleSfx.addEventListener("click", () => {
+asignarBoton(toggleSfx, () => {
   settings.sfx = !settings.sfx;
   saveSettings();
   updateOptionsUI();
@@ -116,13 +140,14 @@ volumeSlider.addEventListener("input", () => {
   settings.volume = Number(volumeSlider.value);
   saveSettings();
   updateOptionsUI();
-  applyMusicSetting(); // actualizar música de fondo
+  applyMusicSetting();
 });
 
-// audio de fondo y funciones de control (autoplay via gesto)
-const bgMusic = document.getElementById("bg-music");
+/* ==========================================================================
+   SISTEMA DE AUDIO BGM (FADING Y POLÍTICAS DE AUTOPLAY)
+   ========================================================================== */
 
-let musicUnlocked = false; // para cumplir autoplay policies
+let musicUnlocked = false;
 let fadeInterval = null;
 
 function clamp01(x) {
@@ -130,8 +155,7 @@ function clamp01(x) {
 }
 
 function setMusicVolumeFromSettings() {
-  const v = clamp01((settings.volume ?? 70) / 100);
-  bgMusic.volume = v;
+  bgMusic.volume = clamp01((settings.volume ?? 70) / 100);
 }
 
 function stopFade() {
@@ -170,20 +194,20 @@ async function tryStartMusic() {
   try {
     await bgMusic.play();
   } catch (e) {
-    // autoplay blocked, se desbloqueará con gesto
+    // Autoplay bloqueado, se desbloqueará con el primer gesto
   }
 }
 
-function unlockMusicOnFirstUserGesture() {
+// Manejador extraído para poder reutilizarlo si el usuario hace click en un botón directamente
+async function unlockMusicOnFirstUserGestureHandler() {
   if (musicUnlocked) return;
-  const handler = async () => {
-    musicUnlocked = true;
-    document.removeEventListener("pointerdown", handler);
-    document.removeEventListener("keydown", handler);
-    await tryStartMusic();
-  };
-  document.addEventListener("pointerdown", handler, { once: true });
-  document.addEventListener("keydown", handler, { once: true });
+  musicUnlocked = true;
+
+  // Limpiamos los listeners para que no se disparen más veces
+  document.removeEventListener("pointerdown", unlockMusicOnFirstUserGestureHandler);
+  document.removeEventListener("keydown", unlockMusicOnFirstUserGestureHandler);
+
+  await tryStartMusic();
 }
 
 function applyMusicSetting() {
@@ -192,6 +216,7 @@ function applyMusicSetting() {
     fadeTo(0, 250);
     return;
   }
+
   if (bgMusic.paused) {
     const target = clamp01((settings.volume ?? 70) / 100);
     bgMusic.volume = 0;
@@ -202,7 +227,41 @@ function applyMusicSetting() {
   }
 }
 
-// iniciar desbloqueo y intentar reproducción
-unlockMusicOnFirstUserGesture();
+// Pausar audio si cambias de pestaña (Robusted extraída de volador.js)
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (!bgMusic.paused) bgMusic.pause();
+  } else {
+    if (settings.music && musicUnlocked) bgMusic.play().catch(()=>{});
+  }
+});
+
+
+/* ==========================================================================
+   INICIALIZACIÓN
+   ========================================================================== */
+
+loadSettings();
+updateOptionsUI();
+
+// Preparar el desbloqueo global del audio
+document.addEventListener("pointerdown", unlockMusicOnFirstUserGestureHandler, {once: true});
+document.addEventListener("keydown", unlockMusicOnFirstUserGestureHandler, {once: true});
 tryStartMusic();
 
+// Listener de redimensión para el Canvas
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  // Si el juego está cargado, le avisamos de que las medidas cambiaron
+  if (window.Game && window.Game.resize) {
+    window.Game.resize(canvas.width, canvas.height);
+  }
+}
+
+// Escuchar cambios de tamaño de ventana
+window.addEventListener('resize', resizeCanvas);
+
+// Forzar un primer ajuste al arrancar
+resizeCanvas();
