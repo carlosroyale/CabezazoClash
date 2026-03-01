@@ -68,12 +68,15 @@ asignarBoton(btnOptionsBack, () => showScreen(screenStart));
 // Lanzar niveles
 asignarBoton(btnBasic, () => {
   showScreen(screenGame);
-  // Arrancar el motor del juego inyectando las dependencias
   window.Game.startBasicGame({
     canvas,
     ctx,
     scoreEl,
-    onExit: () => showScreen(screenStart)
+    onExit: () => {
+      showScreen(screenStart);
+      // Volvemos a encender el fondo del menú al salir del juego
+      window.Game.startIdle({ canvas, ctx });
+    }
   });
 });
 
@@ -251,12 +254,13 @@ tryStartMusic();
 
 // Listener de redimensión para el Canvas
 function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  // 1. Fijamos la resolución interna (lógica) del juego a 1280x720 (16:9)
+  canvas.width = 1845;
+  canvas.height = 1038;
 
-  // Si el juego está cargado, le avisamos de que las medidas cambiaron
+  // 2. Le avisamos al motor para que posicione las porterías con las nuevas medidas fijas
   if (window.Game && window.Game.resize) {
-    window.Game.resize(canvas.width, canvas.height);
+    window.Game.resize(); // Ya no le pasamos parámetros dinámicos
   }
 }
 
@@ -265,3 +269,8 @@ window.addEventListener('resize', resizeCanvas);
 
 // Forzar un primer ajuste al arrancar
 resizeCanvas();
+
+// Arrancar el modo reposo para ver las porterías de fondo
+if (window.Game && window.Game.startIdle) {
+  window.Game.startIdle({ canvas, ctx });
+}

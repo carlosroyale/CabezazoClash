@@ -18,7 +18,7 @@ const DT_MAX = 1 / 30;
 
 // Porterías (zonas de gol)
 const GOAL_W = 60;
-const GOAL_H = 160;
+const GOAL_H = 200;
 let leftGoal = {};
 let rightGoal = {};
 
@@ -32,6 +32,14 @@ let score = {left: 0, right: 0};
 let gameRunning = false;
 let animationId = null;
 let lastTime = 0;
+
+// Variables para el modo menú
+let idleRunning = false;
+let idleAnimationId = null;
+
+// Imagen fondo
+const bgImage = new Image();
+bgImage.src = 'assets/img/fotoEstadio.png'; // Reemplaza esto con el nombre/ruta real de tu imagen
 
 
 /* ==========================================================================
@@ -68,17 +76,54 @@ window.Game.resize = function (newW, newH) {
     if (!newW || !newH) return;
     W = newW;
     H = newH;
-    FLOOR_Y = H - 70; // 70px de grosor del césped inferior
+    FLOOR_Y = H - 325;
 
     // Recalcular posiciones de las porterías si la pantalla cambia
     leftGoal = {x: 0, y: FLOOR_Y - GOAL_H, w: GOAL_W, h: GOAL_H};
     rightGoal = {x: W - GOAL_W, y: FLOOR_Y - GOAL_H, w: GOAL_W, h: GOAL_H};
 };
 
+// Iniciar fondo animado/estático para el menú
+window.Game.startIdle = function ({canvas, ctx}) {
+    window.Game.stopBasicGame(); // Asegurarnos de que el juego está parado
+    window.Game.stopIdle();      // Evitar bucles duplicados
+
+    idleRunning = true;
+    window.Game.resize(canvas.width, canvas.height);
+
+    function idleLoop() {
+        if (!idleRunning) return;
+
+        ctx.clearRect(0, 0, W, H);
+
+        // 1. Fondo
+        drawField();
+
+        // 2. Redes de las porterías
+        drawGoalNet(leftGoal);
+        drawGoalNet(rightGoal);
+
+        // 3. Palos de las porterías
+        drawGoalPosts(leftGoal);
+        drawGoalPosts(rightGoal);
+
+        idleAnimationId = requestAnimationFrame(idleLoop);
+    }
+
+    idleLoop();
+};
+
+// Detener el fondo del menú
+window.Game.stopIdle = function () {
+    idleRunning = false;
+    if (idleAnimationId) cancelAnimationFrame(idleAnimationId);
+};
+
 // iniciar juego básico
 // parámetros: { canvas, ctx, scoreEl, onExit }
 window.Game.startBasicGame = function ({canvas, ctx, scoreEl, onExit}) {
-    // Detener juego anterior si existe
+    // Detener el modo menú antes de jugar
+    window.Game.stopIdle();
     window.Game.stopBasicGame();
 
     // APLICAR TAMAÑO Y POSICIONAR PORTERÍAS
@@ -302,49 +347,28 @@ function collidePlayers(p1, p2) {
 function dibujar() {
     ctx.clearRect(0, 0, W, H);
 
-    // fondo simple
+    // 1. Fondo (lo más profundo)
     drawField();
 
-    // porterías
-    drawGoal(leftGoal);
-    drawGoal(rightGoal);
-
-    // jugadores
+    // 2. Jugadores y pelota (al fondo, detrás de la portería)
     drawPlayer(p1, "#ffffff");
     drawPlayer(p2, "#ffd700");
-
-    // pelota
     drawBall();
+
+    // 3. Redes de las porterías (nivel intermedio)
+    drawGoalNet(leftGoal);
+    drawGoalNet(rightGoal);
+
+    // 4. Palos de las porterías (al frente de todo)
+    drawGoalPosts(leftGoal);
+    drawGoalPosts(rightGoal);
 }
 
 function drawField() {
-    // césped
-    ctx.fillStyle = "rgba(40, 170, 90, 0.85)";
-    ctx.fillRect(0, FLOOR_Y, W, H - FLOOR_Y);
-
-    // línea central
-    ctx.strokeStyle = "rgba(255,255,255,0.55)";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(W / 2, FLOOR_Y);
-    ctx.lineTo(W / 2, H);
-    ctx.stroke();
-
-    // suelo
-    ctx.strokeStyle = "rgba(0,0,0,0.25)";
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    ctx.moveTo(0, FLOOR_Y);
-    ctx.lineTo(W, FLOOR_Y);
-    ctx.stroke();
-}
-
-function drawGoal(g) {
-    ctx.fillStyle = "rgba(255,255,255,0.25)";
-    ctx.fillRect(g.x, g.y, g.w, g.h);
-    ctx.strokeStyle = "rgba(255,255,255,0.75)";
-    ctx.lineWidth = 3;
-    ctx.strokeRect(g.x, g.y, g.w, g.h);
+    // DIBUJAR LA IMAGEN DE FONDO
+    if (bgImage.complete) {
+        ctx.drawImage(bgImage, 0, 0, W, H);
+    }
 }
 
 function drawPlayer(p, color) {
@@ -371,6 +395,74 @@ function drawBall() {
     ctx.strokeStyle = "rgba(0,0,0,0.35)";
     ctx.lineWidth = 2;
     ctx.stroke();
+}
+
+function drawGoalNet(g) {
+    // Guardamos el contexto para poder aplicar un recorte (clip) a la red
+    ctx.save();
+
+    // Fondo de la red (semitransparente)
+    ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
+    ctx.fillRect(g.x, g.y, g.w, g.h);
+
+    // Patrón de la red (rombos cruzados)
+    ctx.beginPath();
+    ctx.rect(g.x, g.y, g.w, g.h);
+    ctx.clip(); // Limitamos el dibujo solo al interior de la portería
+
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+    ctx.lineWidth = 1.5;
+    const step = 14; // Tamaño de los rombos de la red
+
+    ctx.beginPath();
+    // Diagonales en un sentido
+    for (let i = -g.h; i < g.w + g.h; i += step) {
+        ctx.moveTo(g.x + i, g.y);
+        ctx.lineTo(g.x + i + g.h, g.y + g.h);
+    }
+    // Diagonales en el sentido opuesto
+    for (let i = -g.h; i < g.w + g.h; i += step) {
+        ctx.moveTo(g.x + i, g.y + g.h);
+        ctx.lineTo(g.x + i + g.h, g.y);
+    }
+    ctx.stroke();
+
+    ctx.restore(); // Restauramos el contexto
+}
+
+function drawGoalPosts(g) {
+    // Detectamos si es la portería izquierda o derecha
+    const isLeft = g.x < W / 2;
+    const postSize = 8;
+
+    // Estructura de los postes
+    ctx.fillStyle = "#e0e0e0"; // Color blanco/gris claro metálico
+
+    // Larguero (parte superior)
+    ctx.fillRect(g.x, g.y, g.w, postSize);
+
+    // Postes laterales
+    if (isLeft) {
+        // Poste frontal (hacia el centro del campo)
+        ctx.fillRect(g.x + g.w - postSize, g.y, postSize, g.h);
+    }
+    else {
+        // Poste frontal
+        ctx.fillRect(g.x, g.y, postSize, g.h);
+    }
+
+    // Sombras interiores para darle volumen 3D a los postes
+    ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
+
+    // Sombra debajo del larguero
+    ctx.fillRect(g.x, g.y + postSize - 3, g.w, 3);
+
+    // Sombra en el poste frontal
+    if (isLeft) {
+        ctx.fillRect(g.x + g.w - postSize + 3, g.y + postSize, postSize - 3, g.h - postSize);
+    } else {
+        ctx.fillRect(g.x + 3, g.y + postSize, postSize - 3, g.h - postSize);
+    }
 }
 
 /* ==========================================================================
