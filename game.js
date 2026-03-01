@@ -17,7 +17,7 @@ const FRICTION = 0.88;       // fricción en suelo (pelota)
 const DT_MAX = 1 / 30;
 
 // Porterías (zonas de gol)
-const GOAL_W = 60;
+const GOAL_W = 80;
 const GOAL_H = 200;
 let leftGoal = {};
 let rightGoal = {};
@@ -32,6 +32,7 @@ let score = {left: 0, right: 0};
 let gameRunning = false;
 let animationId = null;
 let lastTime = 0;
+let isGoalScored = false;
 
 // Variables para el modo menú
 let idleRunning = false;
@@ -181,7 +182,10 @@ function update(dt) {
     collidePlayerBall(p1);
     collidePlayerBall(p2);
 
-    // 5. Gol
+    // 5. Colisiones con las porterías (largueros)
+    checkGoalCollisions();
+
+    // 6. Gol
     checkGoal();
 }
 
@@ -295,19 +299,129 @@ function collidePlayerBall(p) {
     }
 }
 
-function checkGoal() {
-    // gol izquierda (marca el derecho) si la pelota entra en la portería izquierda
-    if (circleRectOverlap(ball, leftGoal)) {
-        score.right += 1;
-        updateScore();
-        resetRound("right");
+function checkGoalCollisions() {
+    const postSize = 8;
+
+    // Hitboxes de los Largueros
+    const leftCrossbar = { x: leftGoal.x, y: leftGoal.y, w: leftGoal.w, h: postSize };
+    const rightCrossbar = { x: rightGoal.x, y: rightGoal.y, w: rightGoal.w, h: postSize };
+
+    const hitboxes = [leftCrossbar, rightCrossbar];
+
+    for (let box of hitboxes) {
+        // Colisión con la pelota
+        collideBallStaticRect(box);
+
+        // Colisión con los jugadores
+        collidePlayerStaticRect(p1, box);
+        collidePlayerStaticRect(p2, box);
+    }
+}
+
+function collideBallStaticRect(rect) {
+    // Buscar el punto del rectángulo más cercano al centro de la pelota
+    const closestX = clamp(ball.x, rect.x, rect.x + rect.w);
+    const closestY = clamp(ball.y, rect.y, rect.y + rect.h);
+
+    // Calcular la distancia entre la pelota y ese punto
+    const dx = ball.x - closestX;
+    const dy = ball.y - closestY;
+    const dist2 = dx * dx + dy * dy;
+
+    // Si la distancia es menor al radio, hay colisión
+    if (dist2 < ball.r * ball.r) {
+        const dist = Math.sqrt(dist2) || 0.0001;
+        const nx = dx / dist; // Vector normal en X
+        const ny = dy / dist; // Vector normal en Y
+
+        // 1. Sacar la pelota del larguero (resolver superposición)
+        const overlap = ball.r - dist;
+        ball.x += nx * overlap;
+        ball.y += ny * overlap;
+
+        // 2. Calcular el rebote (Física)
+        const dotProduct = ball.vx * nx + ball.vy * ny;
+        if (dotProduct < 0) {
+            // Invertir la velocidad en la dirección del impacto aplicando el rebote
+            ball.vx -= (1 + RESTITUTION) * dotProduct * nx;
+            ball.vy -= (1 + RESTITUTION) * dotProduct * ny;
+        }
+    }
+}
+
+function collidePlayerStaticRect(p, rect) {
+    // Calcular los bordes del jugador (el punto x,y está en su centro)
+    const pLeft = p.x - p.w / 2;
+    const pRight = p.x + p.w / 2;
+    const pTop = p.y - p.h / 2;
+    const pBottom = p.y + p.h / 2;
+
+    // Calcular los bordes de la hitbox estática (el punto x,y está en la esquina superior izquierda)
+    const rLeft = rect.x;
+    const rRight = rect.x + rect.w;
+    const rTop = rect.y;
+    const rBottom = rect.y + rect.h;
+
+    // Comprobar si hay superposición
+    if (pRight <= rLeft || pLeft >= rRight || pBottom <= rTop || pTop >= rBottom) {
+        return; // No hay colisión
     }
 
-    // gol derecha (marca el izquierdo)
-    if (circleRectOverlap(ball, rightGoal)) {
+    // Si hay colisión, calcular cuánto se han solapado en cada dirección
+    const overlapLeft = pRight - rLeft;
+    const overlapRight = rRight - pLeft;
+    const overlapTop = pBottom - rTop;
+    const overlapBottom = rBottom - pTop;
+
+    // Encontrar el solapamiento más pequeño para saber por dónde chocó
+    const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+
+    if (minOverlap === overlapTop) {
+        // Choca desde arriba (aterriza en el larguero)
+        p.y -= overlapTop;
+        p.vy = 0;
+        p.onGround = true;
+    }
+    else if (minOverlap === overlapBottom) {
+        // Choca desde abajo (se da con la cabeza)
+        p.y += overlapBottom;
+        if (p.vy < 0) p.vy = 0;
+    }
+    else if (minOverlap === overlapLeft) {
+        // Choca por la izquierda
+        p.x -= overlapLeft;
+        p.vx = 0;
+    }
+    else if (minOverlap === overlapRight) {
+        // Choca por la derecha
+        p.x += overlapRight;
+        p.vx = 0;
+    }
+}
+
+function checkGoal() {
+    // Si ya se ha marcado un gol, no seguimos comprobando hasta que se reinicie
+    if (isGoalScored) return;
+
+    // Líneas de gol (donde están los postes frontales)
+    const leftGoalLine = leftGoal.x + leftGoal.w;
+    const rightGoalLine = rightGoal.x;
+
+    // Gol en la portería izquierda (marca el derecho)
+    // Entra "más de la mitad" porque comprobamos el CENTRO de la pelota (ball.x)
+    if (ball.x < leftGoalLine && ball.y > leftGoal.y) {
+        score.right += 1;
+        updateScore();
+        isGoalScored = true; // Bloqueamos nuevos goles
+        setTimeout(() => resetRound("right"), 2000); // Esperamos 2 segundos
+    }
+
+    // Gol en la portería derecha (marca el izquierdo)
+    else if (ball.x > rightGoalLine && ball.y > rightGoal.y) {
         score.left += 1;
         updateScore();
-        resetRound("left");
+        isGoalScored = true; // Bloqueamos nuevos goles
+        setTimeout(() => resetRound("left"), 2000); // Esperamos 2 segundos
     }
 }
 
@@ -485,6 +599,8 @@ function makePlayer(x, y, label) {
 }
 
 function resetRound(lastScorer = null) {
+    isGoalScored = false; // Permitimos marcar gol de nuevo
+
     // reset posiciones
     p1.x = 180;
     p1.y = FLOOR_Y - p1.h / 2;

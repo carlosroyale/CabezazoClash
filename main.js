@@ -37,7 +37,7 @@ const bgMusic = document.getElementById("bg-music");
 
 function showScreen(screenToShow) {
   screenStart.classList.remove("active");
-  screenLevel.classList.remove("active");
+  // screenLevel.classList.remove("active");
   screenOptions.classList.remove("active");
   screenGame.classList.remove("active");
   screenToShow.classList.add("active");
@@ -60,7 +60,19 @@ function asignarBoton(elemento, callback) {
 }
 
 // Asignar navegación
-asignarBoton(btnPlay, () => showScreen(screenLevel));
+asignarBoton(btnPlay, () => {
+  showScreen(screenGame);
+  window.Game.startBasicGame({
+    canvas,
+    ctx,
+    scoreEl,
+    onExit: () => {
+      showScreen(screenStart);
+      // Volvemos a encender el fondo del menú al salir del juego
+      window.Game.startIdle({ canvas, ctx });
+    }
+  });
+});
 asignarBoton(btnBack, () => showScreen(screenStart));
 asignarBoton(btnOptions, () => showScreen(screenOptions));
 asignarBoton(btnOptionsBack, () => showScreen(screenStart));
