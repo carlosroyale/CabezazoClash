@@ -33,6 +33,7 @@ let gameRunning = false;
 let animationId = null;
 let lastTime = 0;
 let isGoalScored = false;
+let onExitCallback = null;
 
 // Variables para el modo menú
 let idleRunning = false;
@@ -40,7 +41,7 @@ let idleAnimationId = null;
 
 // Imagen fondo
 const bgImage = new Image();
-bgImage.src = 'assets/img/fotoEstadio.png'; // Reemplaza esto con el nombre/ruta real de tu imagen
+bgImage.src = 'assets/img/fotoEstadio.png';
 
 
 /* ==========================================================================
@@ -53,11 +54,12 @@ const onKeyDown = (e) => {
     keys.add(e.code);
 
     if (e.code === "Escape") {
+        if (!gameRunning) return;
         window.Game.stopBasicGame();
-        if (onExitCallback) onExitCallback();
+        if (typeof onExitCallback === "function") onExitCallback();
     }
     if (e.code === "KeyR") {
-        resetRound();
+        if (gameRunning) resetRound();
     }
 };
 
@@ -127,6 +129,8 @@ window.Game.startBasicGame = function ({canvas, ctx, scoreEl, onExit}) {
     window.Game.stopIdle();
     window.Game.stopBasicGame();
 
+    onExitCallback = onExit;
+
     // APLICAR TAMAÑO Y POSICIONAR PORTERÍAS
     window.Game.resize(canvas.width, canvas.height);
 
@@ -148,6 +152,8 @@ window.Game.startBasicGame = function ({canvas, ctx, scoreEl, onExit}) {
 window.Game.stopBasicGame = function () {
     gameRunning = false;
     if (animationId) cancelAnimationFrame(animationId);
+    animationId = null;
+    keys.clear();
 };
 
 function gameLoop(time) {
