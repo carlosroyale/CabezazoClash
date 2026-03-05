@@ -78,7 +78,8 @@
     <div class="game-wrap">
       <div class="hud">
         <div id="score" class="score">0 - 0</div>
-        <div class="hint">ESC: volver · R: reiniciar</div>
+        <div class="hint">ESC: pausa · R: reiniciar</div>
+      <button id="btn-pause" class="pause-btn">PAUSA</button>
       </div>
     </div>
   </section>
@@ -88,6 +89,19 @@
     <source src="assets/audio/SoundTrackHS.ogg" type="audio/ogg">
     <source src="assets/audio/SoundTrackHS.mp3" type="audio/mpeg">
   </audio>
+
+  <!-- menú de pausa (aparece sobre el canvas, dentro de la pantalla de juego) -->
+  <section id="pause-menu" class="pause-menu hidden">
+    <div class="card">
+      <h2 class="subtitle">Pausa</h2>
+      <div class="buttons">
+        <button id="btn-resume" class="btn">Reanudar</button>
+        <button id="btn-restart" class="btn">Reiniciar</button>
+        <button id="btn-pause-options" class="btn">Opciones</button>
+        <button id="btn-exit" class="btn btn-secondary">Salir</button>
+      </div>
+    </div>
+  </section>
 
   <script src="game.js"></script>
   <script src="main.js"></script>

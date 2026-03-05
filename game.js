@@ -30,6 +30,7 @@ let score = {left: 0, right: 0};
 
 // Variables de Juego y Bucle
 let gameRunning = false;
+let gamePaused = false;            // nuevo: el juego está en pausa
 let animationId = null;
 let lastTime = 0;
 let isGoalScored = false;
@@ -54,12 +55,19 @@ const onKeyDown = (e) => {
     keys.add(e.code);
 
     if (e.code === "Escape") {
-        if (!gameRunning) return;
-        window.Game.stopBasicGame();
-        if (typeof onExitCallback === "function") onExitCallback();
+        if (!gameRunning) {
+            // no estamos jugando, nada que hacer
+            return;
+        }
+        if (gamePaused) {
+            window.Game.resumeGame();
+        } else {
+            window.Game.pauseGame();
+        }
+        return;
     }
     if (e.code === "KeyR") {
-        if (gameRunning) resetRound();
+        if (gameRunning && !gamePaused) resetRound();
     }
 };
 
@@ -151,13 +159,31 @@ window.Game.startBasicGame = function ({canvas, ctx, scoreEl, onExit}) {
 
 window.Game.stopBasicGame = function () {
     gameRunning = false;
+    gamePaused = false;
     if (animationId) cancelAnimationFrame(animationId);
     animationId = null;
     keys.clear();
 };
 
+// pausa y reanuda sin perder el estado
+window.Game.pauseGame = function () {
+    if (!gameRunning || gamePaused) return;
+    gamePaused = true;
+    if (animationId) cancelAnimationFrame(animationId);
+    animationId = null;
+    document.dispatchEvent(new Event('game-paused'));
+};
+
+window.Game.resumeGame = function () {
+    if (!gameRunning || !gamePaused) return;
+    gamePaused = false;
+    lastTime = performance.now();
+    animationId = requestAnimationFrame(gameLoop);
+    document.dispatchEvent(new Event('game-resumed'));
+};
+
 function gameLoop(time) {
-    if (!gameRunning) return;
+    if (!gameRunning || gamePaused) return;
 
     let dt = (time - lastTime) / 1000;
     lastTime = time;

@@ -31,6 +31,19 @@ const ctx = canvas.getContext("2d");
 const scoreEl = document.getElementById("score");
 const bgMusic = document.getElementById("bg-music");
 
+// elementos de pausa
+const btnPause = document.getElementById("btn-pause");
+const screenPause = document.getElementById("pause-menu");
+const btnResume = document.getElementById("btn-resume");
+const btnRestart = document.getElementById("btn-restart");
+const btnExitPause = document.getElementById("btn-exit");
+const btnPauseOptions = document.getElementById("btn-pause-options");
+
+// estado adicional
+let lastGameParams = null;      // para reiniciar con los mismos parámetros
+let pausedFromMenu = false;     // indicador de si volvemos desde ajustes mientras está en pausa
+
+
 /* ==========================================================================
    GESTIÓN DE PANTALLAS (UI)
    ========================================================================== */
@@ -41,6 +54,14 @@ function showScreen(screenToShow) {
   screenOptions.classList.remove("active");
   screenGame.classList.remove("active");
   screenToShow.classList.add("active");
+}
+
+function showPauseMenu() {
+  screenPause.classList.remove("hidden");
+}
+
+function hidePauseMenu() {
+  screenPause.classList.add("hidden");
 }
 
 /* ==========================================================================
@@ -60,41 +81,86 @@ function asignarBoton(elemento, callback) {
 }
 
 // Asignar navegación
-asignarBoton(btnPlay, () => {
-  showScreen(screenGame);
-  window.Game.startBasicGame({
+function beginBasicGame() {
+  lastGameParams = {
     canvas,
     ctx,
     scoreEl,
     onExit: () => {
       showScreen(screenStart);
-      // Volvemos a encender el fondo del menú al salir del juego
       window.Game.startIdle({ canvas, ctx });
     }
-  });
+  };
+  showScreen(screenGame);
+  window.Game.startBasicGame(lastGameParams);
+}
+
+asignarBoton(btnPlay, () => {
+  beginBasicGame();
 });
 asignarBoton(btnBack, () => showScreen(screenStart));
 asignarBoton(btnOptions, () => showScreen(screenOptions));
-asignarBoton(btnOptionsBack, () => showScreen(screenStart));
+asignarBoton(btnOptionsBack, () => {
+  if (pausedFromMenu) {
+    pausedFromMenu = false;
+    showPauseMenu();
+    showScreen(screenGame);       // volver al juego para que el HUD+pausa se vean correctamente
+  } else {
+    showScreen(screenStart);
+  }
+});
 
 // Lanzar niveles
 asignarBoton(btnBasic, () => {
-  showScreen(screenGame);
-  window.Game.startBasicGame({
-    canvas,
-    ctx,
-    scoreEl,
-    onExit: () => {
-      showScreen(screenStart);
-      // Volvemos a encender el fondo del menú al salir del juego
-      window.Game.startIdle({ canvas, ctx });
-    }
-  });
+  beginBasicGame();
 });
 
 asignarBoton(btnAdvanced, () => {
   alert("Nivel AVANZADO seleccionado");
   // startGame({ difficulty: "advanced" });
+});
+
+// pause controls
+asignarBoton(btnPause, () => {
+  if (screenPause && !screenPause.classList.contains('hidden')) {
+    // ya abierto
+    window.Game.resumeGame();
+    hidePauseMenu();
+  } else {
+    window.Game.pauseGame();
+    showPauseMenu();
+  }
+});
+asignarBoton(btnResume, () => {
+  hidePauseMenu();
+  window.Game.resumeGame();
+});
+asignarBoton(btnRestart, () => {
+  hidePauseMenu();
+  if (lastGameParams) {
+    beginBasicGame();
+  }
+});
+asignarBoton(btnExitPause, () => {
+  hidePauseMenu();
+  // mismo comportamiento que onExit
+  window.Game.stopBasicGame();
+  showScreen(screenStart);
+  window.Game.startIdle({ canvas, ctx });
+});
+asignarBoton(btnPauseOptions, () => {
+  // abrimos ajustes pero mantenemos el juego pausado
+  pausedFromMenu = true;
+  hidePauseMenu();               // ocultar overlay para que opciones no quede debajo
+  showScreen(screenOptions);
+});
+
+// sincronizar con teclas/Esc en el motor
+document.addEventListener('game-paused', () => {
+  showPauseMenu();
+});
+document.addEventListener('game-resumed', () => {
+  hidePauseMenu();
 });
 
 
