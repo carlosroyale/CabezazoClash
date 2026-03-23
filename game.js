@@ -27,6 +27,7 @@ let ball = {r: 18, x: 0, y: 0, vx: 0, vy: 0};
 let p1 = {};
 let p2 = {};
 let score = {left: 0, right: 0};
+let gameTime = 60; // 60 segundos
 
 // Variables de Juego y Bucle
 let gameRunning = false;
@@ -150,6 +151,7 @@ window.Game.startBasicGame = function ({canvas, ctx, scoreEl, onExit, bot = fals
 
     // Reiniciar valores
     score = {left: 0, right: 0};
+    gameTime = 60;
     updateScore();
     resetRound();
 
@@ -166,6 +168,14 @@ window.Game.stopBasicGame = function () {
     animationId = null;
     keys.clear();
 };
+
+function endGame() {
+    window.Game.stopBasicGame();
+    // Llamar a la función de main.js para mostrar la pantalla de fin
+    if (window.showEndScreen) {
+        window.showEndScreen(score.left, score.right);
+    }
+}
 
 // pausa y reanuda sin perder el estado
 window.Game.pauseGame = function () {
@@ -225,6 +235,16 @@ function update(dt) {
 
     // 6. Gol
     checkGoal();
+
+    // 7. Tiempo
+    if (!gamePaused) {
+        gameTime -= dt;
+        if (gameTime <= 0) {
+            gameTime = 0;
+            endGame();
+        }
+    }
+    updateScore();
 }
 
 function controlPlayer(p, dt, leftKey, rightKey, jumpKey) {
@@ -657,7 +677,10 @@ function resetRound(lastScorer = null) {
 
 function updateScore() {
     if (scoreEl) {
-        scoreEl.textContent = `${score.left} - ${score.right}`;
+        const minutes = Math.floor(gameTime / 60);
+        const seconds = Math.floor(gameTime % 60);
+        const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        scoreEl.textContent = `${score.left} - ${score.right} | ${timeStr}`;
     }
 }
 

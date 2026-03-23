@@ -273,3 +273,24 @@ body {
 .pause-menu.hidden {
   display: none;
 }
+
+/* pantalla de fin del partido */
+.final-score {
+  font-size: 3rem;
+  font-weight: bold;
+  margin: 2rem 0;
+  color: #fff;
+  animation: fadeIn 1s ease-in-out;
+}
+
+.winner-message {
+  font-size: 1.5rem;
+  margin-bottom: 2rem;
+  color: #ffd700;
+  animation: fadeIn 1.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}

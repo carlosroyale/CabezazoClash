@@ -10,6 +10,7 @@ const screenStart = document.getElementById("screen-start");
 const screenLevel = document.getElementById("screen-level");
 const screenOptions = document.getElementById("screen-options");
 const screenGame = document.getElementById("screen-game");
+const screenEnd = document.getElementById("screen-end");
 
 // Botones de navegación
 const btnPlay = document.getElementById("btn-play");
@@ -31,6 +32,11 @@ const canvas = document.getElementById("game-canvas");
 const ctx = canvas.getContext("2d");
 const scoreEl = document.getElementById("score");
 const bgMusic = document.getElementById("bg-music");
+
+// Elementos de la pantalla de fin
+const finalScoreEl = document.getElementById("final-score");
+const winnerMessageEl = document.getElementById("winner-message");
+const btnContinue = document.getElementById("btn-continue");
 
 // elementos de pausa
 const btnPause = document.getElementById("btn-pause");
@@ -54,6 +60,7 @@ function showScreen(screenToShow) {
   // screenLevel.classList.remove("active");
   screenOptions.classList.remove("active");
   screenGame.classList.remove("active");
+  screenEnd.classList.remove("active");
   screenToShow.classList.add("active");
 }
 
@@ -111,6 +118,23 @@ function beginBotGame() {
   window.Game.startBasicGame(lastGameParams);
 }
 
+function showEndScreen(leftScore, rightScore) {
+  finalScoreEl.textContent = `${leftScore} - ${rightScore}`;
+  let winnerMessage = "";
+  if (leftScore > rightScore) {
+    winnerMessage = "¡Gana el Jugador 1!";
+  } else if (rightScore > leftScore) {
+    winnerMessage = "¡Gana el Jugador 2!";
+  } else {
+    winnerMessage = "¡Empate!";
+  }
+  winnerMessageEl.textContent = winnerMessage;
+  showScreen(screenEnd);
+}
+
+// Hacer accesible desde game.js
+window.showEndScreen = showEndScreen;
+
 asignarBoton(btnPlay, () => {
   beginBasicGame();
 });
@@ -128,6 +152,11 @@ asignarBoton(btnOptionsBack, () => {
   } else {
     showScreen(screenStart);
   }
+});
+
+asignarBoton(btnContinue, () => {
+  showScreen(screenStart);
+  window.Game.startIdle({ canvas, ctx });
 });
 
 // Lanzar niveles
