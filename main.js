@@ -17,6 +17,7 @@ const btnBack = document.getElementById("btn-back");
 const btnBasic = document.getElementById("btn-basic");
 const btnAdvanced = document.getElementById("btn-advanced");
 const btnOptions = document.getElementById("btn-options");
+const btnPlayBot = document.getElementById("btn-play-bot");
 const btnOptionsBack = document.getElementById("btn-options-back");
 
 // Elementos de opciones
@@ -95,8 +96,27 @@ function beginBasicGame() {
   window.Game.startBasicGame(lastGameParams);
 }
 
+function beginBotGame() {
+  lastGameParams = {
+    canvas,
+    ctx,
+    scoreEl,
+    bot: true,
+    onExit: () => {
+      showScreen(screenStart);
+      window.Game.startIdle({ canvas, ctx });
+    }
+  };
+  showScreen(screenGame);
+  window.Game.startBasicGame(lastGameParams);
+}
+
 asignarBoton(btnPlay, () => {
   beginBasicGame();
+});
+
+asignarBoton(btnPlayBot, () => {
+  beginBotGame();
 });
 asignarBoton(btnBack, () => showScreen(screenStart));
 asignarBoton(btnOptions, () => showScreen(screenOptions));

@@ -35,6 +35,7 @@ let animationId = null;
 let lastTime = 0;
 let isGoalScored = false;
 let onExitCallback = null;
+let botEnabled = false;
 
 // Variables para el modo menú
 let idleRunning = false;
@@ -132,12 +133,13 @@ window.Game.stopIdle = function () {
 
 // iniciar juego básico
 // parámetros: { canvas, ctx, scoreEl, onExit }
-window.Game.startBasicGame = function ({canvas, ctx, scoreEl, onExit}) {
+window.Game.startBasicGame = function ({canvas, ctx, scoreEl, onExit, bot = false}) {
     // Detener el modo menú antes de jugar
     window.Game.stopIdle();
     window.Game.stopBasicGame();
 
     onExitCallback = onExit;
+    botEnabled = !!bot;
 
     // APLICAR TAMAÑO Y POSICIONAR PORTERÍAS
     window.Game.resize(canvas.width, canvas.height);
@@ -198,7 +200,11 @@ function gameLoop(time) {
 function update(dt) {
     // 1. Controles
     controlPlayer(p1, dt, "KeyA", "KeyD", "KeyW");
-    controlPlayer(p2, dt, "ArrowLeft", "ArrowRight", "ArrowUp");
+    if (botEnabled) {
+        controlBot(p2, dt);
+    } else {
+        controlPlayer(p2, dt, "ArrowLeft", "ArrowRight", "ArrowUp");
+    }
 
     // 2. Física jugadores
     updatePlayer(p1, dt);
@@ -665,4 +671,21 @@ function circleRectOverlap(c, r) {
 
 function clamp(v, min, max) {
     return Math.max(min, Math.min(max, v));
+}
+
+function controlBot(bot, dt) {
+    // Bot simple: sigue el balón y salta cuando el balón está bajo y cerca
+    const direction = ball.x < bot.x ? -1 : 1;
+    bot.vx = direction * bot.speed * 0.65;
+
+    // Evitar que el bot se salga del campo
+    if (bot.x < bot.w / 2) bot.x = bot.w / 2;
+    if (bot.x > W - bot.w / 2) bot.x = W - bot.w / 2;
+
+    // Salta si el balón está sobre su mitad del campo y a poca distancia
+    const distanceX = Math.abs(ball.x - bot.x);
+    if (bot.onGround && ball.y > FLOOR_Y - 220 && distanceX < 220) {
+        bot.vy = -bot.jump * 0.95;
+        bot.onGround = false;
+    }
 }
