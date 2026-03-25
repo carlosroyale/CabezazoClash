@@ -697,18 +697,80 @@ function clamp(v, min, max) {
 }
 
 function controlBot(bot, dt) {
-    // Bot simple: sigue el balón y salta cuando el balón está bajo y cerca
-    const direction = ball.x < bot.x ? -1 : 1;
-    bot.vx = direction * bot.speed * 0.65;
+    // === CONFIG IA ===
+    const reaction = 0.12;
+    const maxSpeedFactor = 0.9;
 
-    // Evitar que el bot se salga del campo
-    if (bot.x < bot.w / 2) bot.x = bot.w / 2;
-    if (bot.x > W - bot.w / 2) bot.x = W - bot.w / 2;
+    // === 1. PREDICCIÓN DE BALÓN ===
+    const futureX = ball.x + ball.vx * reaction;
+    const futureY = ball.y + ball.vy * reaction;
 
-    // Salta si el balón está sobre su mitad del campo y a poca distancia
-    const distanceX = Math.abs(ball.x - bot.x);
-    if (bot.onGround && ball.y > FLOOR_Y - 220 && distanceX < 220) {
+    const isBallComing = (ball.vx > 0 && bot.x < ball.x) || (ball.vx < 0 && bot.x > ball.x);
+
+    // === 2. ZONAS Y DISTANCIAS ===
+    const isBallOnBotSide = ball.x > W / 2;
+    const distanceToBall = Math.abs(ball.x - bot.x);
+
+    // === 3. POSICIONAMIENTO INTELIGENTE (FIX ATAQUE) ===
+    let targetX;
+
+    const isBallFree =
+        Math.abs(ball.vx) < 200 ||       // balón lento
+        distanceToBall < 250;            // o cercano
+
+    const canAttack =
+        isBallOnBotSide ||
+        (isBallFree && isBallComing);
+
+    if (canAttack) {
+        // ATACA → puede cruzar campo
+        targetX = futureX;
+    } else {
+        // DEFENSA → pero no se queda atrás del todo
+        targetX = W * 0.65;
+    }
+
+    // Ajuste fino para posicionarse mejor respecto al balón
+    const offset = 10;
+    if (ball.x < bot.x) targetX -= offset;
+    else targetX += offset;
+
+    // === 4. MOVIMIENTO ===
+    const dir = Math.sign(targetX - bot.x);
+    bot.vx = dir * bot.speed * maxSpeedFactor;
+
+    // Frenado suave (más natural)
+    if (Math.abs(targetX - bot.x) < 10) {
+        bot.vx *= 0.3;
+    }
+
+    // === 5. SALTO INTELIGENTE ===
+    const shouldJump =
+        bot.onGround &&
+        distanceToBall < 180 &&
+        (
+            ball.y < bot.y - 40 ||                  // balón en el aire
+            (isBallComing && ball.vy > 0)           // o cayendo hacia él
+        );
+
+    if (shouldJump) {
         bot.vy = -bot.jump * 0.95;
         bot.onGround = false;
     }
+
+    // === 6. REMATE / ATAQUE ===
+    if (distanceToBall < 80 && Math.abs(ball.y - bot.y) < 60) {
+        // impulso hacia balón (golpeo)
+        bot.vx *= 1.2;
+
+        // mini salto ofensivo si el balón está bajo
+        if (bot.onGround && ball.y > FLOOR_Y - 120) {
+            bot.vy = -bot.jump * 0.6;
+            bot.onGround = false;
+        }
+    }
+
+    // === 7. LÍMITES ===
+    if (bot.x < bot.w / 2) bot.x = bot.w / 2;
+    if (bot.x > W - bot.w / 2) bot.x = W - bot.w / 2;
 }
