@@ -1,17 +1,6 @@
 // main.js - Control de UI, menús y ajustes
 // Estructurado al estilo de volador.js
 
-import { startBasicGame, startIdle, pauseGame, resumeGame, stopBasicGame, resize } from './js/game.js';
-
-// Asignar a window.Game para compatibilidad
-window.Game = {
-    startBasicGame,
-    startIdle,
-    pauseGame,
-    resumeGame,
-    stopBasicGame,
-    resize
-};
 
 /* ==========================================================================
    CONFIGURACIÓN Y ELEMENTOS DEL DOM

@@ -1,6 +1,6 @@
 // input.js - Gestión del teclado
 
-export const keys = new Set();
+const keys = new Set();
 
 const onKeyDown = (e) => {
     keys.add(e.code);

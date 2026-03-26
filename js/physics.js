@@ -1,8 +1,6 @@
 // physics.js - Detección de colisiones y límites
 
-import { RESTITUTION } from './constants.js';
-
-export function collidePlayerBall(p, ball) {
+function collidePlayerBall(p, ball) {
     // colisión círculo (ball) con AABB (player)
     const left = p.x - p.w / 2;
     const right = p.x + p.w / 2;
@@ -57,7 +55,7 @@ export function collidePlayerBall(p, ball) {
     }
 }
 
-export function checkGoalCollisions(ball, leftGoal, rightGoal) {
+function checkGoalCollisions(ball, leftGoal, rightGoal) {
     const postSize = 8;
 
     // Hitboxes de los Largueros
@@ -71,7 +69,7 @@ export function checkGoalCollisions(ball, leftGoal, rightGoal) {
     }
 }
 
-export function collideBallStaticRect(ball, rect) {
+function collideBallStaticRect(ball, rect) {
     // Buscar el punto del rectángulo más cercano al centro de la pelota
     const closestX = clamp(ball.x, rect.x, rect.x + rect.w);
     const closestY = clamp(ball.y, rect.y, rect.y + rect.h);
@@ -102,7 +100,7 @@ export function collideBallStaticRect(ball, rect) {
     }
 }
 
-export function collidePlayerStaticRect(p, rect) {
+function collidePlayerStaticRect(p, rect) {
     // Calcular los bordes del jugador (el punto x,y está en su centro)
     const pLeft = p.x - p.w / 2;
     const pRight = p.x + p.w / 2;
@@ -149,7 +147,7 @@ export function collidePlayerStaticRect(p, rect) {
     }
 }
 
-export function collidePlayers(p1, p2) {
+function collidePlayers(p1, p2) {
     // Verificar si los rectángulos de los jugadores se superponen
     const overlapX = Math.max(0, Math.min(p1.x + p1.w / 2, p2.x + p2.w / 2) - Math.max(p1.x - p1.w / 2, p2.x - p2.w / 2));
     const overlapY = Math.max(0, Math.min(p1.y + p1.h / 2, p2.y + p2.h / 2) - Math.max(p1.y - p1.h / 2, p2.y - p2.h / 2));
@@ -175,7 +173,7 @@ export function collidePlayers(p1, p2) {
 }
 
 // Colisión de la cabeza del jugador (círculo) con un rectángulo estático
-export function collidePlayerHeadStaticRect(p, rect) {
+function collidePlayerHeadStaticRect(p, rect) {
     const headCx = p.x;
     const headCy = p.y - p.h / 2 - 18; // centro de la cabeza
     const headR = 22;
@@ -205,7 +203,7 @@ export function collidePlayerHeadStaticRect(p, rect) {
 // Detecta si la pelota está atrapada entre dos jugadores y la lanza hacia arriba.
 // Usa proximidad entre jugadores para detectarlo de forma fiable,
 // ya que las colisiones individuales ya habrán separado el solapamiento exacto.
-export function resolveBallSqueezeUp(ball, p1, p2) {
+function resolveBallSqueezeUp(ball, p1, p2) {
     // Los dos jugadores deben estar frente a frente (menos de la suma de sus medios anchos + diámetro del balón)
     const playerDist = Math.abs(p1.x - p2.x);
     const squeezeDist = (p1.w + p2.w) / 2 + ball.r * 2;
@@ -226,7 +224,7 @@ export function resolveBallSqueezeUp(ball, p1, p2) {
     if (ball.vy > -350) ball.vy = -350;
 }
 
-export function circleRectOverlap(c, r) {
+function circleRectOverlap(c, r) {
     const closestX = clamp(c.x, r.x, r.x + r.w);
     const closestY = clamp(c.y, r.y, r.y + r.h);
     const dx = c.x - closestX;

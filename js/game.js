@@ -1,11 +1,5 @@
 // game.js - El bucle principal: update y llamadas a los demás
 
-import { GRAV, DT_MAX, GOAL_W, GOAL_H } from './constants.js';
-import { keys } from './input.js';
-import { makePlayer, updatePlayer, updateBall, controlPlayer, controlBot } from './entities.js';
-import { collidePlayerBall, checkGoalCollisions, collidePlayers, collidePlayerStaticRect, collidePlayerHeadStaticRect, resolveBallSqueezeUp } from './physics.js';
-import { dibujar } from './renderer.js';
-
 // Constantes físicas y dimensiones (nivel BÁSICO)
 let W, H;
 let FLOOR_Y;                 // suelo
@@ -33,11 +27,11 @@ let botEnabled = false;
 // Variables para el modo menú
 let idleRunning = false;
 let idleAnimationId = null;
-let ctx;
-let scoreEl;
-let timerEl;
+let gameCtx;
+let gameScoreEl;
+let gameTimerEl;
 
-export function resize(newW, newH) {
+function resize(newW, newH) {
     if (!newW || !newH) return;
     W = newW;
     H = newH;
@@ -49,16 +43,16 @@ export function resize(newW, newH) {
 };
 
 // Iniciar fondo animado/estático para el menú
-export function startIdle({canvas, ctx: gameCtx}) {
+function startIdle({canvas, ctx: ctxParam}) {
     stopBasicGame(); // Asegurarnos de que el juego está parado
     stopIdle();      // Evitar bucles duplicados
 
-    ctx = gameCtx;
+    gameCtx = ctxParam;
     idleRunning = true;
     resize(canvas.width, canvas.height);
 
     function idleLoop() {
-        dibujar(ctx, W, H, p1, p2, ball, leftGoal, rightGoal);
+        dibujar(gameCtx, W, H, p1, p2, ball, leftGoal, rightGoal);
         if (idleRunning) {
             idleAnimationId = requestAnimationFrame(idleLoop);
         }
@@ -68,7 +62,7 @@ export function startIdle({canvas, ctx: gameCtx}) {
 };
 
 // Detener el fondo del menú
-export function stopIdle() {
+function stopIdle() {
     idleRunning = false;
     if (idleAnimationId) {
         cancelAnimationFrame(idleAnimationId);
@@ -78,14 +72,14 @@ export function stopIdle() {
 
 // iniciar juego básico
 // parámetros: { canvas, ctx, scoreEl, timerEl, onExit }
-export function startBasicGame({canvas, ctx: gameCtx, scoreEl: scoreElParam, timerEl: timerElParam, onExit, bot = false}) {
+function startBasicGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl: timerElParam, onExit, bot = false}) {
     // Detener el modo menú antes de jugar
     stopIdle();
     stopBasicGame();
 
-    ctx = gameCtx;
-    scoreEl = scoreElParam;
-    timerEl = timerElParam;
+    gameCtx = ctxParam;
+    gameScoreEl = scoreElParam;
+    gameTimerEl = timerElParam;
     onExitCallback = onExit;
     botEnabled = !!bot;
 
@@ -109,7 +103,7 @@ export function startBasicGame({canvas, ctx: gameCtx, scoreEl: scoreElParam, tim
     animationId = requestAnimationFrame(gameLoop);
 };
 
-export function stopBasicGame() {
+function stopBasicGame() {
     gameRunning = false;
     gamePaused = false;
     if (animationId) {
@@ -127,7 +121,7 @@ function endGame() {
 }
 
 // pausa y reanuda sin perder el estado
-export function pauseGame() {
+function pauseGame() {
     if (!gameRunning || gamePaused) return;
     gamePaused = true;
     if (animationId) {
@@ -137,7 +131,7 @@ export function pauseGame() {
     document.dispatchEvent(new Event('game-paused'));
 };
 
-export function resumeGame() {
+function resumeGame() {
     if (!gameRunning || !gamePaused) return;
     gamePaused = false;
     lastTime = performance.now();
@@ -153,7 +147,7 @@ function gameLoop(time) {
     dt = Math.min(dt, DT_MAX);
 
     update(dt);
-    dibujar(ctx, W, H, p1, p2, ball, leftGoal, rightGoal);
+    dibujar(gameCtx, W, H, p1, p2, ball, leftGoal, rightGoal);
 
     animationId = requestAnimationFrame(gameLoop);
 }
@@ -255,13 +249,24 @@ function resetRound(lastScorer = null) {
 }
 
 function updateScore() {
-    if (scoreEl) {
-        scoreEl.textContent = `${score.left} - ${score.right}`;
+    if (gameScoreEl) {
+        gameScoreEl.textContent = `${score.left} - ${score.right}`;
     }
 }
 
 function updateTimer() {
-    if (timerEl) {
-        timerEl.textContent = `${Math.max(0, Math.ceil(gameTime))}`;
+    if (gameTimerEl) {
+        gameTimerEl.textContent = `${Math.max(0, Math.ceil(gameTime))}`;
     }
 }
+
+// API pública del motor para main.js e input.js
+window.Game = {
+    startBasicGame,
+    startIdle,
+    pauseGame,
+    resumeGame,
+    stopBasicGame,
+    resize,
+    resetRound
+};

@@ -7,7 +7,7 @@ bgImage.src = 'assets/img/fotoEstadio.png';
 // Global ctx for drawing functions
 let drawingCtx;
 
-export function dibujar(ctx, W, H, p1, p2, ball, leftGoal, rightGoal) {
+function dibujar(ctx, W, H, p1, p2, ball, leftGoal, rightGoal) {
     drawingCtx = ctx;
     ctx.clearRect(0, 0, W, H);
 

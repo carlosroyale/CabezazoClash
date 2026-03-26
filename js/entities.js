@@ -1,8 +1,6 @@
 // entities.js - Creación y lógica de Player, Ball y Bot
 
-import { GRAV, RESTITUTION, FRICTION } from './constants.js';
-
-export function makePlayer(x, y, label) {
+function makePlayer(x, y, label) {
     return {
         label,
         x,
@@ -17,7 +15,7 @@ export function makePlayer(x, y, label) {
     };
 }
 
-export function updatePlayer(p, dt, W, FLOOR_Y) {
+function updatePlayer(p, dt, W, FLOOR_Y) {
     p.vy += GRAV * dt;
     p.x += p.vx * dt;
     p.y += p.vy * dt;
@@ -35,7 +33,7 @@ export function updatePlayer(p, dt, W, FLOOR_Y) {
     }
 }
 
-export function updateBall(ball, dt, W, FLOOR_Y) {
+function updateBall(ball, dt, W, FLOOR_Y) {
     ball.vy += GRAV * dt;
     ball.x += ball.vx * dt;
     ball.y += ball.vy * dt;
@@ -64,7 +62,7 @@ export function updateBall(ball, dt, W, FLOOR_Y) {
     }
 }
 
-export function controlPlayer(p, dt, leftKey, rightKey, jumpKey, keys) {
+function controlPlayer(p, dt, leftKey, rightKey, jumpKey, keys) {
     let dir = 0;
     if (keys.has(leftKey)) dir -= 1;
     if (keys.has(rightKey)) dir += 1;
@@ -77,7 +75,7 @@ export function controlPlayer(p, dt, leftKey, rightKey, jumpKey, keys) {
     }
 }
 
-export function controlBot(bot, dt, ball, W, FLOOR_Y, keys) {
+function controlBot(bot, dt, ball, W, FLOOR_Y, keys) {
     // === CONFIG IA ===
     const reaction = 0.12;
     const maxSpeedFactor = 0.9;
