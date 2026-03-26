@@ -6,16 +6,8 @@
   <title>Inicio de Sesión - Cabezazo Clash</title>
   <link rel="stylesheet" href="styles.css" />
   <style>
-    .form-group input {
-      width: 100%;
-      padding: 15px;
-      font-size: 18px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
-
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Poppins', sans-serif;
       background: linear-gradient(to bottom, #d4a1d6, #5c2d91, #2e7d32);
       color: #fff;
       display: flex;
@@ -26,11 +18,11 @@
     }
 
     .card {
-      background: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.95);
       color: #333;
-      border-radius: 10px;
-      padding: 20px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      border-radius: 15px;
+      padding: 30px;
+      box-shadow: 0 8px 15px rgba(0, 0, 0, 0.3);
       width: 100%;
       max-width: 400px;
       text-align: center;
@@ -38,26 +30,86 @@
       z-index: 1;
     }
 
-    .screen::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 0;
+    .title {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #5c2d91;
+      margin-bottom: 20px;
     }
 
-    .screen {
-      position: relative;
-      z-index: 1;
+    .subtitle {
+      font-size: 1.2rem;
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+      text-align: left;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+      color: #5c2d91;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 15px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn {
+      background-color: #5c2d91;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .btn:hover {
+      background-color: #4a2373;
+      transform: scale(1.05);
+    }
+
+    .btn-secondary {
+      background-color: #2e7d32;
+    }
+
+    .btn-secondary:hover {
+      background-color: #1b5e20;
+      transform: scale(1.05);
+    }
+
+    .divider {
+      margin: 20px 0;
+      font-size: 14px;
+      color: #666;
+    }
+
+    .logo {
+      width: 150px;
+      height: auto;
+      margin: 0 auto 20px;
+      display: block;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     }
   </style>
 </head>
 <body>
   <section id="login-screen" class="screen active">
     <div class="card">
+      <img src="logohs.png" alt="Cabezazo Clash Logo" class="logo">
+
       <h1 class="title">Cabezazo Clash</h1>
       <h2 class="subtitle">Inicia Sesión o Regístrate</h2>
 
@@ -80,6 +132,9 @@
       <button id="btn-register" class="btn btn-secondary">Registrarse</button>
     </div>
   </section>
+</body>
+
+  
 
   <script>
     document.getElementById('login-form').addEventListener('submit', function(event) {
