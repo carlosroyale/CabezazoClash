@@ -17,38 +17,43 @@ export function collidePlayerBall(p, ball) {
     const dist2 = dx * dx + dy * dy;
 
     if (dist2 < ball.r * ball.r) {
-        // Hay colisión, calcular la normal
         const dist = Math.sqrt(dist2);
+
+        // Caso degenerado: el centro de la pelota está dentro del jugador
+        if (dist < 0.001) {
+            ball.y = top - ball.r - 1;
+            ball.vy = -Math.abs(ball.vy) - 300;
+            return;
+        }
+
         const nx = dx / dist;
         const ny = dy / dist;
 
-        // Separar los objetos
+        // Separar la pelota completamente (solo se mueve ella, no el jugador)
         const overlap = ball.r - dist;
-        ball.x += nx * overlap * 0.5;
-        ball.y += ny * overlap * 0.5;
-        p.x -= nx * overlap * 0.5;
-        p.y -= ny * overlap * 0.5;
+        ball.x += nx * overlap;
+        ball.y += ny * overlap;
 
-        // Calcular velocidad relativa
+        // Respuesta de velocidad: usar velocidad relativa pelota-jugador
         const rvx = ball.vx - p.vx;
         const rvy = ball.vy - p.vy;
-
-        // Velocidad a lo largo de la normal
         const velAlongNormal = rvx * nx + rvy * ny;
 
-        // No resolver si se están separando
-        if (velAlongNormal > 0) return;
+        // Solo resolver si se están acercando
+        if (velAlongNormal >= 0) return;
 
-        // Calcular impulso
         const j = -(1 + RESTITUTION) * velAlongNormal;
-        const impulseX = j * nx;
-        const impulseY = j * ny;
+        ball.vx += j * nx;
+        ball.vy += j * ny;
 
-        // Aplicar impulso
-        ball.vx += impulseX;
-        ball.vy += impulseY;
-        p.vx -= impulseX * 0.1; // El jugador se mueve menos
-        p.vy -= impulseY * 0.1;
+        // Limitar velocidad máxima del balón para evitar que dobles colisiones
+        // consecutivas amplifiquen la velocidad hasta niveles imposibles
+        const MAX_BALL_SPEED = 950;
+        const spd = Math.hypot(ball.vx, ball.vy);
+        if (spd > MAX_BALL_SPEED) {
+            ball.vx = ball.vx * MAX_BALL_SPEED / spd;
+            ball.vy = ball.vy * MAX_BALL_SPEED / spd;
+        }
     }
 }
 
@@ -80,6 +85,8 @@ export function collideBallStaticRect(ball, rect) {
     if (dist2 < ball.r * ball.r) {
         // Calcular la normal
         const dist = Math.sqrt(dist2);
+        if (dist < 0.001) return; // Evitar división por cero
+
         const nx = dx / dist;
         const ny = dy / dist;
 
@@ -165,6 +172,58 @@ export function collidePlayers(p1, p2) {
             p2.vy = 0;
         }
     }
+}
+
+// Colisión de la cabeza del jugador (círculo) con un rectángulo estático
+export function collidePlayerHeadStaticRect(p, rect) {
+    const headCx = p.x;
+    const headCy = p.y - p.h / 2 - 18; // centro de la cabeza
+    const headR = 22;
+
+    const closestX = clamp(headCx, rect.x, rect.x + rect.w);
+    const closestY = clamp(headCy, rect.y, rect.y + rect.h);
+    const dx = headCx - closestX;
+    const dy = headCy - closestY;
+    const dist2 = dx * dx + dy * dy;
+
+    if (dist2 < headR * headR) {
+        const dist = Math.sqrt(dist2);
+        if (dist < 0.001) {
+            p.y += headR;
+            p.vy = Math.max(p.vy, 0);
+            return;
+        }
+        const nx = dx / dist;
+        const ny = dy / dist;
+        const overlap = headR - dist;
+        p.x += nx * overlap;
+        p.y += ny * overlap;
+        if (ny > 0) p.vy = Math.max(p.vy, 0); // frenar si rebota hacia abajo
+    }
+}
+
+// Detecta si la pelota está atrapada entre dos jugadores y la lanza hacia arriba.
+// Usa proximidad entre jugadores para detectarlo de forma fiable,
+// ya que las colisiones individuales ya habrán separado el solapamiento exacto.
+export function resolveBallSqueezeUp(ball, p1, p2) {
+    // Los dos jugadores deben estar frente a frente (menos de la suma de sus medios anchos + diámetro del balón)
+    const playerDist = Math.abs(p1.x - p2.x);
+    const squeezeDist = (p1.w + p2.w) / 2 + ball.r * 2;
+    if (playerDist > squeezeDist) return;
+
+    // El balón debe estar entre ellos horizontalmente
+    const minX = Math.min(p1.x, p2.x);
+    const maxX = Math.max(p1.x, p2.x);
+    if (ball.x < minX - ball.r || ball.x > maxX + ball.r) return;
+
+    // El balón debe estar a altura de los cuerpos
+    const topY = Math.min(p1.y - p1.h / 2, p2.y - p2.h / 2) - 22; // incluye cabeza
+    const botY = Math.max(p1.y + p1.h / 2, p2.y + p2.h / 2);
+    if (ball.y < topY || ball.y > botY) return;
+
+    // Pelota atrapada: cancelar velocidad horizontal y lanzar hacia arriba suavemente
+    ball.vx = 0;
+    if (ball.vy > -350) ball.vy = -350;
 }
 
 export function circleRectOverlap(c, r) {

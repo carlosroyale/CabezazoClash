@@ -3,7 +3,7 @@
 import { GRAV, DT_MAX, GOAL_W, GOAL_H } from './constants.js';
 import { keys } from './input.js';
 import { makePlayer, updatePlayer, updateBall, controlPlayer, controlBot } from './entities.js';
-import { collidePlayerBall, checkGoalCollisions, collidePlayers } from './physics.js';
+import { collidePlayerBall, checkGoalCollisions, collidePlayers, collidePlayerStaticRect, collidePlayerHeadStaticRect, resolveBallSqueezeUp } from './physics.js';
 import { dibujar } from './renderer.js';
 
 // Constantes físicas y dimensiones (nivel BÁSICO)
@@ -177,9 +177,23 @@ function update(dt) {
     // 4. Colisiones jugador-pelota
     collidePlayerBall(p1, ball);
     collidePlayerBall(p2, ball);
+    resolveBallSqueezeUp(ball, p1, p2);
 
     // 5. Colisiones con las porterías (largueros)
     checkGoalCollisions(ball, leftGoal, rightGoal);
+
+    // 5.1 Jugadores no pueden pasar por encima del larguero
+    const postSize = 8;
+    const leftCrossbar  = { x: leftGoal.x,  y: leftGoal.y,  w: leftGoal.w,  h: postSize };
+    const rightCrossbar = { x: rightGoal.x, y: rightGoal.y, w: rightGoal.w, h: postSize };
+    collidePlayerStaticRect(p1, leftCrossbar);
+    collidePlayerStaticRect(p1, rightCrossbar);
+    collidePlayerStaticRect(p2, leftCrossbar);
+    collidePlayerStaticRect(p2, rightCrossbar);
+    collidePlayerHeadStaticRect(p1, leftCrossbar);
+    collidePlayerHeadStaticRect(p1, rightCrossbar);
+    collidePlayerHeadStaticRect(p2, leftCrossbar);
+    collidePlayerHeadStaticRect(p2, rightCrossbar);
 
     // 6. Gol
     checkGoal();
