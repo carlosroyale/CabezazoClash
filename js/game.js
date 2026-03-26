@@ -1,0 +1,243 @@
+// game.js - El bucle principal: update y llamadas a los demás
+
+import { GRAV, DT_MAX, GOAL_W, GOAL_H } from './constants.js';
+import { keys } from './input.js';
+import { makePlayer, updatePlayer, updateBall, controlPlayer, controlBot } from './entities.js';
+import { collidePlayerBall, checkGoalCollisions, collidePlayers } from './physics.js';
+import { dibujar } from './renderer.js';
+
+// Constantes físicas y dimensiones (nivel BÁSICO)
+let W, H;
+let FLOOR_Y;                 // suelo
+
+// Porterías (zonas de gol)
+let leftGoal = {};
+let rightGoal = {};
+
+// Entidades
+let ball = {r: 18, x: 0, y: 0, vx: 0, vy: 0};
+let p1 = {};
+let p2 = {};
+let score = {left: 0, right: 0};
+let gameTime = 60; // 60 segundos
+
+// Variables de Juego y Bucle
+let gameRunning = false;
+let gamePaused = false;            // nuevo: el juego está en pausa
+let animationId = null;
+let lastTime = 0;
+let isGoalScored = false;
+let onExitCallback = null;
+let botEnabled = false;
+
+// Variables para el modo menú
+let idleRunning = false;
+let idleAnimationId = null;
+let ctx;
+let scoreEl;
+
+export function resize(newW, newH) {
+    if (!newW || !newH) return;
+    W = newW;
+    H = newH;
+    FLOOR_Y = H - 325;
+
+    // Recalcular posiciones de las porterías si la pantalla cambia
+    leftGoal = {x: 0, y: FLOOR_Y - GOAL_H, w: GOAL_W, h: GOAL_H};
+    rightGoal = {x: W - GOAL_W, y: FLOOR_Y - GOAL_H, w: GOAL_W, h: GOAL_H};
+};
+
+// Iniciar fondo animado/estático para el menú
+export function startIdle({canvas, ctx: gameCtx}) {
+    stopBasicGame(); // Asegurarnos de que el juego está parado
+    stopIdle();      // Evitar bucles duplicados
+
+    ctx = gameCtx;
+    idleRunning = true;
+    resize(canvas.width, canvas.height);
+
+    function idleLoop() {
+        dibujar(ctx, W, H, p1, p2, ball, leftGoal, rightGoal);
+        if (idleRunning) {
+            idleAnimationId = requestAnimationFrame(idleLoop);
+        }
+    }
+
+    idleLoop();
+};
+
+// Detener el fondo del menú
+export function stopIdle() {
+    idleRunning = false;
+    if (idleAnimationId) {
+        cancelAnimationFrame(idleAnimationId);
+        idleAnimationId = null;
+    }
+};
+
+// iniciar juego básico
+// parámetros: { canvas, ctx, scoreEl, onExit }
+export function startBasicGame({canvas, ctx: gameCtx, scoreEl: scoreElParam, onExit, bot = false}) {
+    // Detener el modo menú antes de jugar
+    stopIdle();
+    stopBasicGame();
+
+    ctx = gameCtx;
+    scoreEl = scoreElParam;
+    onExitCallback = onExit;
+    botEnabled = !!bot;
+
+    // APLICAR TAMAÑO Y POSICIONAR PORTERÍAS
+    resize(canvas.width, canvas.height);
+
+    // Inicializar jugadores
+    p1 = makePlayer(180, FLOOR_Y - 90, "P1");
+    p2 = makePlayer(W - 180, FLOOR_Y - 90, "P2");
+
+    // Reiniciar valores
+    score = {left: 0, right: 0};
+    gameTime = 60;
+    updateScore();
+    resetRound();
+
+    // Arrancar bucle
+    gameRunning = true;
+    lastTime = performance.now();
+    animationId = requestAnimationFrame(gameLoop);
+};
+
+export function stopBasicGame() {
+    gameRunning = false;
+    gamePaused = false;
+    if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+    }
+};
+
+function endGame() {
+    stopBasicGame();
+    // Llamar a la función de main.js para mostrar la pantalla de fin
+    if (window.showEndScreen) {
+        window.showEndScreen(score.left, score.right);
+    }
+}
+
+// pausa y reanuda sin perder el estado
+export function pauseGame() {
+    if (!gameRunning || gamePaused) return;
+    gamePaused = true;
+    if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+    }
+    document.dispatchEvent(new Event('game-paused'));
+};
+
+export function resumeGame() {
+    if (!gameRunning || !gamePaused) return;
+    gamePaused = false;
+    lastTime = performance.now();
+    animationId = requestAnimationFrame(gameLoop);
+    document.dispatchEvent(new Event('game-resumed'));
+};
+
+function gameLoop(time) {
+    if (!gameRunning || gamePaused) return;
+
+    let dt = (time - lastTime) / 1000;
+    lastTime = time;
+    dt = Math.min(dt, DT_MAX);
+
+    update(dt);
+    dibujar(ctx, W, H, p1, p2, ball, leftGoal, rightGoal);
+
+    animationId = requestAnimationFrame(gameLoop);
+}
+
+function update(dt) {
+    // 1. Controles
+    controlPlayer(p1, dt, "KeyA", "KeyD", "KeyW", keys);
+    if (botEnabled) {
+        controlBot(p2, dt, ball, W, FLOOR_Y, keys);
+    } else {
+        controlPlayer(p2, dt, "ArrowLeft", "ArrowRight", "ArrowUp", keys);
+    }
+
+    // 2. Física jugadores
+    updatePlayer(p1, dt, W, FLOOR_Y);
+    updatePlayer(p2, dt, W, FLOOR_Y);
+
+    // 2.1 Colisiones entre jugadores
+    collidePlayers(p1, p2);
+
+    // 3. Física pelota
+    updateBall(ball, dt, W, FLOOR_Y);
+
+    // 4. Colisiones jugador-pelota
+    collidePlayerBall(p1, ball);
+    collidePlayerBall(p2, ball);
+
+    // 5. Colisiones con las porterías (largueros)
+    checkGoalCollisions(ball, leftGoal, rightGoal);
+
+    // 6. Gol
+    checkGoal();
+
+    // 7. Tiempo
+    if (!gamePaused) {
+        gameTime -= dt;
+        if (gameTime <= 0) {
+            endGame();
+        }
+        updateScore();
+    }
+}
+
+function checkGoal() {
+    // Si ya se ha marcado un gol, no seguimos comprobando hasta que se reinicie
+    if (isGoalScored) return;
+
+    // Líneas de gol (donde están los postes frontales)
+    const leftGoalLine = leftGoal.x + leftGoal.w;
+    const rightGoalLine = rightGoal.x;
+
+    // Gol en la portería izquierda (marca el derecho)
+    // Entra "más de la mitad" porque comprobamos el CENTRO de la pelota (ball.x)
+    if (ball.x < leftGoalLine && ball.y > leftGoal.y) {
+        score.right++;
+        isGoalScored = true;
+        setTimeout(() => resetRound("right"), 1000);
+    }
+    // Gol en la portería derecha (marca el izquierdo)
+    else if (ball.x > rightGoalLine && ball.y > rightGoal.y) {
+        score.left++;
+        isGoalScored = true;
+        setTimeout(() => resetRound("left"), 1000);
+    }
+}
+
+function resetRound(lastScorer = null) {
+    isGoalScored = false; // Permitimos marcar gol de nuevo
+
+    // reset posiciones
+    p1.x = 180;
+    p1.y = FLOOR_Y - p1.h / 2;
+    p1.vx = 0;
+    p1.vy = 0;
+    p2.x = W - 180;
+    p2.y = FLOOR_Y - p2.h / 2;
+    p2.vx = 0;
+    p2.vy = 0;
+
+    ball.x = W / 2;
+    ball.y = FLOOR_Y - 200;
+    ball.vx = lastScorer === "left" ? 220 : -220;
+    ball.vy = -220;
+}
+
+function updateScore() {
+    if (scoreEl) {
+        scoreEl.textContent = `${score.left} - ${score.right}`;
+    }
+}

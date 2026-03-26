@@ -1,6 +1,18 @@
 // main.js - Control de UI, menús y ajustes
 // Estructurado al estilo de volador.js
 
+import { startBasicGame, startIdle, pauseGame, resumeGame, stopBasicGame, resize } from './js/game.js';
+
+// Asignar a window.Game para compatibilidad
+window.Game = {
+    startBasicGame,
+    startIdle,
+    pauseGame,
+    resumeGame,
+    stopBasicGame,
+    resize
+};
+
 /* ==========================================================================
    CONFIGURACIÓN Y ELEMENTOS DEL DOM
    ========================================================================== */
@@ -387,7 +399,7 @@ function resizeCanvas() {
 
   // 2. Le avisamos al motor para que posicione las porterías con las nuevas medidas fijas
   if (window.Game && window.Game.resize) {
-    window.Game.resize(); // Ya no le pasamos parámetros dinámicos
+    window.Game.resize(canvas.width, canvas.height);
   }
 }
 
