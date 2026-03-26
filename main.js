@@ -43,6 +43,7 @@ const volumeValue = document.getElementById("volume-value");
 const canvas = document.getElementById("game-canvas");
 const ctx = canvas.getContext("2d");
 const scoreEl = document.getElementById("score");
+const timerEl = document.getElementById("timer");
 const bgMusic = document.getElementById("bg-music");
 
 // Elementos de la pantalla de fin
@@ -106,6 +107,7 @@ function beginBasicGame() {
     canvas,
     ctx,
     scoreEl,
+    timerEl,
     onExit: () => {
       showScreen(screenStart);
       window.Game.startIdle({ canvas, ctx });
@@ -120,6 +122,7 @@ function beginBotGame() {
     canvas,
     ctx,
     scoreEl,
+    timerEl,
     bot: true,
     onExit: () => {
       showScreen(screenStart);

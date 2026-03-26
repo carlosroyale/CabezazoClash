@@ -35,6 +35,7 @@ let idleRunning = false;
 let idleAnimationId = null;
 let ctx;
 let scoreEl;
+let timerEl;
 
 export function resize(newW, newH) {
     if (!newW || !newH) return;
@@ -76,14 +77,15 @@ export function stopIdle() {
 };
 
 // iniciar juego básico
-// parámetros: { canvas, ctx, scoreEl, onExit }
-export function startBasicGame({canvas, ctx: gameCtx, scoreEl: scoreElParam, onExit, bot = false}) {
+// parámetros: { canvas, ctx, scoreEl, timerEl, onExit }
+export function startBasicGame({canvas, ctx: gameCtx, scoreEl: scoreElParam, timerEl: timerElParam, onExit, bot = false}) {
     // Detener el modo menú antes de jugar
     stopIdle();
     stopBasicGame();
 
     ctx = gameCtx;
     scoreEl = scoreElParam;
+    timerEl = timerElParam;
     onExitCallback = onExit;
     botEnabled = !!bot;
 
@@ -98,6 +100,7 @@ export function startBasicGame({canvas, ctx: gameCtx, scoreEl: scoreElParam, onE
     score = {left: 0, right: 0};
     gameTime = 60;
     updateScore();
+    updateTimer();
     resetRound();
 
     // Arrancar bucle
@@ -205,6 +208,7 @@ function update(dt) {
             endGame();
         }
         updateScore();
+        updateTimer();
     }
 }
 
@@ -253,5 +257,11 @@ function resetRound(lastScorer = null) {
 function updateScore() {
     if (scoreEl) {
         scoreEl.textContent = `${score.left} - ${score.right}`;
+    }
+}
+
+function updateTimer() {
+    if (timerEl) {
+        timerEl.textContent = `${Math.max(0, Math.ceil(gameTime))}`;
     }
 }
