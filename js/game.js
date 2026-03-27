@@ -40,7 +40,7 @@ function resize(newW, newH) {
     // Recalcular posiciones de las porterías si la pantalla cambia
     leftGoal = {x: 0, y: FLOOR_Y - GOAL_H, w: GOAL_W, h: GOAL_H};
     rightGoal = {x: W - GOAL_W, y: FLOOR_Y - GOAL_H, w: GOAL_W, h: GOAL_H};
-};
+}
 
 // Iniciar fondo animado/estático para el menú
 function startIdle({canvas, ctx: ctxParam}) {
@@ -59,7 +59,7 @@ function startIdle({canvas, ctx: ctxParam}) {
     }
 
     idleLoop();
-};
+}
 
 // Detener el fondo del menú
 function stopIdle() {
@@ -68,7 +68,7 @@ function stopIdle() {
         cancelAnimationFrame(idleAnimationId);
         idleAnimationId = null;
     }
-};
+}
 
 // iniciar juego básico
 // parámetros: { canvas, ctx, scoreEl, timerEl, onExit }
@@ -101,7 +101,7 @@ function startBasicGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl: 
     gameRunning = true;
     lastTime = performance.now();
     animationId = requestAnimationFrame(gameLoop);
-};
+}
 
 function stopBasicGame() {
     gameRunning = false;
@@ -110,7 +110,7 @@ function stopBasicGame() {
         cancelAnimationFrame(animationId);
         animationId = null;
     }
-};
+}
 
 function endGame() {
     stopBasicGame();
@@ -129,7 +129,7 @@ function pauseGame() {
         animationId = null;
     }
     document.dispatchEvent(new Event('game-paused'));
-};
+}
 
 function resumeGame() {
     if (!gameRunning || !gamePaused) return;
@@ -137,7 +137,7 @@ function resumeGame() {
     lastTime = performance.now();
     animationId = requestAnimationFrame(gameLoop);
     document.dispatchEvent(new Event('game-resumed'));
-};
+}
 
 function gameLoop(time) {
     if (!gameRunning || gamePaused) return;
@@ -213,19 +213,36 @@ function checkGoal() {
     // Líneas de gol (donde están los postes frontales)
     const leftGoalLine = leftGoal.x + leftGoal.w;
     const rightGoalLine = rightGoal.x;
+    const scoreboardUI = document.getElementById('scoreboard'); // Capturamos el marcador
 
     // Gol en la portería izquierda (marca el derecho)
     // Entra "más de la mitad" porque comprobamos el CENTRO de la pelota (ball.x)
     if (ball.x < leftGoalLine && ball.y > leftGoal.y) {
         score.right++;
         isGoalScored = true;
-        setTimeout(() => resetRound("right"), 1000);
+
+        // ENCENDER ANIMACIÓN
+        if(scoreboardUI) scoreboardUI.classList.add('goal-active');
+
+        setTimeout(() => {
+            // APAGAR ANIMACIÓN AL REINICIAR
+            if(scoreboardUI) scoreboardUI.classList.remove('goal-active');
+            resetRound("right");
+        }, 2000); // 2 segundos de celebración
     }
     // Gol en la portería derecha (marca el izquierdo)
     else if (ball.x > rightGoalLine && ball.y > rightGoal.y) {
         score.left++;
         isGoalScored = true;
-        setTimeout(() => resetRound("left"), 1000);
+
+        // ENCENDER ANIMACIÓN
+        if(scoreboardUI) scoreboardUI.classList.add('goal-active');
+
+        setTimeout(() => {
+            // APAGAR ANIMACIÓN AL REINICIAR
+            if(scoreboardUI) scoreboardUI.classList.remove('goal-active');
+            resetRound("left");
+        }, 2000); // 2 segundos de celebración
     }
 }
 

@@ -3,24 +3,32 @@
 const keys = new Set();
 
 const onKeyDown = (e) => {
-    keys.add(e.code);
 
-    if (e.code === "Escape") {
-        // Pausar el juego si está corriendo
-        if (window.Game && window.Game.pauseGame) {
-            window.Game.pauseGame();
-        }
-    }
+    // Lógica del Espacio para alternar la Pausa
     if (e.code === "KeyR") {
-        // Reiniciar ronda
-        if (window.Game && window.Game.resetRound) {
-            window.Game.resetRound();
+        const pauseMenu = document.getElementById("pause-menu");
+        const btnResume = document.getElementById("btn-resume");
+        const contador = document.getElementById("contador-pausa");
+
+        // Bloquear si la cuenta atrás ya se está ejecutando
+        if (contador && !contador.classList.contains("hidden")) return;
+
+        // Si el menú de pausa está abierto, "clicamos" en reanudar
+        if (pauseMenu && !pauseMenu.classList.contains("hidden")) {
+            if (btnResume) btnResume.click();
+        } else {
+            // Si está cerrado, pausamos normalmente
+            if (window.Game && window.Game.pauseGame) {
+                window.Game.pauseGame();
+            }
         }
     }
+
+    keys.add(e.code);
 };
 
 const onKeyUp = (e) => keys.delete(e.code);
 
-// Los listeners se añaden globalmente
-window.addEventListener("keydown", onKeyDown);
+// Añadimos { passive: false } para que el preventDefault del espacio funcione correctamente
+window.addEventListener("keydown", onKeyDown, { passive: false });
 window.addEventListener("keyup", onKeyUp);

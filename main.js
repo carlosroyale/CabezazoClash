@@ -47,6 +47,8 @@ const btnResume = document.getElementById("btn-resume");
 const btnRestart = document.getElementById("btn-restart");
 const btnExitPause = document.getElementById("btn-exit");
 const btnPauseOptions = document.getElementById("btn-pause-options");
+const contadorPausa = document.getElementById("contador-pausa");
+let cuentaAtrasActiva = false; // Evita que se dispare varias veces a la vez
 
 // estado adicional
 let lastGameParams = null;      // para reiniciar con los mismos parámetros
@@ -72,6 +74,29 @@ function showPauseMenu() {
 
 function hidePauseMenu() {
   screenPause.classList.add("hidden");
+}
+
+// Función de cuenta atrás importada de tu otro juego
+function iniciarCuentaAtrasReanudar() {
+  if (cuentaAtrasActiva) return;
+  cuentaAtrasActiva = true;
+
+  hidePauseMenu(); // Ocultamos el overlay negro
+  contadorPausa.classList.remove("hidden");
+  let cuenta = 3;
+  contadorPausa.textContent = cuenta;
+
+  const intervaloCuenta = setInterval(() => {
+    cuenta--;
+    if (cuenta > 0) {
+      contadorPausa.textContent = cuenta;
+    } else {
+      clearInterval(intervaloCuenta);
+      contadorPausa.classList.add("hidden");
+      cuentaAtrasActiva = false;
+      window.Game.resumeGame(); // Reanudamos de verdad la física del juego
+    }
+  }, 1000);
 }
 
 /* ==========================================================================
@@ -175,18 +200,19 @@ asignarBoton(btnAdvanced, () => {
 
 // pause controls
 asignarBoton(btnPause, () => {
+  // Si el botón se pulsa desde la pausa (o pulsas espacio), inicia la cuenta atrás
   if (screenPause && !screenPause.classList.contains('hidden')) {
-    // ya abierto
-    window.Game.resumeGame();
-    hidePauseMenu();
-  } else {
+    iniciarCuentaAtrasReanudar();
+  }
+  else {
+    // Si no está en pausa, bloqueamos si hay cuenta atrás activa
+    if (cuentaAtrasActiva) return;
     window.Game.pauseGame();
     showPauseMenu();
   }
 });
 asignarBoton(btnResume, () => {
-  hidePauseMenu();
-  window.Game.resumeGame();
+  iniciarCuentaAtrasReanudar();
 });
 asignarBoton(btnRestart, () => {
   hidePauseMenu();
@@ -383,13 +409,23 @@ document.addEventListener("pointerdown", unlockMusicOnFirstUserGestureHandler, {
 document.addEventListener("keydown", unlockMusicOnFirstUserGestureHandler, {once: true});
 tryStartMusic();
 
-// Listener de redimensión para el Canvas
+// Listener de redimensión para el Canvas y la UI
 function resizeCanvas() {
-  // 1. Fijamos la resolución interna (lógica) del juego a 1280x720 (16:9)
-  canvas.width = 1845;
-  canvas.height = 1038;
+  const wrap = document.getElementById('game-wrap');
+  const baseW = 1845;
+  const baseH = 1038;
 
-  // 2. Le avisamos al motor para que posicione las porterías con las nuevas medidas fijas
+  // 1. Calcular la escala necesaria (zoom) para que quepa en la pantalla sin deformarse
+  const scale = Math.min(window.innerWidth / baseW, window.innerHeight / baseH);
+
+  // 2. Aplicar el zoom a TODA la caja (Canvas + HTML)
+  wrap.style.transform = `scale(${scale})`;
+
+  // 3. Fijamos la resolución interna (lógica) del juego
+  canvas.width = baseW;
+  canvas.height = baseH;
+
+  // 4. Le avisamos al motor para que posicione las porterías con las medidas lógicas
   if (window.Game && window.Game.resize) {
     window.Game.resize(canvas.width, canvas.height);
   }
