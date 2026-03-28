@@ -8,10 +8,11 @@
 
 // Pantallas
 const screenStart = document.getElementById("screen-start");
-const screenLevel = document.getElementById("screen-level");
 const screenOptions = document.getElementById("screen-options");
 const screenGame = document.getElementById("screen-game");
 const screenEnd = document.getElementById("screen-end");
+const screenHowToPlay = document.getElementById("screen-how-to-play");
+const screenInfo = document.getElementById("screen-info");
 
 // Botones de navegación
 const btnPlay = document.getElementById("btn-play");
@@ -21,12 +22,19 @@ const btnAdvanced = document.getElementById("btn-advanced");
 const btnOptions = document.getElementById("btn-options");
 const btnPlayBot = document.getElementById("btn-play-bot");
 const btnOptionsBack = document.getElementById("btn-options-back");
+const btnHowToPlay = document.getElementById("btn-how-to-play");
+const btnCloseHowToPlay = document.getElementById("btn-close-how-to-play");
+const btnInfo = document.getElementById("btn-info");
+const btnCloseInfo = document.getElementById("btn-close-info");
 
 // Elementos de opciones
-const toggleMusic = document.getElementById("toggle-music");
-const toggleSfx = document.getElementById("toggle-sfx");
-const volumeSlider = document.getElementById("volume");
-const volumeValue = document.getElementById("volume-value");
+const musicVolumeSlider = document.getElementById("music-volume");
+const musicVolumeValue = document.getElementById("music-volume-value");
+const sfxVolumeSlider = document.getElementById("sfx-volume");
+const sfxVolumeValue = document.getElementById("sfx-volume-value");
+
+// Renombramos el botón de volver
+const btnEntendido = document.getElementById("btn-entendido");
 
 // Elementos del juego
 const canvas = document.getElementById("game-canvas");
@@ -47,6 +55,7 @@ const btnResume = document.getElementById("btn-resume");
 const btnRestart = document.getElementById("btn-restart");
 const btnExitPause = document.getElementById("btn-exit");
 const btnPauseOptions = document.getElementById("btn-pause-options");
+const btnHowToPlayPause = document.getElementById("btn-pause-how-to-play");
 const contadorPausa = document.getElementById("contador-pausa");
 let cuentaAtrasActiva = false; // Evita que se dispare varias veces a la vez
 
@@ -61,10 +70,10 @@ let pausedFromMenu = false;     // indicador de si volvemos desde ajustes mientr
 
 function showScreen(screenToShow) {
   screenStart.classList.remove("active");
-  // screenLevel.classList.remove("active");
   screenOptions.classList.remove("active");
   screenGame.classList.remove("active");
   screenEnd.classList.remove("active");
+  screenHowToPlay.classList.remove("active");
   screenToShow.classList.add("active");
 }
 
@@ -108,7 +117,7 @@ function asignarBoton(elemento, callback) {
   if (!elemento) return;
   elemento.addEventListener('click', (e) => {
     // Desbloquear audio si es la primera interacción
-    if (!musicUnlocked) unlockMusicOnFirstUserGestureHandler();
+    if (!musicUnlocked) unlockMusicOnFirstUserGestureHandler().then();
 
     e.stopPropagation();
     callback(e);
@@ -228,10 +237,53 @@ asignarBoton(btnExitPause, () => {
   window.Game.startIdle({ canvas, ctx });
 });
 asignarBoton(btnPauseOptions, () => {
-  // abrimos ajustes pero mantenemos el juego pausado
+  // Abrimos ajustes manteniendo el juego y el HUD de fondo
   pausedFromMenu = true;
-  hidePauseMenu();               // ocultar overlay para que opciones no quede debajo
-  showScreen(screenOptions);
+  hidePauseMenu();
+
+  // IMPORTANTE: No usamos showScreen() para no ocultar la pantalla de juego
+  screenOptions.classList.add("active");
+  screenOptions.classList.add("overlay-mode"); // Aplicamos el filtro oscuro
+});
+asignarBoton(btnHowToPlayPause, () => {
+  // Abrimos ajustes manteniendo el juego y el HUD de fondo
+  pausedFromMenu = true;
+  hidePauseMenu();
+
+  // IMPORTANTE: No usamos showScreen() para no ocultar la pantalla de juego
+  screenHowToPlay.classList.add("active");
+  screenHowToPlay.classList.add("overlay-mode"); // Aplicamos el filtro oscuro
+});
+asignarBoton(btnEntendido, () => {
+  if (pausedFromMenu) {
+    // Si veníamos de la pausa, simplemente cerramos la capa de opciones
+    pausedFromMenu = false;
+    screenOptions.classList.remove("active");
+    screenOptions.classList.remove("overlay-mode"); // Quitamos el filtro oscuro
+    showPauseMenu(); // Volvemos a encender el menú de pausa original
+  }
+  // Si veníamos del menú principal, volvemos normal
+  else showScreen(screenStart);
+});
+
+// --- NUEVOS LISTENERS ---
+// Controles de "Cómo Jugar"
+asignarBoton(btnHowToPlay, () => showScreen(screenHowToPlay));
+asignarBoton(btnCloseHowToPlay, () => {
+  if (pausedFromMenu) {
+    pausedFromMenu = false;
+    showPauseMenu();
+    showScreen(screenGame);       // volver al juego para que el HUD+pausa se vean correctamente
+  }
+  else showScreen(screenStart);
+});
+
+// Controles del Pop-up de Información
+asignarBoton(btnInfo, () => {
+  screenInfo.classList.remove("hidden"); // Muestra el overlay oscuro
+});
+asignarBoton(btnCloseInfo, () => {
+  screenInfo.classList.add("hidden");    // Oculta el overlay oscuro
 });
 
 // sincronizar con teclas/Esc en el motor
@@ -244,121 +296,80 @@ document.addEventListener('game-resumed', () => {
 
 
 /* ==========================================================================
-   SISTEMA DE AJUSTES (LOCALSTORAGE)
+   SISTEMA DE AJUSTES (LOCALSTORAGE - MODIFICADO CON DOS VOLÚMENES)
    ========================================================================== */
 
+// Nueva estructura de ajustes: solo volúmenes del 0 al 100
 const settings = {
-  music: true,
-  sfx: true,
-  volume: 70
+  musicVolume: 70,
+  sfxVolume: 80
 };
 
+// Cargar ajustes al arrancar
 function loadSettings() {
   const saved = localStorage.getItem("cabezazo_settings");
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (typeof parsed.music === "boolean") settings.music = parsed.music;
-      if (typeof parsed.sfx === "boolean") settings.sfx = parsed.sfx;
-      if (typeof parsed.volume === "number") settings.volume = parsed.volume;
+      if (typeof parsed.musicVolume === "number") settings.musicVolume = parsed.musicVolume;
+      if (typeof parsed.sfxVolume === "number") settings.sfxVolume = parsed.sfxVolume;
     } catch (e) {
       console.warn("Error leyendo settings:", e);
     }
   }
 }
 
+// Guardar ajustes
 function saveSettings() {
   localStorage.setItem("cabezazo_settings", JSON.stringify(settings));
 }
 
+// Actualizar toda la UI de opciones con los valores cargados
 function updateOptionsUI() {
-  toggleMusic.textContent = settings.music ? "ON" : "OFF";
-  toggleMusic.classList.toggle("off", !settings.music);
+  // Música
+  musicVolumeSlider.value = settings.musicVolume;
+  musicVolumeValue.textContent = `${settings.musicVolume}%`;
 
-  toggleSfx.textContent = settings.sfx ? "ON" : "OFF";
-  toggleSfx.classList.toggle("off", !settings.sfx);
-
-  volumeSlider.value = settings.volume;
-  volumeValue.textContent = `${settings.volume}%`;
+  // SFX (Nuevos elementos)
+  sfxVolumeSlider.value = settings.sfxVolume;
+  sfxVolumeValue.textContent = `${settings.sfxVolume}%`;
 }
 
-// Listeners de los ajustes (usamos el evento normal para el input)
-asignarBoton(toggleMusic, () => {
-  settings.music = !settings.music;
-  saveSettings();
-  updateOptionsUI();
-  applyMusicSetting();
-});
-
-asignarBoton(toggleSfx, () => {
-  settings.sfx = !settings.sfx;
-  saveSettings();
-  updateOptionsUI();
-});
-
-volumeSlider.addEventListener("input", () => {
-  settings.volume = Number(volumeSlider.value);
-  saveSettings();
-  updateOptionsUI();
-  applyMusicSetting();
-});
 
 /* ==========================================================================
-   SISTEMA DE AUDIO BGM (FADING Y POLÍTICAS DE AUTOPLAY)
+   SISTEMA DE AUDIO BGM (Básico y sin Fading)
    ========================================================================== */
 
 let musicUnlocked = false;
-let fadeInterval = null;
 
-function clamp01(x) {
-  return Math.max(0, Math.min(1, x));
-}
-
+// Función simple para aplicar el volumen actual de la música
 function setMusicVolumeFromSettings() {
-  bgMusic.volume = clamp01((settings.volume ?? 70) / 100);
+  // Asegurar que el audio existe
+  if (!bgMusic) return;
+
+  // El volumen del elemento de audio va del 0.0 al 1.0
+  bgMusic.volume = settings.musicVolume / 100;
 }
 
-function stopFade() {
-  if (fadeInterval) {
-    clearInterval(fadeInterval);
-    fadeInterval = null;
-  }
-}
-
-function fadeTo(targetVolume, durationMs = 350) {
-  stopFade();
-  const start = bgMusic.volume;
-  const target = clamp01(targetVolume);
-  const steps = Math.max(1, Math.floor(durationMs / 25));
-  let i = 0;
-
-  fadeInterval = setInterval(() => {
-    i++;
-    const t = i / steps;
-    bgMusic.volume = start + (target - start) * t;
-
-    if (i >= steps) {
-      bgMusic.volume = target;
-      stopFade();
-      if (target === 0) {
-        bgMusic.pause();
-        bgMusic.currentTime = 0;
-      }
-    }
-  }, 25);
-}
-
+// Iniciar música respetando el volumen
 async function tryStartMusic() {
-  if (!settings.music) return;
+  // Si el volumen de la música está al 0%, no la iniciamos
+  if (settings.musicVolume <= 0) {
+    bgMusic.pause();
+    return;
+  }
+
+  // Establecer el volumen antes de reproducir
   setMusicVolumeFromSettings();
+
   try {
     await bgMusic.play();
   } catch (e) {
-    // Autoplay bloqueado, se desbloqueará con el primer gesto
+    // Autoplay bloqueado por el navegador, se desbloqueará con el primer gesto
   }
 }
 
-// Manejador extraído para poder reutilizarlo si el usuario hace click en un botón directamente
+// Manejador para desbloquear el audio globalmente
 async function unlockMusicOnFirstUserGestureHandler() {
   if (musicUnlocked) return;
   musicUnlocked = true;
@@ -370,30 +381,30 @@ async function unlockMusicOnFirstUserGestureHandler() {
   await tryStartMusic();
 }
 
-function applyMusicSetting() {
-  setMusicVolumeFromSettings();
-  if (!settings.music) {
-    fadeTo(0, 250);
-    return;
-  }
-
-  if (bgMusic.paused) {
-    const target = clamp01((settings.volume ?? 70) / 100);
-    bgMusic.volume = 0;
-    tryStartMusic().then(() => fadeTo(target, 350));
-  } else {
-    const target = clamp01((settings.volume ?? 70) / 100);
-    fadeTo(target, 150);
-  }
-}
-
-// Pausar audio si cambias de pestaña (Robusted extraída de volador.js)
+// Pausar audio si cambias de pestaña
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     if (!bgMusic.paused) bgMusic.pause();
   } else {
-    if (settings.music && musicUnlocked) bgMusic.play().catch(()=>{});
+    // Si la música está activada (volumen > 0) y el audio desbloqueado, reanudamos
+    if (settings.musicVolume > 0 && musicUnlocked) bgMusic.play().catch(()=>{});
   }
+});
+
+// NUEVOS Listeners para los deslizadores (usamos el evento 'input' para un cambio fluido)
+musicVolumeSlider.addEventListener("input", () => {
+  settings.musicVolume = Number(musicVolumeSlider.value);
+  saveSettings();
+  updateOptionsUI();
+  // Aplicar el cambio de volumen instantáneamente
+  setMusicVolumeFromSettings();
+});
+
+sfxVolumeSlider.addEventListener("input", () => {
+  settings.sfxVolume = Number(sfxVolumeSlider.value);
+  saveSettings();
+  updateOptionsUI();
+  // (Aquí asignarías el volumen de los SFX si tienes esa lógica)
 });
 
 

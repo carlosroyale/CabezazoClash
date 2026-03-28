@@ -15,6 +15,7 @@
 
   <!-- Pantalla 1: Inicio -->
   <section id="screen-start" class="screen active">
+    <button id="btn-info" class="info-btn"><i class="bi bi-question-lg"></i></button>
     <div class="card">
       <h1 class="title">Cabezazo Clash</h1>
 
@@ -22,45 +23,70 @@
         <button id="btn-play" class="btn">Jugar</button>
         <button id="btn-play-bot" class="btn">Jugar vs Bot</button>
         <button id="btn-options" class="btn btn-secondary">Opciones</button>
+        <button id="btn-how-to-play" class="btn btn-secondary">Cómo Jugar</button>
       </div>
     </div>
   </section>
 
   <!-- Pantalla 2: Opciones -->
   <section id="screen-options" class="screen">
-    <div class="card">
-      <h2 class="subtitle">Opciones</h2>
+    <div class="card large-options-card">
+      <h2 class="subtitle">OPCIONES</h2>
 
-      <div class="option-row">
-        <span>Música</span>
-        <button id="toggle-music" class="toggle">ON</button>
+      <div class="large-option-row">
+        <label for="music-volume" class="large-label">MÚSICA</label>
+        <div class="audio-control-group">
+          <input id="music-volume" class="large-slider" type="range" min="0" max="100" value="70">
+          <span id="music-volume-value" class="large-small">70%</span>
+        </div>
       </div>
 
-      <div class="option-row">
-        <span>Sonidos</span>
-        <button id="toggle-sfx" class="toggle">ON</button>
+      <div class="large-option-row">
+        <label for="sfx-volume" class="large-label">EFECTOS DE SONIDO</label>
+        <div class="audio-control-group">
+          <input id="sfx-volume" class="large-slider" type="range" min="0" max="100" value="85">
+          <span id="sfx-volume-value" class="large-small">85%</span>
+        </div>
       </div>
 
-      <div class="option-row">
-        <span>Volumen</span>
-        <input id="volume" class="slider" type="range" min="0" max="100" value="70">
-        <span id="volume-value" class="small">70%</span>
-      </div>
-
-      <div class="controls-box">
-        <h3 class="controls-title">Controles</h3>
-        <ul class="controls-list">
-          <li><b>Jugador 1:</b> A/D mover · W saltar · Espacio chutar</li>
-          <li><b>Jugador 2:</b> ←/→ mover · ↑ saltar · P chutar</li>
-          <li><b>Pausa:</b> R o tocar el boton.</li>
-        </ul>
-      </div>
-
-      <button id="btn-options-back" class="link-btn">← Volver</button>
+      <button id="btn-entendido" class="btn large-got-it-btn">CERRAR</button>
     </div>
   </section>
 
-  <!-- Pantalla 3: Juego -->
+  <!-- Pantalla 4: Como jugar -->
+  <section id="screen-how-to-play" class="screen">
+    <div class="card large-options-card">
+      <h2 class="subtitle">CÓMO JUGAR</h2>
+
+      <div class="large-controls-box" style="margin-top: 0;">
+        <h3 class="large-controls-title">Controles</h3>
+        <ul class="large-controls-list">
+          <li><b>Jugador 1:</b> A/D mover · W saltar · Espacio chutar</li>
+          <li><b>Jugador 2:</b> ←/→ mover · ↑ saltar · P chutar</li>
+          <li><b>Pausa:</b> R o pulsar el botón</li>
+        </ul>
+      </div>
+
+      <button id="btn-close-how-to-play" class="btn large-got-it-btn">CERRAR</button>
+    </div>
+  </section>
+
+  <!-- Pantalla 5: Acerca de -->
+  <section id="screen-info" class="pause-menu hidden">
+    <div class="card info-card">
+      <img src="logohs.png" alt="Logo Cabezazo Clash" class="info-logo">
+      <h2 class="subtitle">Acerca de</h2>
+      <p class="info-description">
+        ¡Bienvenido a <b>Cabezazo Clash</b>!<br><br>
+        Enfréntate a tus amigos o a la IA en un frenético partido de fútbol cabezón.
+        Salta, chuta, defiende tu portería y marca más goles que tu rival antes de que se acabe el tiempo.<br><br>
+        <i>¿Tienes lo necesario para ser el campeón?</i>
+      </p>
+      <button id="btn-close-info" class="btn">ENTENDIDO</button>
+    </div>
+  </section>
+
+  <!-- Pantalla 6: Juego -->
   <section id="screen-game" class="screen">
       <div class="hud">
         <button id="btn-pause" class="pause-btn"><i class="bi bi-pause-fill"></i></button>
@@ -76,7 +102,7 @@
       </div>
   </section>
 
-  <!-- Pantalla 4: Fin del partido -->
+  <!-- Pantalla 7: Fin del partido -->
   <section id="screen-end" class="screen">
     <div class="card">
       <h2 class="subtitle">¡Fin del Partido!</h2>
@@ -86,7 +112,7 @@
     </div>
   </section>
 
-  <!-- Pantalla 5: Menú de pausa -->
+  <!-- Pantalla 8: Menú de pausa -->
   <section id="pause-menu" class="pause-menu hidden">
     <div class="card">
       <h2 class="subtitle">Pausa</h2>
@@ -94,6 +120,7 @@
         <button id="btn-resume" class="btn">Reanudar</button>
         <button id="btn-restart" class="btn">Reiniciar</button>
         <button id="btn-pause-options" class="btn">Opciones</button>
+        <button id="btn-pause-how-to-play" class="btn btn-secondary">Cómo Jugar</button>
         <button id="btn-exit" class="btn btn-secondary">Salir</button>
       </div>
     </div>

@@ -415,3 +415,187 @@ body {
   from { opacity: 0; transform: scale(0.8); }
   to { opacity: 1; transform: scale(1); }
 }
+
+/* BOTON CERRAR*/
+
+.large-options-card {
+  min-width: 850px;
+  padding: 5rem;
+}
+
+.large-option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  margin: 2.5rem 0;
+}
+
+.large-label {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #fff;
+  opacity: 0.9;
+  text-transform: uppercase;
+}
+
+.audio-control-group {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-grow: 1;
+  justify-content: flex-end;
+}
+
+.large-slider {
+  width: 350px;
+  cursor: pointer;
+  /* Estilos básicos para que no se vea el nativo */
+  appearance: none;
+  background: rgba(255,255,255,0.1);
+  border-radius: 10px;
+  height: 12px;
+}
+
+/* Estilo para el control de la barra */
+.large-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #ffce00; /* Oro */
+  border: 3px solid #fff;
+  box-shadow: 0 0 10px rgba(0,0,0,0.5);
+  transition: transform 0.1s;
+}
+
+.large-slider:hover::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+
+.large-small {
+  font-size: 1.6rem;
+  font-weight: bold;
+  color: #ffce00;
+  min-width: 75px;
+  text-align: right;
+}
+
+/* Caja de Controles Redimensionada */
+.large-controls-box {
+  margin-top: 3.5rem;
+  padding: 2rem 3rem;
+  background: rgba(255,255,255,0.1);
+  border-radius: 18px;
+  text-align: left;
+}
+
+.large-controls-title {
+  margin-bottom: 1.5rem;
+  font-size: 2rem;
+  color: #fff;
+  font-weight: 800;
+}
+
+.large-controls-list li {
+  margin-bottom: 1rem;
+  font-size: 1.6rem;
+  color: rgba(255,255,255,0.9);
+}
+
+/* EL BOTÓN "CERRAR" */
+.large-got-it-btn {
+  width: 400px;
+  font-size: 2.5rem;
+  padding: 1.5rem;
+  margin-top: 3rem;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #ffd700, #ff8000); /* Degradado Oro-Naranja */
+  color: #000;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-shadow: 1px 1px 2px rgba(255,255,255,0.3);
+  box-shadow: 0 8px 0 #b36b00, 0 10px 15px rgba(0,0,0,0.5); /* Sombra 3D */
+  transition: transform 0.1s, box-shadow 0.1s, filter 0.15s;
+  border: 1px solid rgba(0,0,0,0.2);
+  cursor: pointer;
+}
+
+.large-got-it-btn:hover {
+  filter: brightness(1.1);
+}
+
+.large-got-it-btn:active {
+  transform: translateY(4px);
+  box-shadow: 0 4px 0 #b36b00, 0 6px 10px rgba(0,0,0,0.4);
+}
+
+/* =========================================
+   MODO OVERLAY PARA OPCIONES Y COMO JUGAR EN PAUSA
+   ========================================= */
+#screen-options.overlay-mode {
+  background: rgba(0, 0, 0, 0.6); /* Mismo filtro oscuro que el menú de pausa */
+  z-index: 20; /* Se pone por encima de la HUD (que tiene z-index: 10) */
+}
+
+#screen-how-to-play.overlay-mode {
+  background: rgba(0, 0, 0, 0.6); /* Mismo filtro oscuro que el menú de pausa */
+  z-index: 20; /* Se pone por encima de la HUD (que tiene z-index: 10) */
+}
+
+/* =========================================
+   NUEVOS MENÚS: INFO Y CÓMO JUGAR
+   ========================================= */
+
+/* Botón flotante de Info (?) */
+.info-btn {
+  position: absolute;
+  bottom: 40px;
+  right: 40px;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffce00, #ff8000);
+  color: #000;
+  font-size: 3.5rem; /* Tamaño del icono */
+  border: 3px solid rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+  transition: transform 0.2s ease, filter 0.2s ease;
+  z-index: 15;
+}
+
+.info-btn:hover {
+  transform: scale(1.1);
+  filter: brightness(1.1);
+}
+
+.info-btn:active {
+  transform: scale(0.95);
+}
+
+/* Tarjeta del Pop-up de Info */
+.info-card {
+  max-width: 700px;
+  padding: 4rem;
+}
+
+.info-logo {
+  width: 160px;
+  height: 160px;
+  border-radius: 25px;
+  margin-bottom: 2rem;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+  object-fit: cover;
+  border: 4px solid rgba(255,255,255,0.1);
+}
+
+.info-description {
+  font-size: 1.8rem;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.6;
+  margin-bottom: 3rem;
+}
