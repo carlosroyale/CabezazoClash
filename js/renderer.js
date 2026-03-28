@@ -14,10 +14,10 @@ function dibujar(ctx, W, H, p1, p2, ball, leftGoal, rightGoal) {
     // 1. Fondo (lo más profundo)
     drawField(W, H);
 
-    // 2. Jugadores y pelota (al fondo, detrás de la portería)
-    drawPlayer(p1, "#ffffff");
-    drawPlayer(p2, "#ffd700");
-    drawBall(ball);
+    // 2. Jugadores y pelota (Solo se dibujan si no son null)
+    if (p1) drawPlayer(p1, "#ffffff");
+    if (p2) drawPlayer(p2, "#ffd700");
+    if (ball) drawBall(ball);
 
     // 3. Redes de las porterías (nivel intermedio)
     drawGoalNet(leftGoal);

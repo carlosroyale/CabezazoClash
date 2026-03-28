@@ -52,7 +52,8 @@ function startIdle({canvas, ctx: ctxParam}) {
     resize(canvas.width, canvas.height);
 
     function idleLoop() {
-        dibujar(gameCtx, W, H, p1, p2, ball, leftGoal, rightGoal);
+        // Pasamos null a las entidades para que desaparezcan en el menú
+        dibujar(gameCtx, W, H, null, null, null, leftGoal, rightGoal);
         if (idleRunning) {
             idleAnimationId = requestAnimationFrame(idleLoop);
         }
