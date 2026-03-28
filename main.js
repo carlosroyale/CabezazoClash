@@ -13,6 +13,7 @@ const screenGame = document.getElementById("screen-game");
 const screenEnd = document.getElementById("screen-end");
 const screenHowToPlay = document.getElementById("screen-how-to-play");
 const screenInfo = document.getElementById("screen-info");
+const screenModeSelect = document.getElementById("screen-mode-select"); // NUEVA PANTALLA
 
 // Botones de navegación
 const btnPlay = document.getElementById("btn-play");
@@ -20,12 +21,14 @@ const btnBack = document.getElementById("btn-back");
 const btnBasic = document.getElementById("btn-basic");
 const btnAdvanced = document.getElementById("btn-advanced");
 const btnOptions = document.getElementById("btn-options");
-const btnPlayBot = document.getElementById("btn-play-bot");
 const btnOptionsBack = document.getElementById("btn-options-back");
 const btnHowToPlay = document.getElementById("btn-how-to-play");
 const btnCloseHowToPlay = document.getElementById("btn-close-how-to-play");
 const btnInfo = document.getElementById("btn-info");
 const btnCloseInfo = document.getElementById("btn-close-info");
+const btn1v1 = document.getElementById("btn-1v1");
+const btn1vBot = document.getElementById("btn-1vbot");
+const btnModeBack = document.getElementById("btn-mode-back");
 
 // Elementos de opciones
 const musicVolumeSlider = document.getElementById("music-volume");
@@ -74,6 +77,7 @@ function showScreen(screenToShow) {
   screenGame.classList.remove("active");
   screenEnd.classList.remove("active");
   screenHowToPlay.classList.remove("active");
+  if(screenModeSelect) screenModeSelect.classList.remove("active");
   screenToShow.classList.add("active");
 }
 
@@ -173,11 +177,14 @@ function showEndScreen(leftScore, rightScore) {
 // Hacer accesible desde game.js
 window.showEndScreen = showEndScreen;
 
-asignarBoton(btnPlay, () => {
+asignarBoton(btnPlay, () => showScreen(screenModeSelect));
+// Volver desde la selección de modo al inicio
+asignarBoton(btnModeBack, () => showScreen(screenStart));
+// Iniciar partidas desde la selección de modo
+asignarBoton(btn1v1, () => {
   beginBasicGame();
 });
-
-asignarBoton(btnPlayBot, () => {
+asignarBoton(btn1vBot, () => {
   beginBotGame();
 });
 asignarBoton(btnBack, () => showScreen(screenStart));

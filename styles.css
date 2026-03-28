@@ -75,6 +75,15 @@ body {
   margin: 1.5rem 0;
   align-items: center;
 }
+/* Contenedor de botones en fila horizontal */
+.buttons-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 3rem; /* Espacio de separación entre los dos botones */
+  margin: 2.5rem 0;
+  width: 100%;
+}
 /* botones */
 .btn {
   width: 200px;
