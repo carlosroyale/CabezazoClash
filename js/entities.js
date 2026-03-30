@@ -1,6 +1,6 @@
 // entities.js - Creación y lógica de Player, Ball y Bot
 
-function makePlayer(x, y, label) {
+function makePlayer(x, y, label, isRightFacing) {
     return {
         label,
         x,
@@ -11,7 +11,14 @@ function makePlayer(x, y, label) {
         vy: 0,
         speed: 420,
         jump: 760,
-        onGround: false
+        onGround: false,
+
+        isRightFacing: isRightFacing, // true = mira a la derecha (P1), false = izquierda (P2)
+        kickAngle: 0,                 // Ángulo actual de la pierna en radianes
+        maxKickAngle: Math.PI / 1.8,  // Límite máximo (aprox 100 grados)
+        kickSpeed: 8,                 // Velocidad a la que sube la pierna (radianes/segundo)
+        justKicked: false,            // Interruptor que avisa que acaba de soltar la tecla
+        kickForce: 0                  // Porcentaje de fuerza acumulada (0 a 1)
     };
 }
 
@@ -62,7 +69,7 @@ function updateBall(ball, dt, W, FLOOR_Y) {
     }
 }
 
-function controlPlayer(p, dt, leftKey, rightKey, jumpKey, keys) {
+function controlPlayer(p, dt, leftKey, rightKey, jumpKey, kickKey, keys) {
     let dir = 0;
     if (keys.has(leftKey)) dir -= 1;
     if (keys.has(rightKey)) dir += 1;
@@ -72,6 +79,25 @@ function controlPlayer(p, dt, leftKey, rightKey, jumpKey, keys) {
     if (keys.has(jumpKey) && p.onGround) {
         p.vy = -p.jump;
         p.onGround = false;
+    }
+
+    // --- LÓGICA DE CARGA DE PIERNA ---
+    if (keys.has(kickKey)) {
+        p.isKicking = true;
+        p.kickAngle += p.kickSpeed * dt;
+        // Topar en el ángulo máximo
+        if (p.kickAngle > p.maxKickAngle) p.kickAngle = p.maxKickAngle;
+    }
+    else {
+        // Si suelta la tecla y estaba cargando, marcamos el flag para disparar
+        if (p.isKicking) {
+            p.kickForce = p.kickAngle / p.maxKickAngle; // Guarda un valor de 0.0 a 1.0
+            p.justKicked = true;
+        }
+        p.isKicking = false;
+
+        // La pierna baja rápido al suelo (puedes cambiar esto para que baje suave si prefieres)
+        p.kickAngle = 0;
     }
 }
 

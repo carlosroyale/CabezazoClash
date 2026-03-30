@@ -69,6 +69,36 @@ function checkGoalCollisions(ball, leftGoal, rightGoal) {
     }
 }
 
+function applyKickForce(p, ball) {
+    if (p.justKicked) {
+        p.justKicked = false; // Apagamos el interruptor inmediatamente
+
+        // Calcular distancia centro a centro
+        const dx = ball.x - p.x;
+        const dy = ball.y - p.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        // Rango de chute: mitad del ancho del jugador + radio de la bola + un margen de 40px
+        const kickRange = (p.w / 2) + ball.r + 40;
+
+        if (dist < kickRange) {
+            // Direccion en X dependiendo de a dónde mire
+            let dirX = p.isRightFacing ? 1 : -1;
+
+            // Fuerza base mínima + Fuerza extra escalada por la carga (0 a 1)
+            let baseForceX = 400;
+            let extraForceX = 700 * p.kickForce;
+
+            let baseForceY = -350; // Hacia arriba
+            let extraForceY = -450 * p.kickForce;
+
+            // Aplicar velocidad bruscamente
+            ball.vx = (baseForceX + extraForceX) * dirX;
+            ball.vy = baseForceY + extraForceY;
+        }
+    }
+}
+
 function collideBallStaticRect(ball, rect) {
     // Buscar el punto del rectángulo más cercano al centro de la pelota
     const closestX = clamp(ball.x, rect.x, rect.x + rect.w);

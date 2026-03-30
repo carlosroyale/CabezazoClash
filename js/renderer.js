@@ -4,6 +4,18 @@
 const bgImage = new Image();
 bgImage.src = 'assets/img/fotoEstadio.png';
 
+const imgP1Body = new Image();
+imgP1Body.src = 'assets/img/jugador1.png';
+
+const imgP1Shoe = new Image();
+imgP1Shoe.src = 'assets/img/jugador1Bota.png';
+
+const imgP2Body = new Image();
+imgP2Body.src = 'assets/img/jugador2.png';
+
+const imgP2Shoe = new Image();
+imgP2Shoe.src = 'assets/img/jugador2Bota.png';
+
 // Global ctx for drawing functions
 let drawingCtx;
 
@@ -15,8 +27,9 @@ function dibujar(ctx, W, H, p1, p2, ball, leftGoal, rightGoal) {
     drawField(W, H);
 
     // 2. Jugadores y pelota (Solo se dibujan si no son null)
-    if (p1) drawPlayer(p1, "#ffffff");
-    if (p2) drawPlayer(p2, "#ffd700");
+    if (p1) drawPlayer(p1, imgP1Body, imgP1Shoe);
+    if (p2) drawPlayer(p2, imgP2Body, imgP2Shoe);
+
     if (ball) drawBall(ball);
 
     // 3. Redes de las porterías (nivel intermedio)
@@ -35,19 +48,58 @@ function drawField(W, H) {
     }
 }
 
-function drawPlayer(p, color) {
-    drawingCtx.fillStyle = color;
-    drawingCtx.fillRect(p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
+function drawPlayer(p, bodyImg, shoeImg) {
+    // 1. DIBUJAR CUERPO
+    if (bodyImg && bodyImg.complete) {
+        drawingCtx.drawImage(bodyImg, p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
+    } else {
+        // Fallback si la imagen no carga
+        drawingCtx.fillStyle = p.isRightFacing ? "#ffffff" : "#ffd700";
+        drawingCtx.fillRect(p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
+    }
 
-    // cabeza (círculo) para "head soccer vibes"
+    // 2. DIBUJAR PIERNA ROTADA
+    drawingCtx.save();
+
+    // Calcular el punto de la cadera (El "Pivote").
+    // Ajusta estos números si la pierna gira desde un punto raro.
+    let hipOffsetX = p.isRightFacing ? 10 : -15;
+    let hipOffsetY = 25; // Distancia hacia abajo desde el centro del jugador
+
+    drawingCtx.translate(p.x + hipOffsetX, p.y + hipOffsetY);
+
+    // Si mira a la derecha rota en negativo (antihorario). Si mira a la izq, positivo.
+    let rotation = p.isRightFacing ? -p.kickAngle : p.kickAngle;
+    drawingCtx.rotate(rotation);
+
+    if (shoeImg && shoeImg.complete) {
+        // Dibuja el zapato compensando su centro para que el (0,0) sea la unión superior
+        // AJUSTA el -15 y el 0 según dónde esté el "enganche" en tu PNG del zapato
+        drawingCtx.drawImage(shoeImg, -1, -2, 30, 20);
+    } else {
+        // Fallback zapato
+        drawingCtx.fillStyle = "red";
+        drawingCtx.fillRect(-10, 0, 20, 35);
+    }
+    drawingCtx.restore();
+
+    // ---------------------------------------------------------
+    // 3. DEBUG: DIBUJAR HITBOXES (Para que veas las colisiones)
+    // ---------------------------------------------------------
+    drawingCtx.lineWidth = 2;
+    drawingCtx.strokeStyle = "#00ff00"; // Verde fosforito
+
+    // Hitbox Rectangular (Cuerpo)
+    drawingCtx.strokeRect(p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
+
+    // Hitbox Circular (Cabeza) - Usa los mismos valores que en physics.js
     drawingCtx.beginPath();
     drawingCtx.arc(p.x, p.y - p.h / 2 - 18, 22, 0, Math.PI * 2);
-    drawingCtx.fill();
+    drawingCtx.stroke();
 
-    // etiqueta
-    drawingCtx.fillStyle = "rgba(0,0,0,0.6)";
-    drawingCtx.font = "16px Arial";
-    drawingCtx.fillText(p.label, p.x - 12, p.y + 6);
+    // Punto de pivote de la cadera (Punto morado)
+    drawingCtx.fillStyle = "magenta";
+    drawingCtx.fillRect(p.x + hipOffsetX - 3, p.y + hipOffsetY - 3, 6, 6);
 }
 
 function drawBall(ball) {

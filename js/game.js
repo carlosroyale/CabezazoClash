@@ -155,11 +155,13 @@ function gameLoop(time) {
 
 function update(dt) {
     // 1. Controles
-    controlPlayer(p1, dt, "KeyA", "KeyD", "KeyW", keys);
-    if (botEnabled) {
-        controlBot(p2, dt, ball, W, FLOOR_Y, keys);
-    } else {
-        controlPlayer(p2, dt, "ArrowLeft", "ArrowRight", "ArrowUp", keys);
+    // FÍJATE AQUÍ: Añadimos "Space" para P1 antes de 'keys'
+    controlPlayer(p1, dt, "KeyA", "KeyD", "KeyW", "Space", keys);
+
+    if (botEnabled) controlBot(p2, dt, ball, W, FLOOR_Y, keys);
+    else {
+        // FÍJATE AQUÍ: Añadimos "KeyP" para P2 antes de 'keys'
+        controlPlayer(p2, dt, "ArrowLeft", "ArrowRight", "ArrowUp", "KeyP", keys);
     }
 
     // 2. Física jugadores
@@ -175,6 +177,9 @@ function update(dt) {
     // 4. Colisiones jugador-pelota
     collidePlayerBall(p1, ball);
     collidePlayerBall(p2, ball);
+    // APLICAR CHUTE MANUAL
+    applyKickForce(p1, ball);
+    applyKickForce(p2, ball);
     resolveBallSqueezeUp(ball, p1, p2);
 
     // 5. Colisiones con las porterías (largueros)
