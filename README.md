@@ -1,216 +1,88 @@
-# ⚽ Cabezazo Clash
+# Cabezazo Clash
 
-**Juego de fútbol arcade 1v1 en navegador**, desarrollado en HTML5, CSS3 y JavaScript vanilla.
+Proyecto para la asignatura de Laboratori de Software: pequeño juego de fútbol 1v1 hecho con HTML, CSS y JavaScript (sin frameworks).
 
-> **Estado:** Base funcional (Nivel BÁSICO jugable) | Arquitectura lista para expandir
+La idea del proyecto era tener una base simple pero clara: menús, partida local, marcador, pausa y opciones de volumen.
 
----
+## Estado actual
 
-## 🎮 Características
+Ahora mismo funciona:
 
-✅ **Menú interactivo** con navegación fluida entre pantallas  
-✅ **Nivel BÁSICO** jugable con física arcade  
-✅ **2 jugadores locales** con controles independientes  
-✅ **Sistema de goles** con reinicio automático  
-✅ **Música de fondo** con control ON/OFF y volumen  
-✅ **Menú Opciones** con ajustes guardados en localStorage  
-✅ **Código modular** separado UI/lógica de juego  
-✅ **Responsive** adaptado a diferentes tamaños de pantalla  
+- Partida local 1 vs 1.
+- Partida 1 vs bot (IA básica).
+- Marcador + temporizador.
+- Pausa con cuenta atrás para reanudar.
+- Menú de opciones con volumen de música y SFX guardado en localStorage.
+- Pantallas de inicio, ayuda, info y final de partido.
 
----
+Cosas que todavía están a medio hacer:
 
-## 📁 Estructura del proyecto
+- 1 vs 1 online (visible en el menú pero sin lógica).
+- Algunos textos y comentarios del código todavía se tienen que limpiar/unificar.
 
-```
+## Controls
+
+Jugador 1:
+
+- A / D: mover
+- W: saltar
+- Espacio: chutar
+
+Jugador 2:
+
+- Flecha izquierda / derecha: mover
+- Flecha arriba: saltar
+- P: chutar
+
+General:
+
+- Botón de pausa o tecla R: pausar/reanudar (con cuenta atrás)
+
+## Estructura del proyecto
+
+```text
 CabezazoClash/
-├── index.html              # HTML principal (pantallas, canvas, audio)
-├── styles.css              # Estilos de UI (menús, HUD, canvas)
-├── main.js                 # Lógica de interfaz (pantallas, opciones)
-├── game.js                 # Motor del juego (física, colisiones)
-├── README.md               # Este archivo
-└── assets/
-    ├── img/
-        ├── stadium-background1.avif  # Alternativa de fondo (no usada)
-    │   └── stadium-background2.jpeg  # Fondo del estadio
-    └── audio/
-        ├── SoundTrackHS.mp3          # Música de menú (MP3)
-        └── SoundTrackHS.ogg          # Música de menú (OGG, opcional)
+├── index.html
+├── login.html
+├── styles.css
+├── main.js
+├── README.md
+├── assets/
+│   ├── audio/
+│   └── img/
+└── js/
+    ├── constants.js
+    ├── entities.js
+    ├── game.js
+    ├── input.js
+    ├── physics.js
+    └── renderer.js
 ```
 
----
+Resumen rápido de responsabilidades:
 
-## 🎯 Cómo jugar
+- main.js: UI, pantallas, botones, opciones y audio de menú.
+- js/game.js: bucle principal, tiempo, goles y flujo de partida.
+- js/entities.js: jugadores, bot y utilidades de movimiento.
+- js/physics.js: colisiones y respuesta física.
+- js/renderer.js: dibujo en el canvas.
+- js/input.js: teclado y entradas.
 
-### Pantalla de inicio
-- **Jugar** → Avanza a selección de nivel
-- **Opciones** → Abre panel de configuración
+## Audio
 
-### Selección de nivel
-- **BÁSICO** → Inicia juego simple (implementado)
-- **AVANZADO** → En desarrollo
+La música de fondo usa estos archivos dentro de assets/audio:
 
-### Gameplay (BÁSICO)
+- SoundTrackHS.mp3
+- SoundTrackHS.ogg (opcional, compatibilidad)
 
-#### Controles
+Si no están, el juego arranca igual pero sin música.
 
-**Jugador 1 (izquierda, blanco)**
-- `A` / `D` → Mover izquierda/derecha
-- `W` → Saltar
-- Colisionar con la pelota → Impulso automático
+## Notas del proyecto
 
-**Jugador 2 (derecha, amarillo)**
-- `←` / `→` → Mover izquierda/derecha
-- `↑` → Saltar
-- Colisionar con la pelota → Impulso automático
+Este repositorio es una práctica, así que la prioridad ha sido que el juego sea jugable y fácil de tocar.
 
-**Durante el juego**
-- `ESC` → Volver al menú
-- `R` → Reiniciar ronda
+No está pensado como producto final, sino como base para iterar: mejorar IA, añadir online y pulir arte/sonido.
 
-#### Objetivo
-- Golpear la pelota hacia la portería del rival
-- Marcar goles: la pelota entra en la zona de gol (fondo izquierda/derecha)
-- El marcador se actualiza automáticamente
+## Licencia
 
-#### Mecánicas
-- **Gravedad** y **rebotes** realistas
-- **Colisión jugador-pelota** con impulso arcade
-- **Fricción en suelo** para evitar movimiento infinito
-- **Reinicio automático** tras cada gol
-
----
-
-## ⚙️ Configuración
-
-### Música
-
-Para activar música de menú, coloca los archivos en `assets/audio/`:
-
-```
-assets/audio/
-├── SoundTrackHS.mp3   (obligatorio)
-└── SoundTrackHS.ogg   (opcional, mejor soporte)
-```
-
-El reproductor respeta los ajustes de "Música" (ON/OFF) y volumen desde Opciones.
-
-### Fondo del estadio
-
-Actualmente carga desde `assets/img/stadium-background2.jpeg`. Si quieres cambiar:
-
-1. Abre `styles.css`
-2. Busca `background: url("assets/img/stadium-background2.jpeg")`
-3. Reemplaza con tu ruta preferida
-
-Para mejor resultado, usa imágenes:
-- Dimensiones: 16:9 (ej. 1920×1080)
-- Formato: JPEG, PNG o AVIF
-- Búsqueda recomendada: "cartoon football stadium background"
-
----
-
-## 🏗️ Arquitectura (Código)
-
-### Separación UI vs Lógica
-
-El código se divide en **dos responsabilidades claras**:
-
-#### `main.js` (Interfaz de Usuario)
-- Maneja todas las **pantallas** (inicio, nivel, opciones, juego)
-- Controla el **audio del menú** (música, volumen, fade in/out)
-- Obtiene referencias del **DOM** (canvas, scoreEl) una sola vez
-- Llama a `window.Game.startBasicGame({...})` al iniciar juego
-- Gestiona **navegación** entre pantallas  
-- Guarda/carga **preferencias** (localStorage)
-
-#### `game.js` (Motor del juego)
-- Define el **motor del nivel básico** (física, colisiones, goles)
-- **NO busca elementos del DOM**; recibe referencias como parámetros
-- Expone un único **namespace global** `window.Game.startBasicGame`
-- Controla **ciclo de vida**: detiene juego anterior si existe
-- Limpia **event listeners** al salir (ESC)
-- Independiente de UI: completamente reutilizable
-
-### Beneficios de esta arquitectura
-
-| Aspecto | Beneficio |
-|---------|-----------|
-| **Bajo acoplamiento** | game.js no sabe de HTML/CSS |
-| **Reutilizable** | Mismo motor en otra UI sin cambios |
-| **Testeable** | Sin effectos secundarios en el DOM |
-| **Escalable** | Fácil agregar AVANZADO, Online, etc. |
-| **Mantenible** | Cambios en UI no afectan lógica |
-
----
-
-## 🔧 Instalación
-
-### Requisitos
-- Navegador moderno (Chrome, Firefox, Safari, Edge)
-- Servidor web local (para evitar CORS)
-
-### Pasos
-
-1. **Clona o descarga** este repositorio
-2. **Coloca la música** en `assets/audio/SoundTrackHS.mp3`
-3. **Servidor local** (elige uno):
-   ```bash
-   # Python 3
-   python -m http.server 8000
-   
-   # Node.js
-   npx http-server
-   
-   # O usa VS Code Live Server
-   ```
-4. **Abre** `http://localhost:8000` en tu navegador
-
----
-
-## 📋 Próximas mejoras
-
-### 🎮 Nivel AVANZADO
-- Velocidad aumentada
-- Rebotes más impredecibles
-- Power-ups/habilidades especiales
-
-### 🌐 Multijugador Online
-- WebSockets para sincronización
-- Salas de espera
-- Ranking global
-
-### 🎨 Gráficos mejorados
-- Sprites en lugar de rectángulos
-- Animaciones (salto, celebración, gol)
-- Efectos de partículas
-
-### 🔊 Audio mejorado
-- Sonidos de gol, rebote, saque
-- Música dinámica (menú vs juego)
-- Control de SFX independiente
-
-### 📱 Responsividad
-- Controles táctiles para móviles
-- Ajuste dinámico del canvas
-
----
-
-## 💡 Tips para contribuidores
-
-1. **Motor de juego**: Modifica `game.js` para cambiar física/colisiones. No toca el DOM.
-2. **UI/Opciones**: Modifica `main.js` y `styles.css` para cambiar menús.
-3. **Nuevo nivel**: Copia `game.js` → `game-advanced.js`, ajusta constantes y expón en `window.Game.startAdvancedGame`.
-4. **Testing**: El motor es testeable sin dependencias de navegador (mínimos cambios).
-
----
-
-## 📝 Licencia
-
-Proyecto de práctica educativa. Libre para uso y modificación.
-
----
-
-**Fecha de creación**: 27 de febrero de 2026  
-**Versión**: 0.1.0 (Beta)  
-**Estado**: En desarrollo activo
-
+Proyecto académico. Uso libre para aprender, probar y modificar. No se permite uso comercial ni distribución sin permiso.
