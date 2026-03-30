@@ -177,9 +177,6 @@ function update(dt) {
     // 4. Colisiones jugador-pelota
     collidePlayerBall(p1, ball);
     collidePlayerBall(p2, ball);
-    // APLICAR CHUTE MANUAL
-    applyKickForce(p1, ball);
-    applyKickForce(p2, ball);
     resolveBallSqueezeUp(ball, p1, p2);
 
     // 5. Colisiones con las porterías (largueros)

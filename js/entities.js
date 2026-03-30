@@ -12,6 +12,7 @@ function makePlayer(x, y, label, isRightFacing) {
         speed: 420,
         jump: 760,
         onGround: false,
+        canJump: true,
 
         isRightFacing: isRightFacing, // true = mira a la derecha (P1), false = izquierda (P2)
         kickAngle: 0,                 // Ángulo actual de la pierna en radianes
@@ -79,9 +80,16 @@ function controlPlayer(p, dt, leftKey, rightKey, jumpKey, kickKey, keys) {
 
     p.vx = dir * p.speed;
 
-    if (keys.has(jumpKey) && p.onGround) {
+    // Si la tecla no está presionada, recargamos la capacidad de saltar
+    if (!keys.has(jumpKey)) {
+        p.canJump = true;
+    }
+
+    // Solo salta si tiene la tecla, está en el suelo, Y tiene el salto recargado
+    if (keys.has(jumpKey) && p.onGround && p.canJump) {
         p.vy = -p.jump;
         p.onGround = false;
+        p.canJump = false; // Descargamos el salto hasta que suelte la tecla
     }
 
     // --- LÓGICA DE CARGA DE PIERNA ---
@@ -92,11 +100,6 @@ function controlPlayer(p, dt, leftKey, rightKey, jumpKey, kickKey, keys) {
         if (p.kickAngle > p.maxKickAngle) p.kickAngle = p.maxKickAngle;
     }
     else {
-        // Si suelta la tecla y estaba cargando, marcamos el flag para disparar
-        if (p.isKicking) {
-            p.kickForce = p.kickAngle / p.maxKickAngle; // Guarda un valor de 0.0 a 1.0
-            p.justKicked = true;
-        }
         p.isKicking = false;
 
         // RETORNO PROGRESIVO DE LA PIERNA

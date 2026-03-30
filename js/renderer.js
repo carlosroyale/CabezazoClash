@@ -59,55 +59,7 @@ function drawField(W, H) {
         drawingCtx.drawImage(bgImage, 0, 0, W, H);
     }
 }
-//
-// function drawPlayer(p, bodyImg, shoeImg) {
-//     // 1. DIBUJAR CUERPO
-//     if (bodyImg && bodyImg.complete) {
-//         drawingCtx.drawImage(bodyImg, p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
-//     } else {
-//         // Fallback si la imagen no carga
-//         drawingCtx.fillStyle = p.isRightFacing ? "#ffffff" : "#ffd700";
-//         drawingCtx.fillRect(p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
-//     }
-//
-//     // 2. DIBUJAR PIERNA ROTADA
-//     drawingCtx.save();
-//
-//     // Calcular el punto de la cadera (El "Pivote").
-//     let hipOffsetX = p.isRightFacing ? -18.5 : -11;
-//     let hipOffsetY = p.isRightFacing ? 21 : 22; // Distancia hacia abajo desde el centro del jugador
-//
-//     // Movemos el origen de la coordenadas para el zapato
-//     drawingCtx.translate(p.x + hipOffsetX, p.y + hipOffsetY);
-//
-//     // Si mira a la derecha rota en negativo (antihorario). Si mira a la izq, positivo.
-//     let rotation = p.isRightFacing ? -p.kickAngle : p.kickAngle;
-//     drawingCtx.rotate(rotation);
-//
-//     if (shoeImg && shoeImg.complete) {
-//         // Dibuja el zapato compensando su centro para que el (0,0) sea la unión superior
-//         drawingCtx.drawImage(shoeImg, 0, 0, 30, 20);
-//     }
-//     else {
-//         // Fallback zapato
-//         drawingCtx.fillStyle = "red";
-//         drawingCtx.fillRect(-10, 0, 20, 35);
-//     }
-//     drawingCtx.restore();
-//
-//     // ---------------------------------------------------------
-//     // 3. DEBUG: DIBUJAR HITBOXES (Para que veas las colisiones)
-//     // ---------------------------------------------------------
-//     drawingCtx.lineWidth = 2;
-//     drawingCtx.strokeStyle = "#00ff00"; // Verde fosforito
-//
-//     // Hitbox Rectangular (Cuerpo)
-//     drawingCtx.strokeRect(p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
-//
-//     // Punto de pivote de la cadera (Punto morado)
-//     drawingCtx.fillStyle = "magenta";
-//     drawingCtx.fillRect(p.x + hipOffsetX - 3, p.y + hipOffsetY - 3, 6, 6);
-// }
+
 function drawPlayer(p, bodyImg, shoeImg) {
     // 1. DIBUJAR CUERPO
     if (bodyImg && bodyImg.complete) {
@@ -130,26 +82,68 @@ function drawPlayer(p, bodyImg, shoeImg) {
 
     if (shoeImg && shoeImg.complete) {
         // Como el (0,0) es la barriga, empujamos el zapato hacia abajo y a los lados
-        let shoeDrawX = p.isRightFacing ? -18.5 : -12;
-        let shoeDrawY = p.isRightFacing ? 21 : 22;
+        let shoeDrawX = p.isRightFacing ? -21 : -13;
+        let shoeDrawY = p.isRightFacing ? 25 : 25;
 
-        drawingCtx.drawImage(shoeImg, shoeDrawX, shoeDrawY, 30, 20);
+        drawingCtx.drawImage(shoeImg, shoeDrawX, shoeDrawY, 35, 20);
     }
     drawingCtx.restore();
 
-    // ---------------------------------------------------------
-    // 3. DEBUG: DIBUJAR HITBOXES (Para que veas las colisiones)
-    // ---------------------------------------------------------
+    dibujarHitboxJugador(p);
+}
+
+function dibujarHitboxJugador(p) {
     drawingCtx.lineWidth = 2;
     drawingCtx.strokeStyle = "#00ff00"; // Verde fosforito
 
-    // Hitbox Rectangular (Cuerpo)
-    drawingCtx.strokeRect(p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
+    // A. Hitbox Rectangular (Cuerpo)
+    const bodyW = p.w - 28;
+    const bodyH = p.h - 55;
+    const bodyY = p.y + 10;
+    const bodyX = p.x - 5;
+    const rectX = p.isRightFacing ? bodyX - bodyW / 2 : bodyX - (bodyW / 2) + 10;
 
-    // Punto de pivote de la cadera (Punto morado)
+    drawingCtx.strokeRect(rectX, bodyY - bodyH / 2, bodyW, bodyH);
+
+    // B. Hitbox Circular (Cabeza - Igual a physics.js)
+    drawingCtx.beginPath();
+    const centerX = bodyX + 4;
+    const centerY = bodyY - bodyH;
+    const headR = 21; // Mismo radio que en physics.js
+
+    // Dibujamos el círculo
+    drawingCtx.arc(centerX, centerY, headR, 0, Math.PI * 2);
+    drawingCtx.stroke();
+
+
+    // C. Hitbox Circular (Zapato rotatorio - Igual a physics.js)
+    let shoeDrawX2 = p.isRightFacing ? -21 : -13;
+    let shoeDrawY2 = p.isRightFacing ? 25 : 25;
+
+    // Centro local del zapato (Ajustado para tu imagen de 35x20)
+    const localShoeX = shoeDrawX2 + 17.5; // La mitad de 35
+    const localShoeY = shoeDrawY2 + 10;   // La mitad de 20
+
+    // Ángulo de rotación de la pierna
+    const rot = p.isRightFacing ? -p.kickAngle : p.kickAngle;
+
+    // Posición del centro en el mundo real
+    const worldShoeX = bodyX + (localShoeX * Math.cos(rot) - localShoeY * Math.sin(rot)) + 3;
+    const worldShoeY = p.y + (localShoeX * Math.sin(rot) + localShoeY * Math.cos(rot));
+
+    // Dibujar el círculo
+    drawingCtx.beginPath();
+    const shoeR = 14; // Mismo radio que en physics.js
+
+    drawingCtx.arc(worldShoeX, worldShoeY, shoeR, 0, Math.PI * 2);
+    drawingCtx.stroke();
+
+    // Punto de pivote de la barriga (Punto morado)
     drawingCtx.fillStyle = "magenta";
-    drawingCtx.fillRect(p.x + hipOffsetX - 3, p.y + hipOffsetY - 3, 6, 6);
+    const pivoteX = p.isRightFacing ? bodyX - 3 : bodyX + 7;
+    drawingCtx.fillRect(pivoteX, p.y - 3, 6, 6);
 }
+
 function drawBall(ball) {
     if (imgBall && imgBall.complete) {
         drawingCtx.save(); // 1. Guardamos el estado del Canvas
