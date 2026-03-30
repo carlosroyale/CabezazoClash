@@ -16,7 +16,7 @@ function makePlayer(x, y, label, isRightFacing) {
         isRightFacing: isRightFacing, // true = mira a la derecha (P1), false = izquierda (P2)
         kickAngle: 0,                 // Ángulo actual de la pierna en radianes
         maxKickAngle: Math.PI / 1.8,  // Límite máximo (aprox 100 grados)
-        kickSpeed: 8,                 // Velocidad a la que sube la pierna (radianes/segundo)
+        kickSpeed: 16,                 // Velocidad a la que sube la pierna (radianes/segundo)
         justKicked: false,            // Interruptor que avisa que acaba de soltar la tecla
         kickForce: 0                  // Porcentaje de fuerza acumulada (0 a 1)
     };
@@ -67,6 +67,9 @@ function updateBall(ball, dt, W, FLOOR_Y) {
         ball.vy = -ball.vy * RESTITUTION;
         ball.vx *= FRICTION;
     }
+
+    // Fórmula: Ángulo = (Velocidad * Tiempo) / Radio
+    ball.angle += (ball.vx * dt) / ball.r;
 }
 
 function controlPlayer(p, dt, leftKey, rightKey, jumpKey, kickKey, keys) {
@@ -96,8 +99,16 @@ function controlPlayer(p, dt, leftKey, rightKey, jumpKey, kickKey, keys) {
         }
         p.isKicking = false;
 
-        // La pierna baja rápido al suelo (puedes cambiar esto para que baje suave si prefieres)
-        p.kickAngle = 0;
+        // RETORNO PROGRESIVO DE LA PIERNA
+        if (p.kickAngle > 0) {
+            // Dividimos por 3 para que baje el triple de lento de lo que subió
+            p.kickAngle -= (p.kickSpeed / 3) * dt;
+
+            // Si nos pasamos de cero, lo clavamos en cero para que no gire hacia atrás
+            if (p.kickAngle < 0) {
+                p.kickAngle = 0;
+            }
+        }
     }
 }
 

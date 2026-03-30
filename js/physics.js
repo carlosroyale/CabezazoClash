@@ -203,32 +203,32 @@ function collidePlayers(p1, p2) {
 }
 
 // Colisión de la cabeza del jugador (círculo) con un rectángulo estático
-function collidePlayerHeadStaticRect(p, rect) {
-    const headCx = p.x;
-    const headCy = p.y - p.h / 2 - 18; // centro de la cabeza
-    const headR = 22;
-
-    const closestX = clamp(headCx, rect.x, rect.x + rect.w);
-    const closestY = clamp(headCy, rect.y, rect.y + rect.h);
-    const dx = headCx - closestX;
-    const dy = headCy - closestY;
-    const dist2 = dx * dx + dy * dy;
-
-    if (dist2 < headR * headR) {
-        const dist = Math.sqrt(dist2);
-        if (dist < 0.001) {
-            p.y += headR;
-            p.vy = Math.max(p.vy, 0);
-            return;
-        }
-        const nx = dx / dist;
-        const ny = dy / dist;
-        const overlap = headR - dist;
-        p.x += nx * overlap;
-        p.y += ny * overlap;
-        if (ny > 0) p.vy = Math.max(p.vy, 0); // frenar si rebota hacia abajo
-    }
-}
+// function collidePlayerHeadStaticRect(p, rect) {
+//     const headCx = p.x;
+//     const headCy = p.y - p.h / 2 - 18; // centro de la cabeza
+//     const headR = 22;
+//
+//     const closestX = clamp(headCx, rect.x, rect.x + rect.w);
+//     const closestY = clamp(headCy, rect.y, rect.y + rect.h);
+//     const dx = headCx - closestX;
+//     const dy = headCy - closestY;
+//     const dist2 = dx * dx + dy * dy;
+//
+//     if (dist2 < headR * headR) {
+//         const dist = Math.sqrt(dist2);
+//         if (dist < 0.001) {
+//             p.y += headR;
+//             p.vy = Math.max(p.vy, 0);
+//             return;
+//         }
+//         const nx = dx / dist;
+//         const ny = dy / dist;
+//         const overlap = headR - dist;
+//         p.x += nx * overlap;
+//         p.y += ny * overlap;
+//         if (ny > 0) p.vy = Math.max(p.vy, 0); // frenar si rebota hacia abajo
+//     }
+// }
 
 // Detecta si la pelota está atrapada entre dos jugadores y la lanza hacia arriba.
 // Usa proximidad entre jugadores para detectarlo de forma fiable,
@@ -254,13 +254,13 @@ function resolveBallSqueezeUp(ball, p1, p2) {
     if (ball.vy > -350) ball.vy = -350;
 }
 
-function circleRectOverlap(c, r) {
-    const closestX = clamp(c.x, r.x, r.x + r.w);
-    const closestY = clamp(c.y, r.y, r.y + r.h);
-    const dx = c.x - closestX;
-    const dy = c.y - closestY;
-    return (dx * dx + dy * dy) <= (c.r * c.r);
-}
+// function circleRectOverlap(c, r) {
+//     const closestX = clamp(c.x, r.x, r.x + r.w);
+//     const closestY = clamp(c.y, r.y, r.y + r.h);
+//     const dx = c.x - closestX;
+//     const dy = c.y - closestY;
+//     return (dx * dx + dy * dy) <= (c.r * c.r);
+// }
 
 function clamp(v, min, max) {
     return Math.max(min, Math.min(max, v));

@@ -2,7 +2,19 @@
 
 // Imagen fondo
 const bgImage = new Image();
-bgImage.src = 'assets/img/fotoEstadio.png';
+bgImage.src = 'assets/img/estadio.png';
+
+const imgBall = new Image();
+const svgBallString = `
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" viewBox="-2500 -2500 5000 5000">
+    <g stroke="#000" stroke-width="24">
+        <circle fill="#fff" r="2376"/>
+        <path fill="none" d="m-1643-1716 155 158m-550 2364c231 231 538 195 826 202m-524-2040c-491 351-610 1064-592 1060m1216-1008c-51 373 84 783 364 1220m-107-2289c157-157 466-267 873-329m-528 4112c-50 132-37 315-8 510m62-3883c282 32 792 74 1196 303m-404 2644c310 173 649 247 1060 180m-340-2008c-242 334-534 645-872 936m1109-2119c-111-207-296-375-499-534m1146 1281c100 3 197 44 290 141m-438 495c158 297 181 718 204 1140"/>
+    </g>
+    <path fill="#000" d="m-1624-1700c243-153 498-303 856-424 141 117 253 307 372 492-288 275-562 544-724 756-274-25-410-2-740-60 3-244 84-499 236-764zm2904-40c271 248 537 498 724 788-55 262-105 553-180 704-234-35-536-125-820-200-138-357-231-625-340-924 210-156 417-296 616-368zm-3273 3033a2376 2376 0 0 1-378-1392l59-7c54 342 124 674 311 928-36 179-2 323 51 458zm1197-1125c365 60 717 120 1060 180 106 333 120 667 156 1000-263 218-625 287-944 420-372-240-523-508-736-768 122-281 257-561 464-832zm3013 678a2376 2376 0 0 1-925 1147l-116-5c84-127 114-297 118-488 232-111 464-463 696-772 86 30 159 72 227 118zm-2287 1527a2376 2376 0 0 1-993-251c199 74 367 143 542 83 53 75 176 134 451 168z"/>
+</svg>
+`;
+imgBall.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgBallString);
 
 const imgP1Body = new Image();
 imgP1Body.src = 'assets/img/jugador1.png';
@@ -47,25 +59,69 @@ function drawField(W, H) {
         drawingCtx.drawImage(bgImage, 0, 0, W, H);
     }
 }
-
+//
+// function drawPlayer(p, bodyImg, shoeImg) {
+//     // 1. DIBUJAR CUERPO
+//     if (bodyImg && bodyImg.complete) {
+//         drawingCtx.drawImage(bodyImg, p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
+//     } else {
+//         // Fallback si la imagen no carga
+//         drawingCtx.fillStyle = p.isRightFacing ? "#ffffff" : "#ffd700";
+//         drawingCtx.fillRect(p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
+//     }
+//
+//     // 2. DIBUJAR PIERNA ROTADA
+//     drawingCtx.save();
+//
+//     // Calcular el punto de la cadera (El "Pivote").
+//     let hipOffsetX = p.isRightFacing ? -18.5 : -11;
+//     let hipOffsetY = p.isRightFacing ? 21 : 22; // Distancia hacia abajo desde el centro del jugador
+//
+//     // Movemos el origen de la coordenadas para el zapato
+//     drawingCtx.translate(p.x + hipOffsetX, p.y + hipOffsetY);
+//
+//     // Si mira a la derecha rota en negativo (antihorario). Si mira a la izq, positivo.
+//     let rotation = p.isRightFacing ? -p.kickAngle : p.kickAngle;
+//     drawingCtx.rotate(rotation);
+//
+//     if (shoeImg && shoeImg.complete) {
+//         // Dibuja el zapato compensando su centro para que el (0,0) sea la unión superior
+//         drawingCtx.drawImage(shoeImg, 0, 0, 30, 20);
+//     }
+//     else {
+//         // Fallback zapato
+//         drawingCtx.fillStyle = "red";
+//         drawingCtx.fillRect(-10, 0, 20, 35);
+//     }
+//     drawingCtx.restore();
+//
+//     // ---------------------------------------------------------
+//     // 3. DEBUG: DIBUJAR HITBOXES (Para que veas las colisiones)
+//     // ---------------------------------------------------------
+//     drawingCtx.lineWidth = 2;
+//     drawingCtx.strokeStyle = "#00ff00"; // Verde fosforito
+//
+//     // Hitbox Rectangular (Cuerpo)
+//     drawingCtx.strokeRect(p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
+//
+//     // Punto de pivote de la cadera (Punto morado)
+//     drawingCtx.fillStyle = "magenta";
+//     drawingCtx.fillRect(p.x + hipOffsetX - 3, p.y + hipOffsetY - 3, 6, 6);
+// }
 function drawPlayer(p, bodyImg, shoeImg) {
     // 1. DIBUJAR CUERPO
     if (bodyImg && bodyImg.complete) {
         drawingCtx.drawImage(bodyImg, p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
-    } else {
-        // Fallback si la imagen no carga
-        drawingCtx.fillStyle = p.isRightFacing ? "#ffffff" : "#ffd700";
-        drawingCtx.fillRect(p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
     }
 
     // 2. DIBUJAR PIERNA ROTADA
     drawingCtx.save();
 
-    // Calcular el punto de la cadera (El "Pivote").
-    // Ajusta estos números si la pierna gira desde un punto raro.
-    let hipOffsetX = p.isRightFacing ? 10 : -15;
-    let hipOffsetY = 25; // Distancia hacia abajo desde el centro del jugador
+    // Ponemos el pivote exactamente en el centro del jugador (0 de offset)
+    let hipOffsetX = 0;
+    let hipOffsetY = 0;
 
+    // Movemos el origen de las coordenadas al centro del jugador
     drawingCtx.translate(p.x + hipOffsetX, p.y + hipOffsetY);
 
     // Si mira a la derecha rota en negativo (antihorario). Si mira a la izq, positivo.
@@ -73,13 +129,11 @@ function drawPlayer(p, bodyImg, shoeImg) {
     drawingCtx.rotate(rotation);
 
     if (shoeImg && shoeImg.complete) {
-        // Dibuja el zapato compensando su centro para que el (0,0) sea la unión superior
-        // AJUSTA el -15 y el 0 según dónde esté el "enganche" en tu PNG del zapato
-        drawingCtx.drawImage(shoeImg, -1, -2, 30, 20);
-    } else {
-        // Fallback zapato
-        drawingCtx.fillStyle = "red";
-        drawingCtx.fillRect(-10, 0, 20, 35);
+        // Como el (0,0) es la barriga, empujamos el zapato hacia abajo y a los lados
+        let shoeDrawX = p.isRightFacing ? -18.5 : -12;
+        let shoeDrawY = p.isRightFacing ? 21 : 22;
+
+        drawingCtx.drawImage(shoeImg, shoeDrawX, shoeDrawY, 30, 20);
     }
     drawingCtx.restore();
 
@@ -92,25 +146,49 @@ function drawPlayer(p, bodyImg, shoeImg) {
     // Hitbox Rectangular (Cuerpo)
     drawingCtx.strokeRect(p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
 
-    // Hitbox Circular (Cabeza) - Usa los mismos valores que en physics.js
-    drawingCtx.beginPath();
-    drawingCtx.arc(p.x, p.y - p.h / 2 - 18, 22, 0, Math.PI * 2);
-    drawingCtx.stroke();
-
     // Punto de pivote de la cadera (Punto morado)
     drawingCtx.fillStyle = "magenta";
     drawingCtx.fillRect(p.x + hipOffsetX - 3, p.y + hipOffsetY - 3, 6, 6);
 }
-
 function drawBall(ball) {
-    drawingCtx.beginPath();
-    drawingCtx.fillStyle = "white";
-    drawingCtx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
-    drawingCtx.fill();
+    if (imgBall && imgBall.complete) {
+        drawingCtx.save(); // 1. Guardamos el estado del Canvas
 
-    drawingCtx.strokeStyle = "rgba(0,0,0,0.35)";
-    drawingCtx.lineWidth = 2;
-    drawingCtx.stroke();
+        // 2. Movemos el punto (0,0) exactamente al centro de la pelota
+        drawingCtx.translate(ball.x, ball.y);
+
+        // 3. Rotamos el Canvas según el ángulo calculado en la física
+        // (Si por algún motivo ball.angle no existiera, usa 0 por seguridad)
+        drawingCtx.rotate(ball.angle || 0);
+
+        const diameter = ball.r * 2;
+
+        // 4. Dibujamos la imagen
+        // Como el (0,0) ya es el centro, dibujamos desde la esquina superior izquierda
+        // retrocediendo exactamente el valor del radio (-ball.r)
+        drawingCtx.drawImage(
+            imgBall,
+            -ball.r, // Coordenada X local
+            -ball.r, // Coordenada Y local
+            diameter,
+            diameter
+        );
+
+        drawingCtx.restore(); // 5. Devolvemos el Canvas a la normalidad
+    }
+    // ---------------------------------------------------------
+    // 2. DEBUG: DIBUJAR HITBOX (Igual que en el jugador)
+    // ---------------------------------------------------------
+    // drawingCtx.beginPath();
+    // // Dibujamos el círculo exacto de colisión
+    // drawingCtx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+    // drawingCtx.strokeStyle = "#00ff00"; // Verde fosforito
+    // drawingCtx.lineWidth = 2;
+    // drawingCtx.stroke();
+    //
+    // // Opcional: Dibujar el punto central exacto (Centro de masa)
+    // drawingCtx.fillStyle = "magenta";
+    // drawingCtx.fillRect(ball.x - 2, ball.y - 2, 4, 4);
 }
 
 function drawGoalNet(g) {

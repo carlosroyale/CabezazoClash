@@ -9,7 +9,7 @@ let leftGoal = {};
 let rightGoal = {};
 
 // Entidades
-let ball = {r: 18, x: 0, y: 0, vx: 0, vy: 0};
+let ball = {r: 18, x: 0, y: 0, vx: 0, vy: 0, angle: 0};
 let p1 = {};
 let p2 = {};
 let score = {left: 0, right: 0};
@@ -88,8 +88,8 @@ function startBasicGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl: 
     resize(canvas.width, canvas.height);
 
     // Inicializar jugadores
-    p1 = makePlayer(180, FLOOR_Y - 90, "P1");
-    p2 = makePlayer(W - 180, FLOOR_Y - 90, "P2");
+    p1 = makePlayer(180, FLOOR_Y - 90, "P1", true);
+    p2 = makePlayer(W - 180, FLOOR_Y - 90, "P2", false);
 
     // Reiniciar valores
     score = {left: 0, right: 0};
@@ -193,10 +193,6 @@ function update(dt) {
     collidePlayerStaticRect(p1, rightCrossbar);
     collidePlayerStaticRect(p2, leftCrossbar);
     collidePlayerStaticRect(p2, rightCrossbar);
-    collidePlayerHeadStaticRect(p1, leftCrossbar);
-    collidePlayerHeadStaticRect(p1, rightCrossbar);
-    collidePlayerHeadStaticRect(p2, leftCrossbar);
-    collidePlayerHeadStaticRect(p2, rightCrossbar);
 
     // 6. Gol
     checkGoal();
