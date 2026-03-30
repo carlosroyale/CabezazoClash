@@ -252,7 +252,6 @@ function collidePlayerStaticRect(p, rect) {
 
 // Helper: Rectángulo (Cuerpo) vs Rectángulo Estático (Portería)
 function resolveRectStaticRectPlayer(p, bodyBox, rect) {
-    // bodyBox devuelve x,y desde la esquina superior izquierda
     const bLeft = bodyBox.x;
     const bRight = bodyBox.x + bodyBox.w;
     const bTop = bodyBox.y;
@@ -263,35 +262,33 @@ function resolveRectStaticRectPlayer(p, bodyBox, rect) {
     const rTop = rect.y;
     const rBottom = rect.y + rect.h;
 
-    if (bRight <= rLeft || bLeft >= rRight || bBottom <= rTop || bTop >= rBottom) {
-        return; // No hay colisión
-    }
+    if (bRight <= rLeft || bLeft >= rRight || bBottom <= rTop || bTop >= rBottom) return;
 
     const overlapLeft = bRight - rLeft;
     const overlapRight = rRight - bLeft;
-    const overlapTop = bBottom - rTop;    // El jugador aterriza sobre el larguero
-    const overlapBottom = rBottom - bTop; // El jugador se golpea la cabeza desde abajo
+    const overlapTop = bBottom - rTop;
+    const overlapBottom = rBottom - bTop;
 
     const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
 
     if (minOverlap === overlapTop) {
-        // 1. Chocó por ARRIBA (pisando el larguero)
-        p.y -= overlapTop;
-        p.vy = 0;
-        p.onGround = true; // ¡AHORA SÍ! Le permitimos saltar si está subido a la portería
+        // Solo se puede subir al larguero si está cayendo
+        if (p.vy >= 0) {
+            p.y -= overlapTop;
+            p.vy = 0;
+            p.onGround = true;
+        } else {
+            // Si está subiendo (saltando) y roza el borde del larguero, lo separamos de lado
+            if (overlapLeft < overlapRight) { p.x -= overlapLeft; p.vx = 0; }
+            else { p.x += overlapRight; p.vx = 0; }
+        }
     } else if (minOverlap === overlapBottom) {
-        // 2. Chocó por ABAJO (choca con el larguero al saltar)
         p.y += overlapBottom;
-        p.vy = Math.max(0, p.vy); // Le cortamos el salto para que empiece a caer
-        // BUG ARREGLADO: Ya no ponemos onGround = true aquí, así no puede hacer doble salto.
+        p.vy = Math.max(0, p.vy);
     } else if (minOverlap === overlapLeft) {
-        // 3. Chocó por la izquierda
-        p.x -= overlapLeft;
-        p.vx = 0;
+        p.x -= overlapLeft; p.vx = 0;
     } else if (minOverlap === overlapRight) {
-        // 4. Chocó por la derecha
-        p.x += overlapRight;
-        p.vx = 0;
+        p.x += overlapRight; p.vx = 0;
     }
 }
 
@@ -299,7 +296,6 @@ function resolveRectStaticRectPlayer(p, bodyBox, rect) {
 function resolveCircStaticRectPlayer(p, circ, rect) {
     const closestX = clamp(circ.x, rect.x, rect.x + rect.w);
     const closestY = clamp(circ.y, rect.y, rect.y + rect.h);
-
     const dx = circ.x - closestX;
     const dy = circ.y - closestY;
     const dist2 = dx * dx + dy * dy;
@@ -307,23 +303,19 @@ function resolveCircStaticRectPlayer(p, circ, rect) {
     if (dist2 < circ.r * circ.r) {
         const dist = Math.sqrt(dist2);
         if (dist < 0.001) return;
-
-        const nx = dx / dist; // Vector normal: del larguero HACIA la cabeza/zapato
+        const nx = dx / dist;
         const ny = dy / dist;
         const overlap = circ.r - dist;
 
-        // Separamos al jugador de la portería
         p.x += nx * overlap;
         p.y += ny * overlap;
 
-        // Lógica vertical (Saltos y caídas)
-        if (ny < -0.5) {
-            // El círculo está apoyado ENCIMA del larguero
+        // CORRECCIÓN: ny < -0.7 (contacto muy vertical) y cayendo (vy >= 0)
+        if (ny < -0.7 && p.vy >= 0) {
             p.vy = 0;
-            p.onGround = true; // Permite saltar
+            p.onGround = true;
         } else if (ny > 0.5) {
-            // El círculo golpeó por DEBAJO del larguero
-            p.vy = Math.max(0, p.vy); // Frena la subida bruscamente
+            p.vy = Math.max(0, p.vy);
         }
     }
 }
@@ -362,19 +354,19 @@ function resolveBodyBody(p1, p2, b1, b2) {
 
     if (overlapX > 0 && overlapY > 0) {
         if (overlapX < overlapY) {
-            // Separación horizontal (Se empujan)
             const dir = (b1.x + b1.w/2) < (b2.x + b2.w/2) ? -1 : 1;
             p1.x += dir * overlapX / 2;
             p2.x -= dir * overlapX / 2;
-            p1.vx = 0;
-            p2.vx = 0;
+            p1.vx = 0; p2.vx = 0;
         } else {
-            // Separación vertical (Uno se sube encima del otro)
             const dir = (b1.y + b1.h/2) < (b2.y + b2.h/2) ? -1 : 1;
+            // CORRECCIÓN: Solo apoyarse si está cayendo
             if (dir < 0) {
-                p1.y -= overlapY; p1.vy = 0; p1.onGround = true;
+                p1.y -= overlapY;
+                if (p1.vy >= 0) { p1.vy = 0; p1.onGround = true; }
             } else {
-                p2.y -= overlapY; p2.vy = 0; p2.onGround = true;
+                p2.y -= overlapY;
+                if (p2.vy >= 0) { p2.vy = 0; p2.onGround = true; }
             }
         }
     }
@@ -392,15 +384,17 @@ function resolveCircCircPlayer(p1, p2, c1, c2) {
         const nx = dx / dist;
         const ny = dy / dist;
 
-        // Separación horizontal
+        // Separamos en ambos ejes para evitar que se enganchen
         p1.x -= nx * overlap / 2;
         p2.x += nx * overlap / 2;
+        p1.y -= ny * overlap / 2;
+        p2.y += ny * overlap / 2;
 
-        // Separación vertical: el que esté más arriba se queda apoyado en la cabeza
-        if (p1.y < p2.y) {
-            p1.y -= Math.max(0, ny * overlap); p1.vy = 0; p1.onGround = true;
-        } else {
-            p2.y += Math.max(0, ny * overlap); p2.vy = 0; p2.onGround = true;
+        // CORRECCIÓN: Solo si el choque es vertical (>0.7) y el de arriba cae
+        if (ny > 0.7 && p1.vy >= 0) {
+            p1.vy = 0; p1.onGround = true;
+        } else if (ny < -0.7 && p2.vy >= 0) {
+            p2.vy = 0; p2.onGround = true;
         }
     }
 }
@@ -408,7 +402,6 @@ function resolveCircCircPlayer(p1, p2, c1, c2) {
 function resolveCircRectPlayer(circ, pTarget, rect) {
     const closestX = clamp(circ.x, rect.x, rect.x + rect.w);
     const closestY = clamp(circ.y, rect.y, rect.y + rect.h);
-
     const dx = circ.x - closestX;
     const dy = circ.y - closestY;
     const dist2 = dx*dx + dy*dy;
@@ -416,53 +409,42 @@ function resolveCircRectPlayer(circ, pTarget, rect) {
     if (dist2 < circ.r * circ.r) {
         const dist = Math.sqrt(dist2);
         if (dist < 0.001) return;
-
-        const nx = dx / dist; // Apunta DEL cuerpo HACIA el zapato
+        const nx = dx / dist;
         const ny = dy / dist;
         const overlap = circ.r - dist;
 
-        // Empujamos al jugador objetivo LEJOS del zapato
         pTarget.x -= nx * overlap;
+        pTarget.y -= ny * overlap;
 
-        // Si el zapato está debajo del cuerpo (ny > 0), lo levantamos
-        if (ny > 0) {
-            pTarget.y -= ny * overlap;
+        // CORRECCIÓN: ny > 0.7 requiere que el zapato esté bien DEBAJO del objetivo
+        if (ny > 0.7 && pTarget.vy >= 0) {
             pTarget.vy = 0;
-            pTarget.onGround = true; // ¡Permite que el jugador pueda saltar estando subido al zapato!
-        } else {
-            pTarget.y -= ny * overlap;
+            pTarget.onGround = true;
         }
     }
 }
 
-// Círculo (Zapato) contra Círculo (Cabeza) - Solo se empuja al jugador dueño de la cabeza
 function resolveShoeHeadPlayer(shoe, pTarget, head) {
-    // Calculamos distancia entre el centro de la cabeza y el zapato
     const dx = shoe.x - head.x;
     const dy = shoe.y - head.y;
     const dist2 = dx * dx + dy * dy;
     const radSum = shoe.r + head.r;
 
-    // Si hay colisión (se solapan)
     if (dist2 < radSum * radSum && dist2 > 0) {
         const dist = Math.sqrt(dist2);
         const overlap = radSum - dist;
-
-        // Vector normal que apunta desde la cabeza HACIA el zapato
         const nx = dx / dist;
         const ny = dy / dist;
 
-        // Empujamos al jugador objetivo LEJOS del zapato
         pTarget.x -= nx * overlap;
+        pTarget.y -= ny * overlap;
 
-        // Si el zapato está por debajo de la cabeza (ny > 0), levantamos al jugador
-        if (ny > 0) {
-            pTarget.y -= ny * overlap;
+        // CORRECCIÓN: Zapato debajo de la cabeza Y jugador cayendo
+        if (ny > 0.7 && pTarget.vy >= 0) {
             pTarget.vy = 0;
-            pTarget.onGround = true; // Se puede apoyar en el zapato con la cabeza
-        } else {
-            // Si el zapato le da desde arriba (por ejemplo, un remate de chilena al rival), lo empuja abajo
-            pTarget.y -= ny * overlap;
+            pTarget.onGround = true;
+        } else if (ny < -0.7) {
+            pTarget.vy = Math.max(0, pTarget.vy);
         }
     }
 }

@@ -89,7 +89,6 @@ function controlPlayer(p, dt, leftKey, rightKey, jumpKey, kickKey, keys) {
     if (keys.has(jumpKey) && p.onGround && p.canJump) {
         p.vy = -p.jump;
         p.onGround = false;
-        p.canJump = false; // Descargamos el salto hasta que suelte la tecla
     }
 
     // --- LÓGICA DE CARGA DE PIERNA ---
