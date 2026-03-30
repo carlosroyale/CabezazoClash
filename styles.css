@@ -30,6 +30,10 @@ body {
   outline: 1px solid transparent;
 }
 
+.game-wrap.is-paused .sb-goal-overlay {
+  animation-play-state: paused !important;
+}
+
 /* 3. EL CANVAS: Ocupa exactamente el 100% de su contenedor maestro */
 #game-canvas {
   position: absolute;

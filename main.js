@@ -296,9 +296,12 @@ asignarBoton(btnCloseInfo, () => {
 // sincronizar con teclas/Esc en el motor
 document.addEventListener('game-paused', () => {
   showPauseMenu();
+  document.getElementById('game-wrap').classList.add('is-paused');
 });
+
 document.addEventListener('game-resumed', () => {
   hidePauseMenu();
+  document.getElementById('game-wrap').classList.remove('is-paused');
 });
 
 
@@ -448,6 +451,7 @@ function resizeCanvas() {
   if (window.Game && window.Game.resize) {
     window.Game.resize(canvas.width, canvas.height);
   }
+
 
   // --- NUEVO: REPINTADO MANUAL SI ESTÁ EN PAUSA ---
   // Como redimensionar borra el canvas, si el juego está pausado (el bucle no corre),
