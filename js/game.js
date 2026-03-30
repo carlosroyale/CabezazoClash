@@ -23,6 +23,9 @@ let lastTime = 0;
 let isGoalScored = false;
 let onExitCallback = null;
 let botEnabled = false;
+let isCelebrating = false;
+let celebrationTimer = 0;
+let nextScorer = null;
 
 // Variables para el modo menú
 let idleRunning = false;
@@ -97,6 +100,10 @@ function startBasicGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl: 
     updateScore();
     updateTimer();
     resetRound();
+    isCelebrating = false;
+    celebrationTimer = 0;
+    const scoreboardUI = document.getElementById('scoreboard');
+    if(scoreboardUI) scoreboardUI.classList.remove('goal-active');
 
     // Arrancar bucle
     gameRunning = true;
@@ -194,6 +201,17 @@ function update(dt) {
     // 6. Gol
     checkGoal();
 
+    // Al usar 'dt', si el juego se pausa, 'dt' no avanza, por lo que el tiempo se congela.
+    if (isCelebrating) {
+        celebrationTimer -= dt;
+        if (celebrationTimer <= 0) {
+            isCelebrating = false;
+            const scoreboardUI = document.getElementById('scoreboard');
+            if(scoreboardUI) scoreboardUI.classList.remove('goal-active');
+            resetRound(nextScorer);
+        }
+    }
+
     // 7. Tiempo
     if (!gamePaused) {
         gameTime -= dt;
@@ -212,7 +230,7 @@ function checkGoal() {
     // Líneas de gol (donde están los postes frontales)
     const leftGoalLine = leftGoal.x + leftGoal.w;
     const rightGoalLine = rightGoal.x;
-    const scoreboardUI = document.getElementById('scoreboard'); // Capturamos el marcador
+    const scoreboardUI = document.getElementById('scoreboard');
 
     // Gol en la portería izquierda (marca el derecho)
     // Entra "más de la mitad" porque comprobamos el CENTRO de la pelota (ball.x)
@@ -223,11 +241,10 @@ function checkGoal() {
         // ENCENDER ANIMACIÓN
         if(scoreboardUI) scoreboardUI.classList.add('goal-active');
 
-        setTimeout(() => {
-            // APAGAR ANIMACIÓN AL REINICIAR
-            if(scoreboardUI) scoreboardUI.classList.remove('goal-active');
-            resetRound("right");
-        }, 2000); // 2 segundos de celebración
+        // Iniciamos la celebración
+        isCelebrating = true;
+        celebrationTimer = 2.0; // 2 segundos
+        nextScorer = "right";
     }
     // Gol en la portería derecha (marca el izquierdo)
     else if (ball.x > rightGoalLine && ball.y > rightGoal.y) {
@@ -237,11 +254,10 @@ function checkGoal() {
         // ENCENDER ANIMACIÓN
         if(scoreboardUI) scoreboardUI.classList.add('goal-active');
 
-        setTimeout(() => {
-            // APAGAR ANIMACIÓN AL REINICIAR
-            if(scoreboardUI) scoreboardUI.classList.remove('goal-active');
-            resetRound("left");
-        }, 2000); // 2 segundos de celebración
+        // Iniciamos la celebración
+        isCelebrating = true;
+        celebrationTimer = 2.0; // 2 segundos
+        nextScorer = "left";
     }
 }
 
