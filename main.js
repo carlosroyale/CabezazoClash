@@ -433,19 +433,36 @@ function resizeCanvas() {
   const baseW = 1845;
   const baseH = 1038;
 
-  // 1. Calcular la escala necesaria (zoom) para que quepa en la pantalla sin deformarse
+  // 1. Calcular la escala necesaria (zoom)
   const scale = Math.min(window.innerWidth / baseW, window.innerHeight / baseH);
 
-  // 2. Aplicar el zoom a TODA la caja (Canvas + HTML)
+  // 2. Aplicar el zoom a TODA la caja
   wrap.style.transform = `scale(${scale})`;
 
-  // 3. Fijamos la resolución interna (lógica) del juego
+  // 3. Fijamos la resolución interna
+  // IMPORTANTE: Cambiar width/height borra el contenido del canvas
   canvas.width = baseW;
   canvas.height = baseH;
 
-  // 4. Le avisamos al motor para que posicione las porterías con las medidas lógicas
+  // 4. Le avisamos al motor para que recalcule las porterías
   if (window.Game && window.Game.resize) {
     window.Game.resize(canvas.width, canvas.height);
+  }
+
+  // --- NUEVO: REPINTADO MANUAL SI ESTÁ EN PAUSA ---
+  // Como redimensionar borra el canvas, si el juego está pausado (el bucle no corre),
+  // se queda en negro. Necesitamos forzar un dibujado usando el estado actual.
+  if (window.Game && window.Game.forceRedraw) {
+    window.Game.forceRedraw(ctx);
+  }
+
+  // --- AUTOPAUSA AL GIRAR EL MÓVIL A VERTICAL ---
+  // Si la pantalla es más alta que ancha y estamos en la pantalla de juego
+  if (window.innerHeight > window.innerWidth && screenGame.classList.contains("active")) {
+    // Evitamos pausar si ya hay una cuenta atrás para reanudar (previene bugs visuales)
+    if (!cuentaAtrasActiva && window.Game && window.Game.pauseGame) {
+      window.Game.pauseGame();
+    }
   }
 }
 
@@ -459,3 +476,31 @@ resizeCanvas();
 if (window.Game && window.Game.startIdle) {
   window.Game.startIdle({ canvas, ctx });
 }
+
+/* ==========================================================================
+   AUTO-PAUSE CUANDO EL JUEGO PIERDE EL FOCO
+   ========================================================================== */
+
+// Función auxiliar para forzar la pausa
+function forcePauseIfPlaying() {
+  // Solo pausamos si estamos activamente en la pantalla de juego
+  // y el juego no está ya en pausa.
+  if (screenGame.classList.contains("active") && window.Game && window.Game.pauseGame) {
+    // Importante: No pausamos si está en la cuenta atrás para reanudar
+    if (!cuentaAtrasActiva) {
+      window.Game.pauseGame();
+    }
+  }
+}
+
+// 1. Cuando el usuario cambia de pestaña o minimiza el navegador
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    forcePauseIfPlaying();
+  }
+});
+
+// 2. Cuando el navegador pierde el foco (ej. hace clic en otra ventana/monitor)
+window.addEventListener("blur", () => {
+  forcePauseIfPlaying();
+});

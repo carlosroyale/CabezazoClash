@@ -276,6 +276,15 @@ function updateTimer() {
     }
 }
 
+// Se usa exclusivamente para repintar el frame estático cuando
+// se redimensiona la ventana y el juego está en pausa.
+function forceRedraw(contexto) {
+    if (gamePaused) {
+        // Usamos los objetos globales actuales tal y como se quedaron al pausar
+        dibujar(contexto, W, H, p1, p2, ball, leftGoal, rightGoal);
+    }
+}
+
 // API pública del motor para main.js e input.js
 window.Game = {
     startBasicGame,
@@ -284,5 +293,6 @@ window.Game = {
     resumeGame,
     stopBasicGame,
     resize,
-    resetRound
+    resetRound,
+    forceRedraw // Exportamos la nueva función
 };
