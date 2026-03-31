@@ -228,6 +228,7 @@ asignarBoton(btnOptionsBack, () => {
 });
 
 asignarBoton(btnContinue, () => {
+  touchControls.classList.add("hidden");
   showScreen(screenStart);
   window.Game.startIdle({ canvas, ctx });
 });
@@ -270,6 +271,9 @@ asignarBoton(btnExitPause, () => {
   hidePauseMenu();
   // mismo comportamiento que onExit
   window.Game.stopBasicGame();
+
+  touchControls.classList.add("hidden");
+
   showScreen(screenStart);
   window.Game.startIdle({ canvas, ctx });
 });
