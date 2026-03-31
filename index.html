@@ -15,6 +15,18 @@
   <div id="contador-pausa" class="hidden">3</div>
   <canvas id="game-canvas"></canvas>
 
+  <div id="touch-controls" class="hidden">
+    <div class="touch-left">
+      <button id="btn-touch-jump" class="touch-btn jump-btn">^</button>
+      <button id="btn-touch-left" class="touch-btn">&lt;</button>
+      <button id="btn-touch-right" class="touch-btn">&gt;</button>
+    </div>
+
+    <div class="touch-right">
+      <button id="btn-touch-kick" class="touch-btn kick-btn">O</button>
+    </div>
+  </div>
+
   <!-- Pantalla 1: Inicio -->
   <section id="screen-start" class="screen active">
     <button id="btn-info" class="info-btn"><i class="bi bi-question-lg"></i></button>
@@ -98,6 +110,17 @@
         <i>¿Tienes lo necesario para ser el campeón?</i>
       </p>
       <button id="btn-close-info" class="btn">ENTENDIDO</button>
+    </div>
+  </section>
+
+  <section id="screen-touch-warning" class="pause-menu hidden">
+    <div class="card info-card">
+      <h2 class="subtitle">Aviso Táctil</h2>
+      <p class="info-description">
+        El modo <b>1 VS 1 LOCAL</b> requiere el uso de un teclado para que dos personas puedan jugar en el mismo dispositivo.<br><br>
+        Actualmente no está disponible usando controles táctiles. ¡Prueba el modo contra el BOT!
+      </p>
+      <button id="btn-touch-warning-ok" class="btn">ACEPTAR</button>
     </div>
   </section>
 

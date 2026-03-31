@@ -27,6 +27,38 @@ const onKeyDown = (e) => {
     keys.add(e.code);
 };
 
+/* ==========================================================================
+   SISTEMA DE CONTROLES TÁCTILES
+   ========================================================================== */
+const setupTouchButton = (id, keyCode) => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+
+    // Al poner el dedo, simulamos que se pulsa la tecla
+    btn.addEventListener('touchstart', (e) => {
+        e.preventDefault(); // Evita clics fantasma del ratón
+        keys.add(keyCode);
+    }, { passive: false });
+
+    // Al levantar el dedo (o salir del botón), soltamos la tecla
+    const releaseKey = (e) => {
+        e.preventDefault();
+        keys.delete(keyCode);
+    };
+
+    btn.addEventListener('touchend', releaseKey, { passive: false });
+    btn.addEventListener('touchcancel', releaseKey, { passive: false });
+};
+
+// Vinculamos los botones a las teclas del Jugador 1
+// Si el HTML de los botones existe, se activarán
+window.addEventListener('DOMContentLoaded', () => {
+    setupTouchButton("btn-touch-left", "KeyA");
+    setupTouchButton("btn-touch-right", "KeyD");
+    setupTouchButton("btn-touch-jump", "KeyW");
+    setupTouchButton("btn-touch-kick", "Space");
+});
+
 const onKeyUp = (e) => keys.delete(e.code);
 
 // Añadimos { passive: false } para que el preventDefault del espacio funcione correctamente

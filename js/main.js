@@ -13,7 +13,9 @@ const screenGame = document.getElementById("screen-game");
 const screenEnd = document.getElementById("screen-end");
 const screenHowToPlay = document.getElementById("screen-how-to-play");
 const screenInfo = document.getElementById("screen-info");
-const screenModeSelect = document.getElementById("screen-mode-select"); // NUEVA PANTALLA
+const screenModeSelect = document.getElementById("screen-mode-select");
+const screenTouchWarning = document.getElementById("screen-touch-warning");
+const touchControls = document.getElementById("touch-controls");
 
 // Botones de navegación
 const btnPlay = document.getElementById("btn-play");
@@ -29,6 +31,7 @@ const btnCloseInfo = document.getElementById("btn-close-info");
 const btn1v1 = document.getElementById("btn-1v1");
 const btn1vBot = document.getElementById("btn-1vbot");
 const btnModeBack = document.getElementById("btn-mode-back");
+const btnTouchWarningOk = document.getElementById("btn-touch-warning-ok");
 
 // Elementos de opciones
 const musicVolumeSlider = document.getElementById("music-volume");
@@ -79,6 +82,11 @@ function showScreen(screenToShow) {
   screenHowToPlay.classList.remove("active");
   if(screenModeSelect) screenModeSelect.classList.remove("active");
   screenToShow.classList.add("active");
+}
+
+// Detecta si el usuario está usando una pantalla táctil (móvil o tablet)
+function isTouchDevice() {
+  return (('ontouchstart' in window) || (navigator.maxTouchPoints > 0));
 }
 
 function showPauseMenu() {
@@ -152,10 +160,17 @@ function beginBotGame() {
     timerEl,
     bot: true,
     onExit: () => {
+      touchControls.classList.add("hidden"); // Ocultar al salir
       showScreen(screenStart);
       window.Game.startIdle({ canvas, ctx });
     }
   };
+
+  // Mostrar controles si es móvil
+  if (isTouchDevice()) {
+    touchControls.classList.remove("hidden");
+  }
+
   showScreen(screenGame);
   window.Game.startBasicGame(lastGameParams);
 }
@@ -180,9 +195,22 @@ window.showEndScreen = showEndScreen;
 asignarBoton(btnPlay, () => showScreen(screenModeSelect));
 // Volver desde la selección de modo al inicio
 asignarBoton(btnModeBack, () => showScreen(screenStart));
-// Iniciar partidas desde la selección de modo
+// Iniciar partida 1v1 (con comprobación táctil)
 asignarBoton(btn1v1, () => {
-  beginBasicGame();
+  if (isTouchDevice()) {
+    // Si es táctil, mostramos el aviso
+    screenTouchWarning.classList.remove("hidden");
+  }
+  else {
+    // Si es un ordenador normal, arrancamos el juego
+    beginBasicGame();
+  }
+});
+
+// Cerrar el aviso táctil y volver al inicio
+asignarBoton(btnTouchWarningOk, () => {
+  screenTouchWarning.classList.add("hidden"); // Oculta la capa oscura
+  showScreen(screenStart);                    // Te devuelve al menú inicial
 });
 asignarBoton(btn1vBot, () => {
   beginBotGame();
