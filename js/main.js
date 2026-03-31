@@ -233,7 +233,9 @@ asignarBoton(btnResume, () => {
 asignarBoton(btnRestart, () => {
   hidePauseMenu();
   if (lastGameParams) {
-    beginBasicGame();
+    // En lugar de llamar a beginBasicGame(), le pasamos directamente
+    // los parámetros de la última partida (que ya saben si había bot o no)
+    window.Game.startBasicGame(lastGameParams);
   }
 });
 asignarBoton(btnExitPause, () => {
