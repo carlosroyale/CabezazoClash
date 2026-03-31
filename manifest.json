@@ -1,0 +1,22 @@
+{
+  "name": "Cabezazo Clash",
+  "short_name": "Cabezazo",
+  "description": "Frenético partido de fútbol cabezón",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#000000",
+  "theme_color": "#5c2d91",
+  "icons": [
+    {
+      "src": "assets/img/logo192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/img/logo512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

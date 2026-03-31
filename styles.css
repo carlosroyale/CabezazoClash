@@ -1,21 +1,40 @@
-/* reset básico */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  /* Evitar selección de texto y menú de copiar/pegar accidental */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  /* Eliminar el destello azul al tocar botones en Android */
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* 1. BODY: Centra el contenedor maestro y pone las bandas negras */
+/* EXCEPCIÓN: Permitir seleccionar y escribir en los inputs del Login */
+input {
+  -webkit-user-select: auto;
+  user-select: auto;
+}
+
+/* 1. BODY: Centra el contenedor y anula comportamientos nativos */
 body {
   width: 100vw;
   height: 100vh;
-  background-color: #000; /* Color de las bandas exteriores */
+  height: 100vh;          /* Fallback para navegadores antiguos */
+  height: 100dvh;         /* MEDIDA DINÁMICA MÓVIL (¡La magia!) */
+  background-color: #000;
   font-family: 'Arial', sans-serif;
   display: flex;
   justify-content: center;
   align-items: center;
-  overflow: hidden; /* Evita barras de scroll */
+  overflow: hidden;
   margin: 0;
+
+  /* MATAR GESTOS NATIVOS */
+  touch-action: none; /* Bloquea el doble toque y el arrastre nativo */
+  overscroll-behavior: none; /* Bloquea el efecto rebote y pull-to-refresh */
 }
 
 /* 2. EL CONTENEDOR MAESTRO: Tamaño fijo, se escalará por JS */
@@ -622,7 +641,8 @@ body {
   top: 0;
   left: 0;
   width: 100vw;
-  height: 100vh;
+  height: 100vh;          /* Fallback */
+  height: 100dvh;         /* MEDIDA DINÁMICA MÓVIL */
   background-color: #0f172a; /* Azul oscuro elegante */
   color: white;
   z-index: 9999; /* Por encima de todo, sin excepciones */
