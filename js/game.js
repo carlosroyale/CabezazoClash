@@ -276,7 +276,15 @@ function resetRound(lastScorer = null) {
 
     ball.x = W / 2;
     ball.y = FLOOR_Y - 200;
-    ball.vx = lastScorer === "left" ? 220 : -220;
+
+    if (lastScorer === "left") ball.vx = 220;  // Marcó el P1 (izq), así que saca el P2 (der)
+    else if (lastScorer === "right") ball.vx = -220; // Marcó el P2 (der), así que saca el P1 (izq)
+    else {
+        // Si no hay goleador previo (saque inicial), echamos una moneda al aire:
+        // Math.random() genera un número entre 0 y 1. Si es mayor a 0.5 va a la derecha, si no, a la izquierda.
+        ball.vx = Math.random() > 0.5 ? 220 : -220;
+    }
+
     ball.vy = -220;
 }
 
