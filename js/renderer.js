@@ -28,6 +28,9 @@ imgP2Body.src = 'assets/img/jugador2.png';
 const imgP2Shoe = new Image();
 imgP2Shoe.src = 'assets/img/jugador2Bota.png';
 
+const imgCrowd = new Image();
+imgCrowd.src = 'assets/img/publico.png';
+
 // Global ctx for drawing functions
 let drawingCtx;
 
@@ -37,6 +40,11 @@ function dibujar(ctx, W, H, p1, p2, ball, leftGoal, rightGoal) {
 
     // 1. Fondo (lo más profundo)
     drawField(W, H);
+
+    // 1.5. Público estático (SOLO si hay partido, es decir, si p1 existe)
+    if (p1) {
+        drawCrowd(W);
+    }
 
     // 2. Jugadores y pelota (Solo se dibujan si no son null)
     if (p1) drawPlayer(p1, imgP1Body, imgP1Shoe);
@@ -58,6 +66,14 @@ function drawField(W, H) {
     if (bgImage.complete) {
         drawingCtx.drawImage(bgImage, 0, 0, W, H);
     }
+}
+
+// Función para dibujar al público (Estático)
+function drawCrowd(W) {
+    if (!imgCrowd.complete || imgCrowd.width === 0) return;
+
+    // Dibujamos la imagen entera directamente
+    drawingCtx.drawImage(imgCrowd, 0, 365, W, 285);
 }
 
 function drawPlayer(p, bodyImg, shoeImg) {
