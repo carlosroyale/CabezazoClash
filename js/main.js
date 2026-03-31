@@ -469,11 +469,10 @@ function resizeCanvas() {
   // 1. Calcular la escala necesaria (zoom)
   const scale = Math.min(window.innerWidth / baseW, window.innerHeight / baseH);
 
-  // 2. Aplicar el zoom a TODA la caja
-  wrap.style.transform = `scale(${scale})`;
+  // 2. Aplicar el zoom a TODA la caja, ajustando el punto central
+  wrap.style.transform = `translate(-50%, -50%) scale(${scale})`;
 
   // 3. Fijamos la resolución interna
-  // IMPORTANTE: Cambiar width/height borra el contenido del canvas
   canvas.width = baseW;
   canvas.height = baseH;
 

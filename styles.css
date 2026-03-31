@@ -31,6 +31,7 @@ body {
   align-items: center;
   overflow: hidden;
   margin: 0;
+  position: relative;     /* Añadimos esto para centrar la caja maestra */
 
   /* MATAR GESTOS NATIVOS */
   touch-action: none; /* Bloquea el doble toque y el arrastre nativo */
@@ -39,7 +40,10 @@ body {
 
 /* 2. EL CONTENEDOR MAESTRO: Tamaño fijo, se escalará por JS */
 .game-wrap {
-  position: relative;
+  position: absolute;   /* Cambiamos de relative a absolute */
+  top: 50%;             /* Lo empujamos al centro de la pantalla */
+  left: 50%;            /* Lo empujamos al centro de la pantalla */
+
   width: 1845px;
   height: 1038px;
   transform-origin: center center;
@@ -631,6 +635,50 @@ body {
   line-height: 1.6;
   margin-bottom: 3rem;
 }
+/* =========================================
+   BLOQUEO DE ORIENTACIÓN (PORTRAIT)
+   ========================================= */
+#orientation-warning {
+  display: none; /* Oculto por defecto */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: #0f172a; /* Azul oscuro elegante */
+  color: white;
+  z-index: 9999; /* Por encima de todo, sin excepciones */
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.orientation-content i {
+  font-size: 8rem;
+  color: #ffce00;
+  display: block;
+  margin-bottom: 2rem;
+  animation: rotatePhone 2s infinite ease-in-out;
+}
+
+.orientation-content h2 {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.orientation-content p {
+  font-size: 1.5rem;
+  opacity: 0.8;
+  padding: 0 30px;
+}
+
+/* Animación del icono girando */
+@keyframes rotatePhone {
+  0% { transform: rotate(0deg); }
+  50% { transform: rotate(-90deg); }
+  100% { transform: rotate(0deg); }
+}
 
 /* =========================================
    CONTROLES TÁCTILES EN PANTALLA (MEJORADOS)
@@ -749,14 +797,15 @@ body {
   100% { transform: rotate(0deg); }
 }
 
-/* Si el dispositivo está en vertical (portrait) y es una pantalla pequeña/mediana
-  mostramos el aviso y ocultamos el juego.
-*/
-@media screen and (orientation: portrait){
+/* BLOQUEO VERTICAL A PRUEBA DE BALAS */
+@media (orientation: portrait), (max-aspect-ratio: 1/1) {
   #orientation-warning {
-    display: flex;
+    display: flex !important;
   }
   #game-wrap {
-    display: none; /* Oculta el juego para que no haya desbordamientos raros de pantalla */
+    display: none !important;
+  }
+  #touch-controls {
+    display: none !important;
   }
 }
