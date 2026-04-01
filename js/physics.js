@@ -95,9 +95,9 @@ function applyBounce(ball, p, nx, ny) {
     const rvy = ball.vy - p.vy;
     const velAlongNormal = rvx * nx + rvy * ny;
 
-    if (velAlongNormal >= 0) return;
+    if (velAlongNormal >= -40) return;
 
-    window.playSound('sfx-kick');
+    window.playSound('sfx-kick',0.8);
 
     const j = -(1 + RESTITUTION) * velAlongNormal;
     ball.vx += j * nx;

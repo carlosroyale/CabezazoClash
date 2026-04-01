@@ -228,6 +228,7 @@ asignarBoton(btnOptionsBack, () => {
 });
 
 asignarBoton(btnContinue, () => {
+  stopAllSounds();
   touchControls.classList.add("hidden");
   showScreen(screenStart);
   window.Game.startIdle({ canvas, ctx });
@@ -272,6 +273,7 @@ asignarBoton(btnExitPause, () => {
   hidePauseMenu();
   // mismo comportamiento que onExit
   window.Game.stopBasicGame();
+  stopAllSounds(); // Silencio total antes de salir al menú
   touchControls.classList.add("hidden");
   showScreen(screenStart);
   window.Game.startIdle({ canvas, ctx });
@@ -329,11 +331,13 @@ asignarBoton(btnCloseInfo, () => {
 // sincronizar con teclas en el motor
 document.addEventListener('game-paused', () => {
   showPauseMenu();
+  stopAllSounds();
   document.getElementById('game-wrap').classList.add('is-paused');
 });
 
 document.addEventListener('game-resumed', () => {
   hidePauseMenu();
+  playMatchAmbient();
   document.getElementById('game-wrap').classList.remove('is-paused');
 });
 
@@ -380,25 +384,60 @@ function updateOptionsUI() {
 
 
 /* ==========================================================================
-   SISTEMA DE AUDIO BGM Y AMBIENTE
+   SISTEMA DE AUDIO WEB (ALTO RENDIMIENTO)
    ========================================================================== */
 let musicUnlocked = false;
 
-function applyVolumes() {
-  if (bgMusic) bgMusic.volume = settings.musicVolume / 100;
-  if (sfxCrowdAmbient) sfxCrowdAmbient.volume = (settings.sfxVolume / 100) * 0.5; // El público lo ponemos un poco más bajo
+// 1. Inicializar el motor de audio de alto rendimiento
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+const audioCtx = new AudioContext();
+const sfxBuffers = {}; // Aquí guardaremos los audios decodificados en RAM
+let activeSFXNodes = new Set(); // Para poder pararlos al pausar
+
+// 2. Función para cargar los MP3 en memoria
+async function loadSound(id, url) {
+  try {
+    const response = await fetch(url);
+    const arrayBuffer = await response.arrayBuffer();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    sfxBuffers[id] = audioBuffer;
+  } catch (e) {
+    console.warn("No se pudo cargar el audio:", id, e);
+  }
 }
 
-function stopAllMusic() {
+// 3. Cargar todos los efectos de sonido al iniciar la página
+loadSound('sfx-whistle', 'assets/audio/whistle.mp3').then();
+loadSound('sfx-goal', 'assets/audio/goal_cheer.mp3').then();
+loadSound('sfx-kick', 'assets/audio/kick.mp3').then();
+loadSound('sfx-ball-post', 'assets/audio/ball_post.mp3').then();
+loadSound('sfx-ball-grass', 'assets/audio/ball_grass.mp3').then();
+loadSound('sfx-jump', 'assets/audio/jump.mp3').then();
+loadSound('sfx-land', 'assets/audio/land.mp3').then();
+loadSound('sfx-player-collide', 'assets/audio/player_collide.mp3').then();
+loadSound('sfx-player-kick', 'assets/audio/player_kick.mp3').then();
+
+function applyVolumes() {
+  if (bgMusic) bgMusic.volume = settings.musicVolume / 100;
+  if (sfxCrowdAmbient) sfxCrowdAmbient.volume = (settings.sfxVolume / 100) * 0.5;
+}
+
+function stopAllSounds() {
   if(bgMusic) bgMusic.pause();
   if(sfxCrowdAmbient) sfxCrowdAmbient.pause();
+
+  // Parar todos los efectos de Web Audio API
+  activeSFXNodes.forEach(source => {
+    try { source.stop(); } catch(e){}
+  });
+  activeSFXNodes.clear();
 }
 
 function playMenuMusic() {
   if (!musicUnlocked || settings.musicVolume <= 0) return;
   if(sfxCrowdAmbient) sfxCrowdAmbient.pause();
   if(bgMusic) {
-    bgMusic.currentTime = 0; // Siempre desde el principio
+    bgMusic.currentTime = 0;
     applyVolumes();
     bgMusic.play().catch(()=>{});
   }
@@ -433,21 +472,21 @@ screenTapToStart.addEventListener('click', async () => {
   if (musicUnlocked) return;
   musicUnlocked = true;
 
-  // Ocultar pantalla de tap y mostrar menú
+  // Reactivar el contexto de audio (Política obligatoria de los navegadores)
+  if (audioCtx.state === 'suspended') {
+    await audioCtx.resume();
+  }
+
   screenTapToStart.classList.remove('active');
   showScreen(screenStart);
-
-  // Arrancar música del menú
   playMenuMusic();
 });
 
-// Pausar audio si cambias de pestaña
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
-    stopAllMusic();
+    stopAllSounds();
   } else {
     if (!musicUnlocked) return;
-    // Si estamos en el juego, reproducimos ambiente. Si no, música de menú.
     if (screenGame.classList.contains("active")) {
       playMatchAmbient();
     } else {
@@ -456,21 +495,38 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// Función global para reproducir efectos de sonido
-window.playSound = function(soundId) {
-  // Si el volumen está a 0 o no está desbloqueado, no hacemos nada
+// 4. Función global para reproducir efectos (Latencia Cero)
+window.playSound = function(soundId, volume = 1) {
   if (settings.sfxVolume <= 0 || !musicUnlocked) return;
 
-  const audioEl = document.getElementById(soundId);
-  if (audioEl) {
-    // Clonamos el nodo para poder reproducir el mismo sonido varias veces seguidas muy rápido (ej: la pelota botando)
-    const clone = audioEl.cloneNode();
-    clone.volume = settings.sfxVolume / 100;
-    clone.play().catch(e => console.warn("Error reproduciendo SFX:", soundId, e));
-
-    // Limpiamos el clon cuando termine para no llenar la memoria
-    clone.addEventListener('ended', () => { clone.remove(); });
+  // SEGURIDAD: Evitar que el 'kick' se sature (máximo uno cada 60ms)
+  if (soundId === 'sfx-kick') {
+    const now = Date.now();
+    if (window._lastKickTime && now - window._lastKickTime < 100) return;
+    window._lastKickTime = now;
   }
+
+  const buffer = sfxBuffers[soundId];
+  if (!buffer) return;
+
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+
+  const source = audioCtx.createBufferSource();
+  source.buffer = buffer;
+
+  const gainNode = audioCtx.createGain();
+  // Multiplicamos el volumen recibido por el ajuste global de la UI
+  gainNode.gain.value = (settings.sfxVolume / 100) * volume;
+
+  source.connect(gainNode);
+  gainNode.connect(audioCtx.destination);
+
+  source.start(0);
+
+  activeSFXNodes.add(source);
+  source.onended = () => {
+    activeSFXNodes.delete(source);
+  };
 };
 
 

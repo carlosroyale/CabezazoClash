@@ -66,9 +66,9 @@ function updateBall(ball, dt, W, FLOOR_Y) {
 
     // suelo
     if (ball.y + ball.r > FLOOR_Y) {
-        // Solo suena si el bote es contundente (evita zumbidos si va rodando)
-        if (ball.vy > 80) {
-            window.playSound('sfx-ball-grass');
+        // Solo suena si el bote es contundente (tiene velocidad vertical)
+        if (ball.vy > 100) {
+            window.playSound('sfx-kick',0.5);
         }
         ball.y = FLOOR_Y - ball.r;
         ball.vy = -ball.vy * RESTITUTION;
@@ -100,6 +100,11 @@ function controlPlayer(p, dt, leftKey, rightKey, jumpKey, kickKey, keys) {
 
     // --- LÓGICA DE CARGA DE PIERNA ---
     if (keys.has(kickKey)) {
+        // Solo suena en el instante exacto en que empieza a levantar la pierna
+        if (!p.isKicking) {
+            window.playSound('sfx-kick',1.2);
+        }
+
         p.isKicking = true;
         p.kickAngle += p.kickSpeed * dt;
         // Topar en el ángulo máximo
@@ -228,6 +233,10 @@ function controlBot(bot, dt, ball, W, FLOOR_Y, keys) {
     const wantsToKick    = distToBallFull < KICK_DIST && isBallOnBotSide;
 
     if (wantsToKick && canKick) {
+        // Solo suena en el instante exacto en que el bot decide chutar
+        if (!bot.isKicking) {
+            window.playSound('sfx-kick', 1.2);
+        }
         // Activar patada
         bot.isKicking  = true;
         bot.kickAngle += bot.kickSpeed * dt;

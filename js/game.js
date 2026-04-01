@@ -238,7 +238,7 @@ function checkGoal() {
     if (ball.x < leftGoalLine && ball.y > leftGoal.y) {
         score.right++;
         isGoalScored = true;
-        window.playSound('sfx-goal');
+        window.playSound('sfx-goal', 0.5);
 
         // ENCENDER ANIMACIÓN
         if(scoreboardUI) scoreboardUI.classList.add('goal-active');
@@ -252,7 +252,7 @@ function checkGoal() {
     else if (ball.x > rightGoalLine && ball.y > rightGoal.y) {
         score.left++;
         isGoalScored = true;
-        window.playSound('sfx-goal');
+        window.playSound('sfx-goal', 0.5);
 
         // ENCENDER ANIMACIÓN
         if(scoreboardUI) scoreboardUI.classList.add('goal-active');
