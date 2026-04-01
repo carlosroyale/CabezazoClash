@@ -216,6 +216,7 @@ function update(dt) {
     if (!gamePaused) {
         gameTime -= dt;
         if (gameTime <= 0) {
+            window.playSound('sfx-whistle');
             endGame();
         }
         updateScore();
@@ -237,6 +238,7 @@ function checkGoal() {
     if (ball.x < leftGoalLine && ball.y > leftGoal.y) {
         score.right++;
         isGoalScored = true;
+        window.playSound('sfx-goal');
 
         // ENCENDER ANIMACIÓN
         if(scoreboardUI) scoreboardUI.classList.add('goal-active');
@@ -250,6 +252,7 @@ function checkGoal() {
     else if (ball.x > rightGoalLine && ball.y > rightGoal.y) {
         score.left++;
         isGoalScored = true;
+        window.playSound('sfx-goal');
 
         // ENCENDER ANIMACIÓN
         if(scoreboardUI) scoreboardUI.classList.add('goal-active');

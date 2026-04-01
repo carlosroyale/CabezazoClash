@@ -12,6 +12,11 @@
 </head>
 <body>
 <div id="game-wrap" class="game-wrap">
+  <section id="screen-tap-to-start" class="screen active" style="z-index: 999; background: #000; cursor: pointer;">
+    <div class="card" style="background: transparent; box-shadow: none; backdrop-filter: none;">
+      <h1 class="title" style="font-size: 3rem; animation: pulse-text 1.5s infinite alternate ease-in-out;">TOCA PARA EMPEZAR</h1>
+    </div>
+  </section>
 
   <div id="contador-pausa" class="hidden">3</div>
   <canvas id="game-canvas"></canvas>
@@ -29,7 +34,7 @@
   </div>
 
   <!-- Pantalla 1: Inicio -->
-  <section id="screen-start" class="screen active">
+  <section id="screen-start" class="screen">
     <button id="btn-info" class="info-btn"><i class="bi bi-question-lg"></i></button>
     <div class="card">
       <h1 class="title">Cabezazo Clash</h1>
@@ -177,9 +182,24 @@
 
 <!-- música de fondo -->
 <audio id="bg-music" loop preload="auto">
-  <source src="assets/audio/SoundTrackHS.ogg" type="audio/ogg">
-  <source src="assets/audio/SoundTrackHS.mp3" type="audio/mpeg">
+  <source src="assets/audio/menu_music.mp3" type="audio/mpeg">
 </audio>
+
+<audio id="sfx-crowd-ambient" loop preload="auto">
+  <source src="assets/audio/crowd_ambient.mp3" type="audio/mpeg">
+</audio>
+
+<audio id="sfx-whistle" src="assets/audio/whistle.mp3" preload="auto"></audio>
+<audio id="sfx-goal" src="assets/audio/goal_cheer.mp3" preload="auto"></audio>
+
+<audio id="sfx-kick" src="assets/audio/kick.mp3" preload="auto"></audio>
+<audio id="sfx-ball-post" src="assets/audio/ball_post.mp3" preload="auto"></audio>
+<audio id="sfx-ball-grass" src="assets/audio/ball_grass.mp3" preload="auto"></audio>
+
+<audio id="sfx-jump" src="assets/audio/jump.mp3" preload="auto"></audio>
+<audio id="sfx-land" src="assets/audio/land.mp3" preload="auto"></audio>
+<audio id="sfx-player-collide" src="assets/audio/player_collide.mp3" preload="auto"></audio>
+<audio id="sfx-player-kick" src="assets/audio/player_kick.mp3" preload="auto"></audio>
 
 <script src="js/constants.js?v=2"></script>
 <script src="js/entities.js?v=1"></script>

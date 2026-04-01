@@ -33,12 +33,14 @@ function updatePlayer(p, dt, W, FLOOR_Y) {
 
     // suelo
     if (p.y + p.h / 2 >= FLOOR_Y) {
+        if (!p.onGround && p.vy > 100) {
+            window.playSound('sfx-land');
+        }
         p.y = FLOOR_Y - p.h / 2;
         p.vy = 0;
         p.onGround = true;
-    } else {
-        p.onGround = false;
     }
+    else p.onGround = false;
 }
 
 function updateBall(ball, dt, W, FLOOR_Y) {
@@ -64,6 +66,10 @@ function updateBall(ball, dt, W, FLOOR_Y) {
 
     // suelo
     if (ball.y + ball.r > FLOOR_Y) {
+        // Solo suena si el bote es contundente (evita zumbidos si va rodando)
+        if (ball.vy > 80) {
+            window.playSound('sfx-ball-grass');
+        }
         ball.y = FLOOR_Y - ball.r;
         ball.vy = -ball.vy * RESTITUTION;
         ball.vx *= FRICTION;
@@ -89,6 +95,7 @@ function controlPlayer(p, dt, leftKey, rightKey, jumpKey, kickKey, keys) {
     if (keys.has(jumpKey) && p.onGround && p.canJump) {
         p.vy = -p.jump;
         p.onGround = false;
+        window.playSound('sfx-jump');
     }
 
     // --- LÓGICA DE CARGA DE PIERNA ---
@@ -188,7 +195,8 @@ function controlBot(bot, dt, ball, W, FLOOR_Y, keys) {
     if ((shouldJumpForHeader || shouldJumpForShot) && bot.onGround && bot.canJump) {
         bot.vy       = -bot.jump;
         bot.onGround = false;
-        bot.canJump  = false; // evitar doble salto 
+        bot.canJump  = false; // evitar doble salto
+        window.playSound('sfx-jump');
     }
 
     // Recargar salto cuando el bot esta en el suelo

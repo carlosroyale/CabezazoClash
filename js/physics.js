@@ -97,6 +97,8 @@ function applyBounce(ball, p, nx, ny) {
 
     if (velAlongNormal >= 0) return;
 
+    window.playSound('sfx-kick');
+
     const j = -(1 + RESTITUTION) * velAlongNormal;
     ball.vx += j * nx;
     ball.vy += j * ny;
@@ -227,6 +229,12 @@ function collideBallStaticRect(ball, rect) {
 
         // Reflejar velocidad
         const velAlongNormal = ball.vx * nx + ball.vy * ny;
+
+        // Solo suena si el golpe es un poco fuerte (evita ruidos si la pelota rueda por encima)
+        if (velAlongNormal < -40) {
+            window.playSound('sfx-ball-post');
+        }
+
         ball.vx -= 2 * velAlongNormal * nx * RESTITUTION;
         ball.vy -= 2 * velAlongNormal * ny * RESTITUTION;
     }
@@ -353,14 +361,25 @@ function resolveBodyBody(p1, p2, b1, b2) {
     const overlapY = Math.max(0, Math.min(b1.y + b1.h, b2.y + b2.h) - Math.max(b1.y, b2.y));
 
     if (overlapX > 0 && overlapY > 0) {
+
+        //  Sonido de choque de cuerpos (con cooldown y velocidad mínima)
+        if (!p1.lastBump || performance.now() - p1.lastBump > 300) {
+            if (Math.abs(p1.vx) > 50 || Math.abs(p2.vx) > 50) {
+                window.playSound('sfx-player-collide');
+                p1.lastBump = performance.now();
+                p2.lastBump = performance.now();
+            }
+        }
+
         if (overlapX < overlapY) {
             const dir = (b1.x + b1.w/2) < (b2.x + b2.w/2) ? -1 : 1;
             p1.x += dir * overlapX / 2;
             p2.x -= dir * overlapX / 2;
             p1.vx = 0; p2.vx = 0;
-        } else {
+        }
+        else {
             const dir = (b1.y + b1.h/2) < (b2.y + b2.h/2) ? -1 : 1;
-            // CORRECCIÓN: Solo apoyarse si está cayendo
+            // Solo apoyarse si está cayendo
             if (dir < 0) {
                 p1.y -= overlapY;
                 if (p1.vy >= 0) { p1.vy = 0; p1.onGround = true; }
@@ -407,6 +426,12 @@ function resolveCircRectPlayer(circ, pTarget, rect) {
     const dist2 = dx*dx + dy*dy;
 
     if (dist2 < circ.r * circ.r) {
+        // Sonido de patada a otro jugador
+        if (!pTarget.lastKickHit || performance.now() - pTarget.lastKickHit > 300) {
+            window.playSound('sfx-player-kick');
+            pTarget.lastKickHit = performance.now();
+        }
+
         const dist = Math.sqrt(dist2);
         if (dist < 0.001) return;
         const nx = dx / dist;

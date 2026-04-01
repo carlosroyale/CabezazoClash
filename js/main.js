@@ -5,6 +5,7 @@
    ========================================================================== */
 
 // Pantallas
+const screenTapToStart = document.getElementById("screen-tap-to-start");
 const screenStart = document.getElementById("screen-start");
 const screenOptions = document.getElementById("screen-options");
 const screenGame = document.getElementById("screen-game");
@@ -46,6 +47,7 @@ const ctx = canvas.getContext("2d");
 const scoreEl = document.getElementById("score");
 const timerEl = document.getElementById("timer");
 const bgMusic = document.getElementById("bg-music");
+const sfxCrowdAmbient = document.getElementById("sfx-crowd-ambient");
 
 // Elementos de la pantalla de fin
 const finalScoreEl = document.getElementById("final-score");
@@ -126,9 +128,6 @@ function iniciarCuentaAtrasReanudar() {
 function asignarBoton(elemento, callback) {
   if (!elemento) return;
   elemento.addEventListener('click', (e) => {
-    // Desbloquear audio si es la primera interacción
-    if (!musicUnlocked) unlockMusicOnFirstUserGestureHandler().then();
-
     e.stopPropagation();
     callback(e);
   });
@@ -144,8 +143,11 @@ function beginBasicGame() {
     onExit: () => {
       showScreen(screenStart);
       window.Game.startIdle({ canvas, ctx });
+      playMenuMusic();
     }
   };
+  playMatchAmbient();
+  window.playSound('sfx-whistle');
   showScreen(screenGame);
   window.Game.startBasicGame(lastGameParams);
 }
@@ -161,8 +163,12 @@ function beginBotGame() {
       touchControls.classList.add("hidden"); // Ocultar al salir
       showScreen(screenStart);
       window.Game.startIdle({ canvas, ctx });
+      playMenuMusic();
     }
   };
+
+  playMatchAmbient();
+  window.playSound('sfx-whistle');
 
   // Mostrar controles si es móvil
   if (isTouchDevice()) {
@@ -225,6 +231,7 @@ asignarBoton(btnContinue, () => {
   touchControls.classList.add("hidden");
   showScreen(screenStart);
   window.Game.startIdle({ canvas, ctx });
+  playMenuMusic();
 });
 
 // Lanzar niveles
@@ -265,11 +272,10 @@ asignarBoton(btnExitPause, () => {
   hidePauseMenu();
   // mismo comportamiento que onExit
   window.Game.stopBasicGame();
-
   touchControls.classList.add("hidden");
-
   showScreen(screenStart);
   window.Game.startIdle({ canvas, ctx });
+  playMenuMusic();
 });
 asignarBoton(btnPauseOptions, () => {
   // Abrimos ajustes manteniendo el juego y el HUD de fondo
@@ -374,75 +380,98 @@ function updateOptionsUI() {
 
 
 /* ==========================================================================
-   SISTEMA DE AUDIO BGM (Básico y sin Fading)
+   SISTEMA DE AUDIO BGM Y AMBIENTE
    ========================================================================== */
-
 let musicUnlocked = false;
 
-// Función simple para aplicar el volumen actual de la música
-function setMusicVolumeFromSettings() {
-  // Asegurar que el audio existe
-  if (!bgMusic) return;
-
-  // El volumen del elemento de audio va del 0.0 al 1.0
-  bgMusic.volume = settings.musicVolume / 100;
+function applyVolumes() {
+  if (bgMusic) bgMusic.volume = settings.musicVolume / 100;
+  if (sfxCrowdAmbient) sfxCrowdAmbient.volume = (settings.sfxVolume / 100) * 0.5; // El público lo ponemos un poco más bajo
 }
 
-// Iniciar música respetando el volumen
-async function tryStartMusic() {
-  // Si el volumen de la música está al 0%, no la iniciamos
-  if (settings.musicVolume <= 0) {
-    bgMusic.pause();
-    return;
-  }
+function stopAllMusic() {
+  if(bgMusic) bgMusic.pause();
+  if(sfxCrowdAmbient) sfxCrowdAmbient.pause();
+}
 
-  // Establecer el volumen antes de reproducir
-  setMusicVolumeFromSettings();
-
-  try {
-    await bgMusic.play();
-  } catch (e) {
-    // Autoplay bloqueado por el navegador, se desbloqueará con el primer gesto
+function playMenuMusic() {
+  if (!musicUnlocked || settings.musicVolume <= 0) return;
+  if(sfxCrowdAmbient) sfxCrowdAmbient.pause();
+  if(bgMusic) {
+    bgMusic.currentTime = 0; // Siempre desde el principio
+    applyVolumes();
+    bgMusic.play().catch(()=>{});
   }
 }
 
-// Manejador para desbloquear el audio globalmente
-async function unlockMusicOnFirstUserGestureHandler() {
-  if (musicUnlocked) return;
-  musicUnlocked = true;
-
-  // Limpiamos los listeners para que no se disparen más veces
-  document.removeEventListener("pointerdown", unlockMusicOnFirstUserGestureHandler);
-  document.removeEventListener("keydown", unlockMusicOnFirstUserGestureHandler);
-
-  await tryStartMusic();
+function playMatchAmbient() {
+  if (!musicUnlocked || settings.sfxVolume <= 0) return;
+  if(bgMusic) bgMusic.pause();
+  if(sfxCrowdAmbient) {
+    applyVolumes();
+    sfxCrowdAmbient.play().catch(()=>{});
+  }
 }
 
-// Pausar audio si cambias de pestaña
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    if (!bgMusic.paused) bgMusic.pause();
-  } else {
-    // Si la música está activada (volumen > 0) y el audio desbloqueado, reanudamos
-    if (settings.musicVolume > 0 && musicUnlocked) bgMusic.play().catch(()=>{});
-  }
-});
-
-// NUEVOS Listeners para los deslizadores (usamos el evento 'input' para un cambio fluido)
+// Listeners para los deslizadores
 musicVolumeSlider.addEventListener("input", () => {
   settings.musicVolume = Number(musicVolumeSlider.value);
   saveSettings();
   updateOptionsUI();
-  // Aplicar el cambio de volumen instantáneamente
-  setMusicVolumeFromSettings();
+  applyVolumes();
 });
 
 sfxVolumeSlider.addEventListener("input", () => {
   settings.sfxVolume = Number(sfxVolumeSlider.value);
   saveSettings();
   updateOptionsUI();
-  // (Aquí asignarías el volumen de los SFX si tienes esa lógica)
+  applyVolumes();
 });
+
+// Desbloqueo inicial (Tap to Start)
+screenTapToStart.addEventListener('click', async () => {
+  if (musicUnlocked) return;
+  musicUnlocked = true;
+
+  // Ocultar pantalla de tap y mostrar menú
+  screenTapToStart.classList.remove('active');
+  showScreen(screenStart);
+
+  // Arrancar música del menú
+  playMenuMusic();
+});
+
+// Pausar audio si cambias de pestaña
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    stopAllMusic();
+  } else {
+    if (!musicUnlocked) return;
+    // Si estamos en el juego, reproducimos ambiente. Si no, música de menú.
+    if (screenGame.classList.contains("active")) {
+      playMatchAmbient();
+    } else {
+      playMenuMusic();
+    }
+  }
+});
+
+// Función global para reproducir efectos de sonido
+window.playSound = function(soundId) {
+  // Si el volumen está a 0 o no está desbloqueado, no hacemos nada
+  if (settings.sfxVolume <= 0 || !musicUnlocked) return;
+
+  const audioEl = document.getElementById(soundId);
+  if (audioEl) {
+    // Clonamos el nodo para poder reproducir el mismo sonido varias veces seguidas muy rápido (ej: la pelota botando)
+    const clone = audioEl.cloneNode();
+    clone.volume = settings.sfxVolume / 100;
+    clone.play().catch(e => console.warn("Error reproduciendo SFX:", soundId, e));
+
+    // Limpiamos el clon cuando termine para no llenar la memoria
+    clone.addEventListener('ended', () => { clone.remove(); });
+  }
+};
 
 
 /* ==========================================================================
@@ -451,11 +480,6 @@ sfxVolumeSlider.addEventListener("input", () => {
 
 loadSettings();
 updateOptionsUI();
-
-// Preparar el desbloqueo global del audio
-document.addEventListener("pointerdown", unlockMusicOnFirstUserGestureHandler, {once: true});
-document.addEventListener("keydown", unlockMusicOnFirstUserGestureHandler, {once: true});
-tryStartMusic();
 
 // Listener de redimensión para el Canvas y la UI
 function resizeCanvas() {
