@@ -434,7 +434,7 @@ function stopAllSounds() {
 }
 
 function playMenuMusic() {
-  if (!musicUnlocked || settings.musicVolume <= 0) return;
+  if (!musicUnlocked) return;
   if(sfxCrowdAmbient) sfxCrowdAmbient.pause();
   if(bgMusic) {
     bgMusic.currentTime = 0;
@@ -444,7 +444,7 @@ function playMenuMusic() {
 }
 
 function playMatchAmbient() {
-  if (!musicUnlocked || settings.sfxVolume <= 0) return;
+  if (!musicUnlocked) return;
   if(bgMusic) bgMusic.pause();
   if(sfxCrowdAmbient) {
     applyVolumes();
