@@ -684,6 +684,7 @@ body {
    CONTROLES TÁCTILES EN PANTALLA (MEJORADOS)
    ========================================= */
 #touch-controls {
+  position: absolute;
   bottom: 60px;
   left: 0;
   width: 100%;
@@ -698,44 +699,12 @@ body {
   display: none !important;
 }
 
-/* Cruceta Izquierda (Triángulo) */
-.touch-left {
+/* Contenedores flexibles para que se ordenen solos uno al lado del otro */
+.touch-left, .touch-right {
   display: flex;
-  position: relative;
   gap: 30px; /* Separación entre los botones */
-  width: 420px;
-  height: 320px;
+  align-items: center; /* Los centra verticalmente */
   pointer-events: auto;
-}
-
-#btn-touch-jump {
-  top: 0;
-  left: 130px; /* Centrado justo encima del hueco */
-}
-
-#btn-touch-left {
-  bottom: 0;
-  left: 0;
-}
-
-#btn-touch-right {
-  bottom: 0;
-  right: 0;
-}
-
-/* Lado Derecho (Disparo) */
-.touch-right {
-  display: flex;
-  position: relative;
-  gap: 30px; /* Separación entre los botones */
-  width: 160px;
-  height: 320px;
-  pointer-events: auto;
-}
-
-#btn-touch-kick {
-  bottom: 0;
-  right: 0;
 }
 
 /* Estilo Base del Botón */
