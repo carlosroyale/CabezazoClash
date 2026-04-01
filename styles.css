@@ -732,10 +732,10 @@ body {
 .touch-btn::after {
   content: '';
   position: absolute;
-  top: -50px;
-  left: -50px;
-  right: -50px;
-  bottom: -50px;
+  top: -75px;
+  left: -75px;
+  right: -75px;
+  bottom: -75px;
   border-radius: 50%;
   /* background: rgba(255, 0, 0, 0.2); <-- Para VER la zona táctil real */
 }
