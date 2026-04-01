@@ -690,7 +690,7 @@ body {
   width: 100%;
   display: flex;
   justify-content: space-between;
-  padding: 0 100px;
+  padding: 0 50px;
   pointer-events: none;
   z-index: 12;
 }
@@ -702,7 +702,7 @@ body {
 /* Contenedores flexibles para que se ordenen solos uno al lado del otro */
 .touch-left, .touch-right {
   display: flex;
-  gap: 30px; /* Separación entre los botones */
+  gap: 50px; /* Separación entre los botones */
   align-items: center; /* Los centra verticalmente */
   pointer-events: auto;
 }

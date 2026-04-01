@@ -1,6 +1,4 @@
 // main.js - Control de UI, menús y ajustes
-// Estructurado al estilo de volador.js
-
 
 /* ==========================================================================
    CONFIGURACIÓN Y ELEMENTOS DEL DOM
@@ -178,13 +176,9 @@ function beginBotGame() {
 function showEndScreen(leftScore, rightScore) {
   finalScoreEl.textContent = `${leftScore} - ${rightScore}`;
   let winnerMessage = "";
-  if (leftScore > rightScore) {
-    winnerMessage = "¡Gana el Jugador 1!";
-  } else if (rightScore > leftScore) {
-    winnerMessage = "¡Gana el Jugador 2!";
-  } else {
-    winnerMessage = "¡Empate!";
-  }
+  if (leftScore > rightScore) winnerMessage = "¡Gana el Jugador 1!";
+  else if (rightScore > leftScore) winnerMessage = "¡Gana el Jugador 2!";
+  else winnerMessage = "¡Empate!";
   winnerMessageEl.textContent = winnerMessage;
   showScreen(screenEnd);
 }
@@ -307,7 +301,6 @@ asignarBoton(btnEntendido, () => {
   else showScreen(screenStart);
 });
 
-// --- NUEVOS LISTENERS ---
 // Controles de "Cómo Jugar"
 asignarBoton(btnHowToPlay, () => showScreen(screenHowToPlay));
 asignarBoton(btnCloseHowToPlay, () => {
@@ -327,7 +320,7 @@ asignarBoton(btnCloseInfo, () => {
   screenInfo.classList.add("hidden");    // Oculta el overlay oscuro
 });
 
-// sincronizar con teclas/Esc en el motor
+// sincronizar con teclas en el motor
 document.addEventListener('game-paused', () => {
   showPauseMenu();
   document.getElementById('game-wrap').classList.add('is-paused');
