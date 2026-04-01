@@ -30,33 +30,60 @@ const onKeyDown = (e) => {
 /* ==========================================================================
    SISTEMA DE CONTROLES TÁCTILES
    ========================================================================== */
-const setupTouchButton = (id, keyCode) => {
-    const btn = document.getElementById(id);
-    if (!btn) return;
 
-    // Al poner el dedo, simulamos que se pulsa la tecla
-    btn.addEventListener('touchstart', (e) => {
-        e.preventDefault(); // Evita clics fantasma del ratón
-        keys.add(keyCode);
-    }, { passive: false });
-
-    // Al levantar el dedo (o salir del botón), soltamos la tecla
-    const releaseKey = (e) => {
-        e.preventDefault();
-        keys.delete(keyCode);
-    };
-
-    btn.addEventListener('touchend', releaseKey, { passive: false });
-    btn.addEventListener('touchcancel', releaseKey, { passive: false });
+// Mapa que relaciona el ID del botón con la tecla que debe simular
+const touchKeyMap = {
+    "btn-touch-left": "KeyA",
+    "btn-touch-right": "KeyD",
+    "btn-touch-jump": "KeyW",
+    "btn-touch-kick": "Space"
 };
 
-// Vinculamos los botones a las teclas del Jugador 1
-// Si el HTML de los botones existe, se activarán
+const handleTouchMovement = (e) => {
+    e.preventDefault(); // Evita clics fantasma y scroll
+
+    // Aquí guardaremos las teclas que DEBEN estar pulsadas en este fotograma
+    const activeKeysThisFrame = new Set();
+
+    // Revisamos todos los dedos que están tocando la pantalla ahora mismo
+    for (let i = 0; i < e.touches.length; i++) {
+        const touch = e.touches[i];
+
+        // Magia: detecta qué elemento exacto hay debajo de esta coordenada X/Y
+        const elementUnderFinger = document.elementFromPoint(touch.clientX, touch.clientY);
+
+        if (elementUnderFinger) {
+            // Buscamos si el dedo está encima de un botón táctil (o de su icono)
+            const btn = elementUnderFinger.closest('.touch-btn');
+            if (btn && touchKeyMap[btn.id]) {
+                activeKeysThisFrame.add(touchKeyMap[btn.id]);
+            }
+        }
+    }
+
+    // 1. Soltar teclas táctiles que ya no estamos tocando
+    for (const key of Object.values(touchKeyMap)) {
+        if (keys.has(key) && !activeKeysThisFrame.has(key)) {
+            keys.delete(key);
+        }
+    }
+
+    // 2. Apretar las teclas que estamos tocando
+    for (const key of activeKeysThisFrame) {
+        keys.add(key);
+    }
+};
+
+// Vinculamos los eventos globalmente al contenedor de controles
 window.addEventListener('DOMContentLoaded', () => {
-    setupTouchButton("btn-touch-left", "KeyA");
-    setupTouchButton("btn-touch-right", "KeyD");
-    setupTouchButton("btn-touch-jump", "KeyW");
-    setupTouchButton("btn-touch-kick", "Space");
+    const touchArea = document.getElementById("touch-controls");
+    if (touchArea) {
+        // Usamos el mismo handler para cuando tocas, te mueves o sueltas
+        touchArea.addEventListener('touchstart', handleTouchMovement, { passive: false });
+        touchArea.addEventListener('touchmove', handleTouchMovement, { passive: false });
+        touchArea.addEventListener('touchend', handleTouchMovement, { passive: false });
+        touchArea.addEventListener('touchcancel', handleTouchMovement, { passive: false });
+    }
 });
 
 const onKeyUp = (e) => keys.delete(e.code);
