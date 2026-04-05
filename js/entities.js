@@ -126,7 +126,7 @@ function controlPlayer(p, dt, leftKey, rightKey, jumpKey, kickKey, keys) {
     }
 }
 
-function controlBot(bot, dt, ball, W, FLOOR_Y, keys) {
+function controlBot(bot, dt, ball, W, FLOOR_Y, keys, serveChaseMode = false) {
     // === CONFIG IA ===
     const REACTION_TIME  = 0.18;  // segundos de anticipación para predecir la posición futura de la pelota
     const APPROACH_DIST  = 120;   // distancia a partir de la cual el bot considera que la pelota está "cerca"
@@ -140,6 +140,7 @@ function controlBot(bot, dt, ball, W, FLOOR_Y, keys) {
     if (bot.lastKickBallX === undefined) bot.lastKickBallX = ball.x; // posición X de la pelota en el momento de la última patada
     if (bot.lastKickBallY === undefined) bot.lastKickBallY = ball.y; // posición Y de la pelota en el momento de la última patada
     if (bot.ballEscaped   === undefined) bot.ballEscaped   = true;   // indicador de que la pelota se ha alejado lo suficiente desde la última patada para permitir otra
+    if (bot.state         === undefined) bot.state         = "defend"; // estado actual del bot: "defend" o "attack"
 
     // === 1. PREDICCIÓN DE BALÓN ===
     // El bot no reacciona a la posición actual de la pelota, sino que predice dónde estará dentro de un pequeño intervalo de tiempo (REACTION_TIME). 
@@ -147,13 +148,29 @@ function controlBot(bot, dt, ball, W, FLOOR_Y, keys) {
     const futureY = ball.y + ball.vy * REACTION_TIME;
 
     // === 2. ATACAR O DEFENDER ===
-    // Si la pelota esta a su lado del campo, intenta atacarla. 
-    // Si esta en el otro lado, intenta posicionarse para defender.
-    const isBallOnBotSide = ball.x > W / 2;
-    const distToBall      = Math.abs(bot.x - ball.x);
+    // El bot decide si debe estar en modo "defend" o "attack" basándose en la posición de la pelota, su velocidad, y su trayectoria.
+    // El bot pasa a "attack" si la pelota entra en su mitad del campo o si se acerca rápidamente a su portería.
+    // El bot vuelve a "defend" si la pelota se aleja demasiado o si ya va de cabeza a su portería.
+    const distToBall        = Math.abs(bot.x - ball.x);
+    const isBallOnBotSide   = ball.x > W * 0.55;  // Lindar para entrar en modo ataque
+    const isBallFarFromBot  = ball.x < W * 0.35;  // Lindar de sortida de mode atac
+    const ballThreatensGoal = ball.x > W * 0.75 && Math.abs(ball.vx) > 50; // Pelota rapida hacia la portería del bot
+    const ballGoingWrong    = ball.vx < -200;      // Pelota yendo de cabeza a la portería del bot (sin sentido perseguirla)
+
+    if (bot.state === "defend") {
+        // Passar a atacar si la pelota entra al campo o amenaza la porteria
+        if (isBallOnBotSide || ballThreatensGoal) bot.state = "attack";
+    } else { // "attack"
+        // Volver a defender si la pelota esta muy lejos
+        // O si la pelota va de directo a la nuestra porteria
+        if ((isBallFarFromBot && bot.ballEscaped) || ballGoingWrong) bot.state = "defend";
+    }
 
     let targetX;
-    if (isBallOnBotSide || distToBall < APPROACH_DIST) {
+    if (serveChaseMode) {
+        // En fase de saque del bot, priorizamos ir a por la pelota
+        targetX = futureX;
+    } else if (bot.state === "attack") {
         targetX = futureX; // atacar: ir hacia la posición futura de la pelota
     } else {
         targetX = W - 180; // defender: posición fija cerca de su portería
@@ -162,7 +179,7 @@ function controlBot(bot, dt, ball, W, FLOOR_Y, keys) {
     // === 3. MOVIMIENTO HORIZONTAL SUAVE ===
     // El bot ajusta su velocidad horizontal para moverse hacia targetX.
     // Hay tres rangos: lejos (velocidad máxima), cerca (velocidad reducida) y muy cerca (detenerse para no sobrepasar).
-    const dx = targetX - bot.x;
+    const dx    = targetX - bot.x;
     const absDx = Math.abs(dx);
 
     // bot.vx: velocidad actual del bot
@@ -197,11 +214,13 @@ function controlBot(bot, dt, ball, W, FLOOR_Y, keys) {
     const shouldJumpForShot   = ballIsVeryHigh && ballIsClose;
 
     // Si se cumple alguna de las condiciones de salto, y el bot está en el suelo y tiene el salto recargado, entonces salta.
-    if ((shouldJumpForHeader || shouldJumpForShot) && bot.onGround && bot.canJump) {
-        bot.vy       = -bot.jump;
-        bot.onGround = false;
-        bot.canJump  = false; // evitar doble salto
-        window.playSound('sfx-jump');
+    if (!serveChaseMode) {
+        if ((shouldJumpForHeader || shouldJumpForShot) && bot.onGround && bot.canJump) {
+            bot.vy       = -bot.jump;
+            bot.onGround = false;
+            bot.canJump  = false; // evitar doble salto
+            window.playSound('sfx-jump');
+        }
     }
 
     // Recargar salto cuando el bot esta en el suelo
@@ -229,8 +248,11 @@ function controlBot(bot, dt, ball, W, FLOOR_Y, keys) {
 
     // Condiciones de patada: el bot quiere patear, el cooldown ha terminado, y la pelota se ha alejado lo suficiente desde la última patada.
     const distToBallFull = Math.hypot(bot.x - ball.x, bot.y - ball.y);
-    const canKick        = bot.kickCooldown <= 0 && bot.ballEscaped;
-    const wantsToKick    = distToBallFull < KICK_DIST && isBallOnBotSide;
+    const canKick     = bot.kickCooldown <= 0 && bot.ballEscaped;
+    // Agrefamos !ballGoingWrong para evitar que el bot intente patear la pelota si esta ya va de cabeza hacia su portería
+    const wantsToKick = distToBallFull < KICK_DIST 
+                     && bot.state === "attack"
+                     && !ballGoingWrong;
 
     if (wantsToKick && canKick) {
         // Solo suena en el instante exacto en que el bot decide chutar
@@ -247,7 +269,7 @@ function controlBot(bot, dt, ball, W, FLOOR_Y, keys) {
             bot.kickCooldown  = KICK_COOLDOWN;
             bot.lastKickBallX = ball.x;
             bot.lastKickBallY = ball.y;
-            bot.ballEscaped   = false; // Ha de fugir abans de poder tornar a xutar
+            bot.ballEscaped   = false;
         }
     } else {
         // Sin patada: retorno progresivo de la pierna a reposo

@@ -26,6 +26,7 @@ let botEnabled = false;
 let isCelebrating = false;
 let celebrationTimer = 0;
 let nextScorer = null;
+let serveState = { server: null, active: false };
 
 // Variables para el modo menú
 let idleRunning = false;
@@ -99,6 +100,7 @@ function startBasicGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl: 
     gameTime = 60;
     updateScore();
     updateTimer();
+    serveState = { server: null, active: false };
     resetRound();
     isCelebrating = false;
     celebrationTimer = 0;
@@ -161,13 +163,31 @@ function gameLoop(time) {
 }
 
 function update(dt) {
+    if (serveState.active) {
+        // Cerramos la fase de saque en cuanto la pelota abandona el centro.
+        if (Math.abs(ball.x - W / 2) > W * 0.08) {
+            serveState.active = false;
+        }
+    }
+
     // 1. Controles
-    // FÍJATE AQUÍ: Añadimos "Space" para P1 antes de 'keys'
     controlPlayer(p1, dt, "KeyA", "KeyD", "KeyW", "Space", keys);
 
-    if (botEnabled) controlBot(p2, dt, ball, W, FLOOR_Y, keys);
+    if (botEnabled) {
+        const botServeBlocked = serveState.active && serveState.server === "right";
+        if (botServeBlocked) {
+            // Durante el saque del bot, lo dejamos totalmente bloqueado.
+            p2.vx = 0;
+            p2.isKicking = false;
+            if (p2.kickAngle > 0) {
+                p2.kickAngle -= (p2.kickSpeed / 3) * dt;
+                if (p2.kickAngle < 0) p2.kickAngle = 0;
+            }
+        } else {
+            controlBot(p2, dt, ball, W, FLOOR_Y, keys, false);
+        }
+    }
     else {
-        // FÍJATE AQUÍ: Añadimos "KeyP" para P2 antes de 'keys'
         controlPlayer(p2, dt, "ArrowLeft", "ArrowRight", "ArrowUp", "KeyP", keys);
     }
 
@@ -280,15 +300,21 @@ function resetRound(lastScorer = null) {
     ball.x = W / 2;
     ball.y = FLOOR_Y - 200;
 
-    if (lastScorer === "left") ball.vx = 220;  // Marcó el P1 (izq), así que saca el P2 (der)
-    else if (lastScorer === "right") ball.vx = -220; // Marcó el P2 (der), así que saca el P1 (izq)
-    else {
+    if (lastScorer === "left") {
+        ball.vx = 220;  // Marcó el P1 (izq), así que saca el P2 (der)
+        serveState.server = "right";
+    } else if (lastScorer === "right") {
+        ball.vx = -220; // Marcó el P2 (der), así que saca el P1 (izq)
+        serveState.server = "left";
+    } else {
         // Si no hay goleador previo (saque inicial), echamos una moneda al aire:
         // Math.random() genera un número entre 0 y 1. Si es mayor a 0.5 va a la derecha, si no, a la izquierda.
         ball.vx = Math.random() > 0.5 ? 220 : -220;
+        serveState.server = ball.vx > 0 ? "right" : "left";
     }
 
     ball.vy = -220;
+    serveState.active = true;
 }
 
 function updateScore() {
