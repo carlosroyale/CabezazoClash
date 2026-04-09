@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Acceso - Cabezazo Clash</title>
+  <link rel="icon" type="image/x-icon" href="../assets/icon/favicon.ico">
+  <link rel="stylesheet" href="login.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+</head>
+<body>
+<div class="card">
+  <img src="../assets/img/logo129.png" alt="Cabezazo Clash Logo" class="logo">
+  <h1 class="title">Cabezazo Clash</h1>
+
+  <div id="paso-correo">
+    <h2 class="subtitle">Introduce tu correo para jugar</h2>
+    <div id="error-correo" id="mensaje-error"></div>
+
+    <form id="form-correo">
+      <div class="form-group">
+        <label for="correo">Correo Electrónico</label>
+        <input type="email" id="correo" placeholder="jugador@ejemplo.com" required />
+      </div>
+      <button type="submit" id="btn-enviar-codigo" class="btn">Enviar Código de Acceso</button>
+    </form>
+  </div>
+
+  <div id="paso-codigo" class="hidden">
+    <h2 class="subtitle">Hemos enviado un código a <br><b id="correo-mostrado"></b></h2>
+    <div id="error-codigo" style="color: #d32f2f; font-size: 0.9rem; margin-bottom: 15px;"></div>
+
+    <form id="form-codigo">
+      <div class="form-group">
+        <label for="codigo-otp">Código de 6 dígitos</label>
+        <input type="text" id="codigo-otp" maxlength="6" pattern="\d{6}" placeholder="------" autocomplete="one-time-code" required />
+      </div>
+      <button type="submit" id="btn-entrar" class="btn">Entrar al Juego</button>
+      <button type="button" id="btn-volver" class="btn btn-secondary">Usar otro correo</button>
+    </form>
+  </div>
+</div>
+
+<script src="login.js"></script>
+</body>
+</html>

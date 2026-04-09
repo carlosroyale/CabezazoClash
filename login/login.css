@@ -1,0 +1,136 @@
+/* El CSS unificado y mejorado para el OTP */
+body {
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(to bottom, #d4a1d6, #5c2d91, #2e7d32);
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+.card {
+    background: rgba(255, 255, 255, 0.95);
+    color: #333;
+    border-radius: 15px;
+    padding: 40px 30px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+    position: relative;
+}
+
+.logo {
+    width: 120px;
+    height: auto;
+    margin: 0 auto 20px;
+    display: block;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.title {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #5c2d91;
+    margin-bottom: 5px;
+}
+
+.subtitle {
+    font-size: 1rem;
+    color: #666;
+    margin-bottom: 30px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #5c2d91;
+    font-size: 0.9rem;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 15px;
+    font-size: 16px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    box-sizing: border-box;
+    transition: border-color 0.3s;
+}
+
+.form-group input:focus {
+    border-color: #5c2d91;
+    outline: none;
+}
+
+/* Estilo especial para el input del código OTP */
+#codigo-otp {
+    font-size: 24px;
+    letter-spacing: 10px;
+    text-align: center;
+    font-weight: bold;
+    color: #2e7d32;
+}
+
+.btn {
+    background-color: #5c2d91;
+    color: white;
+    border: none;
+    padding: 15px;
+    width: 100%;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    background-color: #4a2373;
+    transform: translateY(-2px);
+}
+
+.btn:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: #5c2d91;
+    border: 2px solid #5c2d91;
+    margin-top: 15px;
+}
+
+.btn-secondary:hover {
+    background-color: #f0e6f7;
+    color: #5c2d91;
+}
+
+/* Ocultar elementos */
+.hidden {
+    display: none !important;
+}
+
+#mensaje-error {
+    color: #d32f2f;
+    font-size: 0.9rem;
+    margin-bottom: 15px;
+    min-height: 20px;
+}
+
+#mensaje-exito {
+    color: #2e7d32;
+    font-size: 0.9rem;
+    margin-bottom: 15px;
+}
