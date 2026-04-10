@@ -16,6 +16,7 @@
 
 html {
     background-color: #000;
+    overflow-x: hidden; /* Bloquea el scroll horizontal de raíz */
 }
 
 :root {
@@ -31,15 +32,26 @@ html {
 }
 
 body {
-    background: var(--bg-gradient);
-    background-attachment: fixed; /* ¡MAGIA! Esto evita que el fondo se repita en móvil */
-    background-size: cover;
-    height: 100vh; /* Fallback para navegadores viejos */
-    min-height: 100dvh; /* Magia para evitar márgenes al rotar */
+    /* Quitamos el fondo de aquí para evitar el bug de renderizado */
+    height: 100vh;
+    min-height: 100dvh;
     color: var(--text-dark);
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow-x: hidden; /* Evita que el menú blanco se asome */
+}
+
+/* TRUCO MAESTRO: Creamos una capa fija invisible SOLO para el fondo */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    background: var(--bg-gradient);
+    z-index: -1; /* Lo enviamos al fondo del todo */
 }
 
 /* =========================================
@@ -260,6 +272,22 @@ body {
 }
 .btn-close-dato:hover { color: var(--danger-color); }
 
+/* Estilo especial para el input del código OTP (Igual que en el Login) */
+#codigo-otp-cuenta {
+    font-size: 24px !important;
+    letter-spacing: 10px;
+    text-align: center;
+    font-weight: bold;
+    color: var(--secondary-color); /* Esto usa el verde #2e7d32 de tu paleta */
+}
+
+/* Ocultar el letter-spacing en el placeholder para que los guiones se vean centrados */
+#codigo-otp-cuenta::placeholder {
+    letter-spacing: 5px;
+    font-weight: normal;
+    color: #ccc;
+}
+
 .modal-dato-content form { text-align: left; }
 .modal-dato-content form label { display: block; margin-bottom: 8px; color: var(--primary-color); font-size: 0.9rem; font-weight: bold; }
 
@@ -327,7 +355,12 @@ body {
    6. RESPONSIVE (MÓVILES)
    ========================================= */
 @media (max-width: 900px) {
-    body { height: auto; overflow: auto; display: flex; }
+    body {
+        height: auto;
+        overflow-x: hidden; /* Mantiene bloqueado el eje horizontal */
+        overflow-y: auto;   /* Permite hacer scroll hacia abajo normalmente */
+        display: flex;
+    }
     .top-bar { padding: 15px 20px; }
 
     /* Mostrar botón de menú en la barra superior */
