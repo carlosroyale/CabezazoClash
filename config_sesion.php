@@ -55,6 +55,9 @@ if (!isset($_SESSION['usuario'])) {
                 $_SESSION['usuario'] = $datosUsuario;
                 $_SESSION['id_usuario'] = $datosUsuario['id_usuario'];
                 $_SESSION['tipo_usuario'] = $datosUsuario['id_tipo_usuario'] ?? null;
+
+                // Registramos que ha entrado gracias a la cookie
+                $metodosDML->actualizarUltimaConexion($idUsuario);
             }
         }
         else {

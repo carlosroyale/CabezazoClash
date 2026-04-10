@@ -269,4 +269,15 @@ class MetodosDML {
             $stmt->close();
         }
     }
+
+    // Actualiza la fecha y hora de la última conexión del usuario
+    public function actualizarUltimaConexion($idUsuario): void {
+        $ahora = date('Y-m-d H:i:s');
+        $sql = "UPDATE usuario SET ultima_conexion = ? WHERE id_usuario = ?";
+        if ($stmt = $this->conexion->prepare($sql)) {
+            $stmt->bind_param("si", $ahora, $idUsuario);
+            $stmt->execute();
+            $stmt->close();
+        }
+    }
 }

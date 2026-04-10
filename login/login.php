@@ -124,6 +124,9 @@ try {
             $_SESSION['id_usuario'] = $usuario['id_usuario'];
             $_SESSION['tipo_usuario'] = $usuario['id_tipo_usuario'];
 
+            // Registramos la hora de conexión en la base de datos
+            $metodosDML->actualizarUltimaConexion($usuario['id_usuario']);
+
             // Generar token de recuerdo
             $tokenRecuerdo = bin2hex(random_bytes(32));
             $metodosDML->guardarTokenRecuerdo($usuario['id_usuario'], $tokenRecuerdo);
