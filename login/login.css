@@ -2,11 +2,13 @@
 body {
     font-family: 'Poppins', sans-serif;
     background: linear-gradient(to bottom, #d4a1d6, #5c2d91, #2e7d32);
+    background-attachment: fixed; /* ¡MAGIA! Fija el fondo a la cámara */
+    background-size: cover;       /* Asegura que cubra todo el espacio */
     color: #fff;
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
+    min-height: 100vh;            /* Cambiamos height por min-height para que sea flexible */
     margin: 0;
 }
 
@@ -133,4 +135,39 @@ body {
     color: #2e7d32;
     font-size: 0.9rem;
     margin-bottom: 15px;
+}
+
+/* =========================================
+   BLOQUEO DE ORIENTACIÓN (PORTRAIT)
+   ========================================= */
+#orientation-warning {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background-color: #0f172a;
+    color: white;
+    z-index: 9999;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.orientation-content i {
+    font-size: 8rem; color: #ffce00; display: block;
+    margin-bottom: 2rem; animation: rotatePhone 2s infinite ease-in-out;
+}
+.orientation-content h2 { font-size: 3rem; margin-bottom: 1rem; }
+.orientation-content p { font-size: 1.5rem; opacity: 0.8; padding: 0 30px; }
+
+@keyframes rotatePhone {
+    0% { transform: rotate(0deg); }
+    50% { transform: rotate(-90deg); }
+    100% { transform: rotate(0deg); }
+}
+
+@media (orientation: portrait), (max-aspect-ratio: 1/1) {
+    #orientation-warning { display: flex !important; }
+    /* Ocultamos la tarjeta de login para que no estorbe de fondo */
+    .card { display: none !important; }
 }

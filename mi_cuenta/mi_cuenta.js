@@ -180,6 +180,8 @@ function debounce(func, delay) {
 function setupValidation(inputId, statusId, btnId, tipo) {
     const input = document.getElementById(inputId);
     const status = document.getElementById(statusId);
+    status.innerHTML = `Ya dispones de este ${tipo}.`;
+    status.style.color = '#f39c12'; // Naranja / Aviso
     const btn = document.getElementById(btnId);
 
     if (!input) return;

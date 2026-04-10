@@ -32,7 +32,7 @@ session_set_cookie_params([
 session_start();
 
 // -------------------------------------------------------------------------
-// 3. SISTEMA DE AUTOLOGIN (La solución a tus problemas con Render)
+// 3. SISTEMA DE AUTOLOGIN
 // -------------------------------------------------------------------------
 
 // Si el usuario NO está logueado en la sesión...

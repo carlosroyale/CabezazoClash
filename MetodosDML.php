@@ -163,11 +163,35 @@ class MetodosDML {
         return false;
     }
 
-    // Actualiza solo los datos de texto (sin contraseñas)
-    public function actualizarPerfilUsuario($idUsuario, $username, $nombre, $apellido1, $apellido2): bool {
-        $sql = "UPDATE usuario SET username = ?, nombre = ?, primer_apellido = ?, segundo_apellido = ? WHERE id_usuario = ?";
+    // Actualiza solo el nombre de usuario
+    public function actualizarUsername($idUsuario, $username): bool {
+        $sql = "UPDATE usuario SET username = ? WHERE id_usuario = ?";
         if ($stmt = $this->conexion->prepare($sql)) {
-            $stmt->bind_param("ssssi", $username, $nombre, $apellido1, $apellido2, $idUsuario);
+            $stmt->bind_param("si", $username, $idUsuario);
+            $exito = $stmt->execute();
+            $stmt->close();
+            return $exito;
+        }
+        return false;
+    }
+
+    // Actualiza solo el correo electrónico
+    public function actualizarCorreo($idUsuario, $correo): bool {
+        $sql = "UPDATE usuario SET correo_electronico = ? WHERE id_usuario = ?";
+        if ($stmt = $this->conexion->prepare($sql)) {
+            $stmt->bind_param("si", $correo, $idUsuario);
+            $exito = $stmt->execute();
+            $stmt->close();
+            return $exito;
+        }
+        return false;
+    }
+
+    // Actualiza solo los datos de text
+    public function actualizarPerfilUsuario($idUsuario, $nombre, $apellido1, $apellido2): bool {
+        $sql = "UPDATE usuario SET nombre = ?, primer_apellido = ?, segundo_apellido = ? WHERE id_usuario = ?";
+        if ($stmt = $this->conexion->prepare($sql)) {
+            $stmt->bind_param("sssi", $nombre, $apellido1, $apellido2, $idUsuario);
             $exito = $stmt->execute();
             $stmt->close();
             return $exito;
