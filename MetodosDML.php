@@ -49,10 +49,6 @@ class MetodosDML {
         return null;
     }
 
-    // ==========================================
-    // MÉTODOS PARA EL LOGIN OTP (MAGIC CODE)
-    // ==========================================
-
     public function guardarCodigoOTP($idUsuario, $codigo): bool {
         // 1. Limpiamos códigos anteriores de este usuario
         $this->borrarCodigosOTP($idUsuario);
@@ -137,10 +133,6 @@ class MetodosDML {
         return false;
     }
 
-    // ==========================================
-    // MÉTODOS PARA EL TOKEN DE RECUERDO (COOKIE)
-    // ==========================================
-
     public function guardarTokenRecuerdo($idUsuario, $token): bool {
         // Calculamos la fecha de caducidad: 30 días a partir de hoy
         $expiracion = date('Y-m-d H:i:s', strtotime('+30 days'));
@@ -156,10 +148,6 @@ class MetodosDML {
         }
         return false;
     }
-
-    // ==========================================
-    // MÉTODOS DE PERFIL Y BORRADO DE CUENTA
-    // ==========================================
 
     // Comprueba si un username está libre, ignorando al propio usuario que lo está pidiendo
     public function comprobarUsuarioDisponible($username, $idUsuarioActual): bool {
@@ -201,31 +189,60 @@ class MetodosDML {
 
     // Comprueba si un valor ya existe en una columna específica de la tabla de usuarios.
     public function comprobarSiExiste($columna, $valor): bool {
-        try {
-            // Lista blanca de columnas permitidas por seguridad para evitar Inyección SQL
-            $columnasPermitidas = ['username', 'correo_electronico'];
+        // Lista blanca de columnas permitidas por seguridad para evitar Inyección SQL
+        $columnasPermitidas = ['username', 'correo_electronico'];
 
-            if (!in_array($columna, $columnasPermitidas)) {
-                return false; // Si intentan buscar en otra columna, lo denegamos
-            }
+        if (!in_array($columna, $columnasPermitidas)) {
+            return false; // Si intentan buscar en otra columna, lo denegamos
+        }
 
-            // Preparamos la consulta (la columna se inyecta directamente porque ya la validamos arriba)
-            $sql = "SELECT COUNT(*) as total FROM usuario WHERE $columna = :valor";
-            $stmt = $this->conn->prepare($sql);
+        // Preparamos la consulta
+        $sql = "SELECT id_usuario FROM usuario WHERE $columna = ?";
 
+        if ($stmt = $this->conexion->prepare($sql)) {
             // Pasamos el valor de forma segura
-            $stmt->bindParam(':valor', $valor, PDO::PARAM_STR);
+            $stmt->bind_param("s", $valor);
             $stmt->execute();
+            $stmt->store_result();
 
-            $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
+            // Si hay más de 0 filas, significa que ya existe alguien con ese dato
+            $existe = $stmt->num_rows > 0;
+            $stmt->close();
 
-            // Si el total es mayor que 0, significa que ya existe alguien con ese dato
-            return ($resultado['total'] > 0);
+            return $existe;
+        }
 
-        } catch (PDOException $e) {
-            // Manejo del error: puedes registrar el error en un log si lo deseas
-            error_log("Error en comprobarSiExiste: " . $e->getMessage());
-            return true; // En caso de error, decimos que existe para bloquear el registro por precaución
+        // En caso de error, decimos que existe para bloquear el registro por precaución
+        return true;
+    }
+
+    // Borra un token de recuerdo específico (Cierre de sesión normal)
+    public function borrarTokenRecuerdo($token): void {
+        $sql = "DELETE FROM recuerdo WHERE token = ?";
+        if ($stmt = $this->conexion->prepare($sql)) {
+            $stmt->bind_param("s", $token);
+            $stmt->execute();
+            $stmt->close();
+        }
+    }
+
+    // Borra TODOS los tokens de recuerdo de un usuario (Cerrar sesión en todos los dispositivos)
+    public function borrarTodosTokensRecuerdo($idUsuario): void {
+        $sql = "DELETE FROM recuerdo WHERE id_usuario = ?";
+        if ($stmt = $this->conexion->prepare($sql)) {
+            $stmt->bind_param("i", $idUsuario);
+            $stmt->execute();
+            $stmt->close();
+        }
+    }
+
+    // Borra TODAS las sesiones activas de un usuario en la tabla `sesion`
+    public function borrarTodasSesionesUsuario($idUsuario): void {
+        $sql = "DELETE FROM sesion WHERE id_usuario = ?";
+        if ($stmt = $this->conexion->prepare($sql)) {
+            $stmt->bind_param("i", $idUsuario);
+            $stmt->execute();
+            $stmt->close();
         }
     }
 }

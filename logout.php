@@ -25,7 +25,9 @@ if (isset($_SESSION['usuario']['id_usuario'])) {
 
 // 3. Borrar cookie del navegador actual (siempre)
 if (isset($_COOKIE['remember_token'])) {
-    setcookie('remember_token', '', time() - 3600, '/', 'paginaroyale.com', true, true);
+    // Dominio vacío '' para que valga para Railway, localhost o el dominio final
+    $es_seguro = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
+    setcookie('remember_token', '', time() - 3600, '/', '', $es_seguro, true);
 }
 
 // 4. Destruir sesión normal actual (siempre)

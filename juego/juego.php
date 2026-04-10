@@ -202,12 +202,12 @@ if (!defined('ACCESO_PERMITIDO')) {
     <source src="/assets/audio/crowd_ambient.mp3" type="audio/mpeg">
 </audio>
 
-<script src="/js/constants.js?v=2"></script>
-<script src="/js/entities.js?v=2"></script>
-<script src="/js/physics.js?v=2"></script>
-<script src="/js/renderer.js?v=1"></script>
-<script src="/js/input.js?v=2"></script>
-<script src="/js/game.js?v=2"></script>
-<script src="/js/main.js?v=5"></script>
+<script src="/juego/js/constants.js?v=2"></script>
+<script src="/juego/js/entities.js?v=2"></script>
+<script src="/juego/js/physics.js?v=2"></script>
+<script src="/juego/js/renderer.js?v=1"></script>
+<script src="/juego/js/input.js?v=2"></script>
+<script src="/juego/js/game.js?v=2"></script>
+<script src="/juego/js/main.js?v=5"></script>
 </body>
 </html>

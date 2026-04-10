@@ -16,13 +16,15 @@ session_set_save_handler($handler, true);
 
 // Configuración básica
 ini_set('session.gc_maxlifetime', 60 * 60 * 24 * 7); // 7 días en BD
-// Detectar si estamos en localhost
-$es_local = (strpos($_SERVER['HTTP_HOST'], 'localhost') !== false || strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false);
+
+// Configuración Dinámica para Cookies (¡Magia para Railway y Localhost!)
+$es_seguro = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+
 session_set_cookie_params([
     'lifetime' => 0,
     'path'     => '/',
-    'domain'   => $es_local ? '' : 'paginaroyale.com', // Si es local, lo deja vacío (automático)
-    'secure'   => !$es_local, // En local no suele haber HTTPS (false), en producción sí (true)
+    'domain'   => '', // Vacío permite que el navegador use el dominio actual automáticamente
+    'secure'   => $es_seguro, // true en Railway, false en localhost
     'httponly' => true,
     'samesite' => 'Lax'
 ]);
@@ -52,15 +54,12 @@ if (!isset($_SESSION['usuario'])) {
                 // Regeneramos la sesión como si hubiera puesto la contraseña
                 $_SESSION['usuario'] = $datosUsuario;
                 $_SESSION['id_usuario'] = $datosUsuario['id_usuario'];
-                $_SESSION['tipo_usuario'] = $datosUsuario['id_tipo_usuario']; // Asegúrate que esta columna existe o ajusta el nombre
-
-                // Opcional: Renovar el token para que dure otros 30 días más
-                // (Podrías implementar esto para mayor seguridad, pero así ya funciona)
+                $_SESSION['tipo_usuario'] = $datosUsuario['id_tipo_usuario'] ?? null;
             }
         }
         else {
             // El token es falso o expiró: borramos la cookie corrupta
-            setcookie('remember_token', '', time() - 3600, '/', 'paginaroyale.com', true, true);
+            setcookie('remember_token', '', time() - 3600, '/', '', $es_seguro, true);
         }
     }
 }
