@@ -34,5 +34,5 @@ if (isset($_COOKIE['remember_token'])) {
 session_unset();
 session_destroy();
 
-header("Location: login/login.php");
+header("Location: index.php");
 exit;
