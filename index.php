@@ -12,7 +12,7 @@ if (!isset($_SESSION['id_usuario'])) {
 
 // 3. CREAMOS LA LLAVE SECRETA
 // Definimos una constante para indicar que el usuario ha pasado el control de seguridad
-const ACCESO_PERMITIDO = true;
+define('ACCESO_PERMITIDO', true);
 
 // 4. CARGAMOS LA VISTA DEL JUEGO
 // Como pasó el control, insertamos aquí el archivo con el HTML

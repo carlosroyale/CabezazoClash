@@ -14,10 +14,10 @@ class MetodosPHP {
 
         // Es altamente recomendable poner la API Key en las variables de tu servidor (DigitalOcean/Railway)
         // Si no la encuentra, usará el valor por defecto que pongas después del ?:
-        $apiKey = getenv('BREVO_API_KEY') ?: 'TU_API_KEY_AQUI';
+        $apiKey = getenv('BREVO_API_KEY') ?: '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';
 
         // Correo del remitente (¡DEBE estar verificado en tu panel de Brevo!)
-        $emailRemitente = getenv('MAIL_FROM') ?: 'noreply@tudominio.com';
+        $emailRemitente = getenv('MAIL_FROM') ?: 'carlos-antonio.segura1@estudiant.uib.cat';
 
         // Preparamos los datos tal como los pide Brevo
         $data = [
@@ -31,7 +31,7 @@ class MetodosPHP {
             'subject' => 'Tu código de acceso: ' . $codigo,
             'htmlContent' => '
                 <div style="font-family: sans-serif; text-align: center; padding: 30px; background-color: #f4f4f4; border-radius: 10px;">
-                    <img src="https://tuservidor.com/assets/img/logo129.png" alt="Logo" style="width: 100px; border-radius: 10px; margin-bottom: 20px;">
+                    <img src="https://cabezazoclash-production.up.railway.app/assets/img/logo129.png" alt="Logo" style="width: 100px; border-radius: 10px; margin-bottom: 20px;">
                     <h2 style="color: #5c2d91;">¡Listo para jugar a Cabezazo Clash!</h2>
                     <p style="color: #333; font-size: 16px;">Tu código de acceso de un solo uso es:</p>
                     <div style="background-color: #fff; padding: 15px; margin: 20px auto; width: fit-content; border-radius: 8px; border: 2px dashed #5c2d91;">

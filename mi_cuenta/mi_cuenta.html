@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Cuenta - Cabezazo Clash</title>
+    <link rel="icon" type="image/x-icon" href="/assets/icon/favicon.ico">
+    <link rel="stylesheet" href="mi_cuenta.css">
+    <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css'>
+</head>
+<body>
+
+<div class="dashboard-container">
+    <button class="account-menu-toggle" id="account-menu-toggle">☰ Menú de Cuenta</button>
+
+    <aside class="dashboard-sidebar" id="dashboard-sidebar">
+        <button class="close-sidebar" id="close-sidebar">&times;</button>
+        <br>
+        <button class="btn btn-secondary" style="width: 100%; margin-bottom: 20px; border: 1px solid #5c2d91; background: transparent; color: #fff; padding: 10px; border-radius: 8px; cursor: pointer;" onclick="window.location.href='../index.php'">
+            <i class="bi bi-arrow-left"></i> Volver al juego
+        </button>
+
+        <nav class="sidebar-nav">
+            <button class="tab-link active" onclick="openTab(event, 'tab-perfil')">Mi perfil</button>
+            <button class="tab-link" onclick="openTab(event, 'tab-datos')">Mis datos personales</button>
+
+            <div class="separator"></div>
+
+            <button class="tab-link btn-logout" onclick="window.location.href='logout.php'">Cerrar sesión (Este dispositivo)</button>
+            <button class="tab-link btn-logout" style="color: #f39c12; border-color: rgba(243, 156, 18, 0.3);" onclick="if(confirm('¿Seguro que quieres cerrar sesión en todos tus dispositivos?')) window.location.href='logout.php?all=1'">Cerrar sesión en todos los dispositivos</button>
+            <button class="tab-link btn-delete" onclick="confirmarBorrado()">Eliminar cuenta</button>
+        </nav>
+    </aside>
+
+    <main class="dashboard-content">
+        <div id="tab-perfil" class="tab-content active">
+            <div class="perfil-header-large">
+                <div class="perfil-nombres">
+                    <h1>{{NOMBRE}} {{PRIMER_APELLIDO}} {{SEGUNDO_APELLIDO}}</h1>
+                    <p class="perfil-username">@{{USERNAME}}</p>
+                </div>
+            </div>
+
+            <div class="header-panel" style="margin-top: 30px; text-align: center;">
+                <p style="color: #666; margin-top: 50px;">Próximamente: Estadísticas de tus partidas...</p>
+            </div>
+        </div>
+
+        <div id="tab-datos" class="tab-content">
+            <div class="header-panel">
+                <h1>Datos personales</h1>
+                <p>Gestiona tu información de acceso.</p>
+            </div>
+
+            <div class="datos-list">
+                <div class="dato-card" onclick="abrirModalDato('modal-username')">
+                    <div class="dato-info">
+                        <span class="dato-label">Nombre de usuario</span>
+                        <span class="dato-valor">{{USERNAME}}</span>
+                    </div>
+                    <i class="bi bi-chevron-right"></i>
+                </div>
+
+                <div class="dato-card" onclick="abrirModalDato('modal-correo')">
+                    <div class="dato-info">
+                        <span class="dato-label">Correo electrónico</span>
+                        <span class="dato-valor">{{CORREO_ELECTRONICO}}</span>
+                    </div>
+                    <i class="bi bi-chevron-right"></i>
+                </div>
+
+                <div class="dato-card" onclick="abrirModalDato('modal-nombre')">
+                    <div class="dato-info">
+                        <span class="dato-label">Nombre completo</span>
+                        <span class="dato-valor">{{NOMBRE}} {{PRIMER_APELLIDO}} {{SEGUNDO_APELLIDO}}</span>
+                    </div>
+                    <i class="bi bi-chevron-right"></i>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<input type="hidden" id="inputTabInicial" value="{{TAB_INICIAL}}">
+<script src="mi_cuenta.js"></script>
+
+<div id="modal-nombre" class="modal-dato-overlay">
+    <div class="modal-dato-content">
+        <div class="modal-dato-header">
+            <h3>Cambiar Nombre</h3>
+            <button class="btn-close-dato" onclick="cerrarModalDato('modal-nombre')">&times;</button>
+        </div>
+        <form onsubmit="guardarDato(event, 'nombre')">
+            <label>Nombre</label>
+            <input type="text" name="nombre" value="{{NOMBRE}}" required>
+            <div class="doble">
+                <div>
+                    <label>Primer Apellido</label>
+                    <input type="text" name="primer_apellido" value="{{PRIMER_APELLIDO}}" required>
+                </div>
+                <div>
+                    <label>Segundo Apellido</label>
+                    <input type="text" name="segundo_apellido" value="{{SEGUNDO_APELLIDO}}">
+                </div>
+            </div>
+            <button type="submit" class="btn-guardar">Guardar cambios</button>
+        </form>
+    </div>
+</div>
+
+<div id="modal-username" class="modal-dato-overlay">
+    <div class="modal-dato-content">
+        <div class="modal-dato-header">
+            <h3>Cambiar Usuario</h3>
+            <button class="btn-close-dato" onclick="cerrarModalDato('modal-username')">&times;</button>
+        </div>
+        <form onsubmit="guardarDato(event, 'username')">
+            <label>Nuevo nombre de usuario</label>
+            <input type="text" id="input-new-username" name="username" data-current="{{USERNAME}}" required autocomplete="off">
+            <small id="username-status" style="display:block; margin-top:-15px; margin-bottom:15px; min-height: 15px;"></small>
+
+            <button type="submit" id="btn-save-username" class="btn-guardar" disabled>Guardar cambios</button>
+        </form>
+    </div>
+</div>
+
+<div id="modal-correo" class="modal-dato-overlay">
+    <div class="modal-dato-content">
+        <div class="modal-dato-header">
+            <h3>Cambiar Correo</h3>
+            <button class="btn-close-dato" onclick="cerrarModalDato('modal-correo')">&times;</button>
+        </div>
+
+        <form id="form-correo-step1" onsubmit="enviarCodigoCorreo(event)">
+            <label>Nuevo correo electrónico</label>
+            <input type="email" id="input-new-correo" name="nuevo_correo" data-current="{{CORREO_ELECTRONICO}}" required autocomplete="off">
+            <small id="correo-status" style="display:block; margin-top:-15px; margin-bottom:15px; min-height: 15px;"></small>
+
+            <button type="submit" id="btn-send-code" class="btn-guardar" disabled>Enviar código de verificación</button>
+        </form>
+
+        <form id="form-correo-step2" onsubmit="guardarDato(event, 'correo')" style="display: none;">
+            <p style="color:var(--text-gray); font-size:0.9rem; margin-bottom:15px;">Hemos enviado un código de seguridad a tu nueva dirección. Por favor, introdúcelo abajo.</p>
+
+            <label>Código de verificación</label>
+            <input type="text" name="codigo_verificacion" required placeholder="Ej: 123456" autocomplete="off">
+            <input type="hidden" name="correo_confirmado" id="hidden-nuevo-correo">
+
+            <button type="submit" class="btn-guardar">Verificar y Guardar</button>
+            <button type="button" style="background:transparent; color:#888; border:none; width:100%; margin-top:10px; cursor:pointer;" onclick="volverPaso1Correo()">Cancelar</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>

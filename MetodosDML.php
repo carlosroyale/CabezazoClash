@@ -53,16 +53,16 @@ class MetodosDML {
     // MÉTODOS PARA EL LOGIN OTP (MAGIC CODE)
     // ==========================================
 
-    public function guardarCodigoOTP($correo, $codigo): bool {
-        // 1. Por limpieza, borramos cualquier código anterior que tuviera este correo
-        $this->borrarCodigosOTP($correo);
+    public function guardarCodigoOTP($idUsuario, $codigo): bool {
+        // 1. Limpiamos códigos anteriores de este usuario
+        $this->borrarCodigosOTP($idUsuario);
 
-        // 2. Calculamos la expiración (5 minutos desde ahora)
+        // 2. Expiración (5 minutos)
         $expiracion = date('Y-m-d H:i:s', strtotime('+5 minutes'));
 
-        $sql = "INSERT INTO otp_login (correo_electronico, codigo, expiracion) VALUES (?, ?, ?)";
+        $sql = "INSERT INTO otp_login (codigo, expiracion, id_usuario) VALUES (?, ?, ?)";
         if ($stmt = $this->conexion->prepare($sql)) {
-            $stmt->bind_param("sss", $correo, $codigo, $expiracion);
+            $stmt->bind_param("ssi", $codigo, $expiracion, $idUsuario);
             $exito = $stmt->execute();
             $stmt->close();
             return $exito;
@@ -70,16 +70,14 @@ class MetodosDML {
         return false;
     }
 
-    public function verificarCodigoOTP($correo, $codigo): bool {
+    public function verificarCodigoOTP($idUsuario, $codigo): bool {
         $ahora = date('Y-m-d H:i:s');
-        // Buscamos si existe la combinación de correo + código y que NO haya caducado
-        $sql = "SELECT id_otp FROM otp_login WHERE correo_electronico = ? AND codigo = ? AND expiracion > ?";
+        $sql = "SELECT id_otp FROM otp_login WHERE id_usuario = ? AND codigo = ? AND expiracion > ?";
 
         if ($stmt = $this->conexion->prepare($sql)) {
-            $stmt->bind_param("sss", $correo, $codigo, $ahora);
+            $stmt->bind_param("iss", $idUsuario, $codigo, $ahora);
             $stmt->execute();
             $stmt->store_result();
-            // Si hay al menos una fila, el código es válido
             $esValido = $stmt->num_rows > 0;
             $stmt->close();
             return $esValido;
@@ -87,10 +85,10 @@ class MetodosDML {
         return false;
     }
 
-    public function borrarCodigosOTP($correo): void {
-        $sql = "DELETE FROM otp_login WHERE correo_electronico = ?";
+    public function borrarCodigosOTP($idUsuario): void {
+        $sql = "DELETE FROM otp_login WHERE id_usuario = ?";
         if ($stmt = $this->conexion->prepare($sql)) {
-            $stmt->bind_param("s", $correo);
+            $stmt->bind_param("i", $idUsuario);
             $stmt->execute();
             $stmt->close();
         }
@@ -109,27 +107,28 @@ class MetodosDML {
         return null;
     }
 
-    public function registrarNuevoUsuarioPasswordless($correo, $usernameTemporal): int|false {
-        /*
-         * NOTA IMPORTANTE: En tu BD 'local.sql', los campos password, nombre y
-         * primer_apellido son NOT NULL. Como en este registro rápido solo pedimos
-         * el correo, rellenamos esos campos obligatorios con valores por defecto.
-         * Luego en el juego el usuario podrá editar su perfil.
-         */
+    public function verificarUsernameExiste($username): bool {
+        $sql = "SELECT id_usuario FROM usuario WHERE username = ?";
+        if ($stmt = $this->conexion->prepare($sql)) {
+            $stmt->bind_param("s", $username);
+            $stmt->execute();
+            $stmt->store_result();
+            $existe = $stmt->num_rows > 0;
+            $stmt->close();
+            return $existe;
+        }
+        return true; // Por seguridad, si falla la consulta asumimos que existe
+    }
 
-        // Generamos una contraseña basura y segura que nadie (ni el usuario) conocerá
-        $passwordBasura = password_hash(bin2hex(random_bytes(10)), PASSWORD_DEFAULT);
-        $nombrePorDefecto = 'Jugador';
-        $apellidoPorDefecto = 'Clash';
-        $idTipoUsuario = 1; // Asumimos que 1 es el ID en la tabla 'tipo_usuario' para un jugador normal
-
-        $sql = "INSERT INTO usuario (username, password, nombre, primer_apellido, correo_electronico, id_tipo_usuario)
+    public function registrarNuevoUsuarioCompleto($username, $nombre, $apellido1, $apellido2, $correo): int|false {
+        $idTipoUsuario = 1; // 1 = Usuario normal
+        $sql = "INSERT INTO usuario (username, nombre, primer_apellido, segundo_apellido, correo_electronico, id_tipo_usuario)
                 VALUES (?, ?, ?, ?, ?, ?)";
 
         if ($stmt = $this->conexion->prepare($sql)) {
-            $stmt->bind_param("sssssi", $usernameTemporal, $passwordBasura, $nombrePorDefecto, $apellidoPorDefecto, $correo, $idTipoUsuario);
+            $stmt->bind_param("sssssi", $username, $nombre, $apellido1, $apellido2, $correo, $idTipoUsuario);
             if ($stmt->execute()) {
-                $nuevoId = $stmt->insert_id; // Obtenemos el ID del usuario recién creado
+                $nuevoId = $stmt->insert_id;
                 $stmt->close();
                 return $nuevoId;
             }
@@ -138,12 +137,18 @@ class MetodosDML {
         return false;
     }
 
+    // ==========================================
+    // MÉTODOS PARA EL TOKEN DE RECUERDO (COOKIE)
+    // ==========================================
+
     public function guardarTokenRecuerdo($idUsuario, $token): bool {
-        // Expira en 30 días
+        // Calculamos la fecha de caducidad: 30 días a partir de hoy
         $expiracion = date('Y-m-d H:i:s', strtotime('+30 days'));
 
         $sql = "INSERT INTO recuerdo (token, expiracion, id_usuario) VALUES (?, ?, ?)";
+
         if ($stmt = $this->conexion->prepare($sql)) {
+            // "ssi" significa: String (token), String (expiracion), Integer (id_usuario)
             $stmt->bind_param("ssi", $token, $expiracion, $idUsuario);
             $exito = $stmt->execute();
             $stmt->close();
@@ -152,31 +157,75 @@ class MetodosDML {
         return false;
     }
 
-    public function borrarTokenRecuerdo($token): void {
-        $sql = "DELETE FROM recuerdo WHERE token = ?";
+    // ==========================================
+    // MÉTODOS DE PERFIL Y BORRADO DE CUENTA
+    // ==========================================
+
+    // Comprueba si un username está libre, ignorando al propio usuario que lo está pidiendo
+    public function comprobarUsuarioDisponible($username, $idUsuarioActual): bool {
+        $sql = "SELECT id_usuario FROM usuario WHERE username = ? AND id_usuario != ?";
         if ($stmt = $this->conexion->prepare($sql)) {
-            $stmt->bind_param("s", $token);
+            $stmt->bind_param("si", $username, $idUsuarioActual);
             $stmt->execute();
+            $stmt->store_result();
+            $estaOcupado = $stmt->num_rows > 0;
             $stmt->close();
+            return !$estaOcupado; // Devuelve true si está libre
         }
+        return false;
     }
 
-    public function borrarTodosTokensRecuerdo($idUsuario): void {
-        $sql = "DELETE FROM recuerdo WHERE id_usuario = ?";
+    // Actualiza solo los datos de texto (sin contraseñas)
+    public function actualizarPerfilUsuario($idUsuario, $username, $nombre, $apellido1, $apellido2): bool {
+        $sql = "UPDATE usuario SET username = ?, nombre = ?, primer_apellido = ?, segundo_apellido = ? WHERE id_usuario = ?";
         if ($stmt = $this->conexion->prepare($sql)) {
-            $stmt->bind_param("i", $idUsuario);
-            $stmt->execute();
+            $stmt->bind_param("ssssi", $username, $nombre, $apellido1, $apellido2, $idUsuario);
+            $exito = $stmt->execute();
             $stmt->close();
+            return $exito;
         }
+        return false;
     }
 
-    public function borrarTodasSesionesUsuario($idUsuario): void {
-        // Esto cierra la sesión del jugador en TODOS sus dispositivos
-        $sql = "DELETE FROM sesion WHERE id_usuario = ?";
+    // Borra la cuenta. Gracias a "ON DELETE CASCADE", borrará las sesiones, los OTP y los recuerdos.
+    public function eliminarCuentaTotal($idUsuario): bool {
+        $sql = "DELETE FROM usuario WHERE id_usuario = ?";
         if ($stmt = $this->conexion->prepare($sql)) {
             $stmt->bind_param("i", $idUsuario);
-            $stmt->execute();
+            $exito = $stmt->execute();
             $stmt->close();
+            return $exito;
+        }
+        return false;
+    }
+
+    // Comprueba si un valor ya existe en una columna específica de la tabla de usuarios.
+    public function comprobarSiExiste($columna, $valor): bool {
+        try {
+            // Lista blanca de columnas permitidas por seguridad para evitar Inyección SQL
+            $columnasPermitidas = ['username', 'correo_electronico'];
+
+            if (!in_array($columna, $columnasPermitidas)) {
+                return false; // Si intentan buscar en otra columna, lo denegamos
+            }
+
+            // Preparamos la consulta (la columna se inyecta directamente porque ya la validamos arriba)
+            $sql = "SELECT COUNT(*) as total FROM usuario WHERE $columna = :valor";
+            $stmt = $this->conn->prepare($sql);
+
+            // Pasamos el valor de forma segura
+            $stmt->bindParam(':valor', $valor, PDO::PARAM_STR);
+            $stmt->execute();
+
+            $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            // Si el total es mayor que 0, significa que ya existe alguien con ese dato
+            return ($resultado['total'] > 0);
+
+        } catch (PDOException $e) {
+            // Manejo del error: puedes registrar el error en un log si lo deseas
+            error_log("Error en comprobarSiExiste: " . $e->getMessage());
+            return true; // En caso de error, decimos que existe para bloquear el registro por precaución
         }
     }
 }

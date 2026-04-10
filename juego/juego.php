@@ -4,7 +4,7 @@
 // Comprobamos si existe la llave secreta que genera el index.php
 // Si alguien intenta entrar directamente a tudominio.com/juego.php, lo devolvemos al inicio
 if (!defined('ACCESO_PERMITIDO')) {
-    header("Location: index.php");
+    header("Location: ../index.php");
     exit;
 }
 ?>
@@ -13,14 +13,17 @@ if (!defined('ACCESO_PERMITIDO')) {
 <head>
     <meta charset="UTF-8" />
     <title>Cabezazo Clash</title>
-    <link rel="manifest" href="../manifest.json">
-    <link rel="apple-touch-icon" href="../assets/img/logo192.png">
-    <link rel="icon" type="image/x-icon" href="../assets/icon/favicon.ico">
-    <link rel="stylesheet" href="juego.css?v=1">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/assets/img/logo192.png">
+    <link rel="icon" type="image/x-icon" href="/assets/icon/favicon.ico">
+    <link rel="stylesheet" href="/juego/juego.css?v=1">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 </head>
 <body>
+<a href="mi_cuenta/mi_cuenta.php" id="btn-mi-cuenta" class="btn-mi-cuenta hidden" title="Mi Cuenta">
+    <i class="bi bi-person-circle"></i>
+</a>
 <div id="game-wrap" class="game-wrap">
     <section id="screen-tap-to-start" class="screen active" style="z-index: 999; background: #000; cursor: pointer;">
         <div class="card" style="background: transparent; box-shadow: none; backdrop-filter: none;">
@@ -192,19 +195,19 @@ if (!defined('ACCESO_PERMITIDO')) {
 
 <!-- música de fondo -->
 <audio id="bg-music" loop preload="auto">
-    <source src="../assets/audio/menu_music.mp3" type="audio/mpeg">
+    <source src="/assets/audio/menu_music.mp3" type="audio/mpeg">
 </audio>
 
 <audio id="sfx-crowd-ambient" loop preload="auto">
-    <source src="../assets/audio/crowd_ambient.mp3" type="audio/mpeg">
+    <source src="/assets/audio/crowd_ambient.mp3" type="audio/mpeg">
 </audio>
 
-<script src="../js/constants.js?v=2"></script>
-<script src="../js/entities.js?v=2"></script>
-<script src="../js/physics.js?v=2"></script>
-<script src="../js/renderer.js?v=1"></script>
-<script src="../js/input.js?v=2"></script>
-<script src="../js/game.js?v=2"></script>
-<script src="../js/main.js?v=4"></script>
+<script src="/js/constants.js?v=2"></script>
+<script src="/js/entities.js?v=2"></script>
+<script src="/js/physics.js?v=2"></script>
+<script src="/js/renderer.js?v=1"></script>
+<script src="/js/input.js?v=2"></script>
+<script src="/js/game.js?v=2"></script>
+<script src="/js/main.js?v=5"></script>
 </body>
 </html>

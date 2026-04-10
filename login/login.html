@@ -15,20 +15,50 @@
 
   <div id="paso-correo">
     <h2 class="subtitle">Introduce tu correo para jugar</h2>
-    <div id="error-correo" id="mensaje-error"></div>
+    <div id="error-correo" class="mensaje-error" style="color: #d32f2f; margin-bottom: 10px;"></div>
 
     <form id="form-correo">
       <div class="form-group">
         <label for="correo">Correo Electrónico</label>
         <input type="email" id="correo" placeholder="jugador@ejemplo.com" required />
       </div>
-      <button type="submit" id="btn-enviar-codigo" class="btn">Enviar Código de Acceso</button>
+      <button type="submit" id="btn-comprobar-correo" class="btn">Continuar</button>
+    </form>
+  </div>
+
+  <div id="paso-registro" class="hidden">
+    <h2 class="subtitle">¡Crea tu perfil de jugador!</h2>
+    <div id="error-registro" class="mensaje-error" style="color: #d32f2f; margin-bottom: 10px;"></div>
+
+    <form id="form-registro">
+      <div class="form-group">
+        <label for="reg-username">Nombre de Usuario (Único)</label>
+        <input type="text" id="reg-username" placeholder="Ej: ClashMaster99" required maxlength="32" />
+        <div id="feedback-username" style="font-size: 0.85rem; margin-top: 5px; min-height: 18px; font-weight: bold;"></div>
+      </div>
+      <div class="form-group">
+        <label for="reg-nombre">Nombre Real</label>
+        <input type="text" id="reg-nombre" placeholder="Tu nombre" required maxlength="32" />
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <div class="form-group" style="flex: 1;">
+          <label for="reg-apellido1">Primer Apellido</label>
+          <input type="text" id="reg-apellido1" placeholder="Requerido" required maxlength="32" />
+        </div>
+        <div class="form-group" style="flex: 1;">
+          <label for="reg-apellido2">Segundo Apellido</label>
+          <input type="text" id="reg-apellido2" placeholder="Opcional" maxlength="32" />
+        </div>
+      </div>
+
+      <button type="submit" id="btn-registrar" class="btn">Crear Cuenta y Enviar Código</button>
+      <button type="button" id="btn-volver-registro" class="btn btn-secondary">Cambiar correo</button>
     </form>
   </div>
 
   <div id="paso-codigo" class="hidden">
-    <h2 class="subtitle">Hemos enviado un código a <br><b id="correo-mostrado"></b></h2>
-    <div id="error-codigo" style="color: #d32f2f; font-size: 0.9rem; margin-bottom: 15px;"></div>
+    <h2 class="subtitle">Hemos enviado un código a <br><b id="correo-mostrado" style="color: #5c2d91;"></b></h2>
+    <div id="error-codigo" class="mensaje-error" style="color: #d32f2f; margin-bottom: 10px;"></div>
 
     <form id="form-codigo">
       <div class="form-group">
@@ -36,7 +66,7 @@
         <input type="text" id="codigo-otp" maxlength="6" pattern="\d{6}" placeholder="------" autocomplete="one-time-code" required />
       </div>
       <button type="submit" id="btn-entrar" class="btn">Entrar al Juego</button>
-      <button type="button" id="btn-volver" class="btn btn-secondary">Usar otro correo</button>
+      <button type="button" id="btn-volver-codigo" class="btn btn-secondary">Usar otro correo</button>
     </form>
   </div>
 </div>

@@ -13,7 +13,6 @@ CREATE TABLE tipo_usuario (
 CREATE TABLE usuario (
     id_usuario INT NOT NULL AUTO_INCREMENT,
     username VARCHAR(32) NOT NULL,
-    password VARCHAR(255) NOT NULL,
     nombre VARCHAR(32) NOT NULL,
     primer_apellido VARCHAR(32) NOT NULL,
     segundo_apellido VARCHAR(32),
@@ -31,10 +30,12 @@ CREATE TABLE usuario (
 
 CREATE TABLE otp_login (
     id_otp INT NOT NULL AUTO_INCREMENT,
-    correo_electronico VARCHAR(128) NOT NULL, -- Guardamos el correo por si es un usuario nuevo
     codigo VARCHAR(6) NOT NULL,
     expiracion DATETIME NOT NULL,
-    CONSTRAINT pk_otp PRIMARY KEY (id_otp)
+    id_usuario INT NULL,
+    CONSTRAINT pk_otp PRIMARY KEY (id_otp),
+    CONSTRAINT fk_otp_usuario FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario) ON DELETE CASCADE
+
 );
 
 CREATE TABLE recuerdo (

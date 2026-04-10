@@ -23,6 +23,7 @@ const btnBasic = document.getElementById("btn-basic");
 const btnAdvanced = document.getElementById("btn-advanced");
 const btnOptions = document.getElementById("btn-options");
 const btnOptionsBack = document.getElementById("btn-options-back");
+const btnMiCuenta = document.getElementById("btn-mi-cuenta");
 const btnHowToPlay = document.getElementById("btn-how-to-play");
 const btnCloseHowToPlay = document.getElementById("btn-close-how-to-play");
 const btnInfo = document.getElementById("btn-info");
@@ -82,6 +83,12 @@ function showScreen(screenToShow) {
   screenHowToPlay.classList.remove("active");
   if(screenModeSelect) screenModeSelect.classList.remove("active");
   screenToShow.classList.add("active");
+  if (btnMiCuenta) {
+    // Si la pantalla no es el menu inicial, lo ocultamos
+    if (screenToShow !== screenStart) btnMiCuenta.classList.add("hidden");
+    // Para cualquier otra pantalla (Menú, Opciones, Modos), lo mostramos
+    else btnMiCuenta.classList.remove("hidden");
+  }
 }
 
 // Detecta si el usuario está usando una pantalla táctil (móvil o tablet)
@@ -480,6 +487,9 @@ screenTapToStart.addEventListener('click', async () => {
   screenTapToStart.classList.remove('active');
   showScreen(screenStart);
   playMenuMusic();
+
+  // Mostrar el botón de Mi Cuenta una vez pasado el "Tap to start"
+  if (btnMiCuenta) btnMiCuenta.classList.remove("hidden");
 });
 
 document.addEventListener('visibilitychange', () => {

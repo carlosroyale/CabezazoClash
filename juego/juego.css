@@ -758,6 +758,28 @@ body {
     border-color: #e11d48;
 }
 
+/* Botón de Mi Cuenta en la esquina */
+.btn-mi-cuenta {
+    position: absolute;
+    top: 25px;
+    right: 35px;
+    color: #ffce00;
+    font-size: 2.8rem;
+    z-index: 2000; /* Por encima de las pantallas del juego */
+    cursor: pointer;
+    transition: transform 0.2s ease, color 0.2s ease;
+    text-decoration: none;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+}
+
+.btn-mi-cuenta:hover {
+    transform: scale(1.15);
+}
+
+.btn-mi-cuenta.hidden {
+    display: none !important;
+}
+
 /* Animación del icono girando */
 @keyframes rotatePhone {
     0% { transform: rotate(0deg); }
@@ -774,6 +796,9 @@ body {
         display: none !important;
     }
     #touch-controls {
+        display: none !important;
+    }
+    .btn-mi-cuenta {
         display: none !important;
     }
 }
