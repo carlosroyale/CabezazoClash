@@ -320,3 +320,13 @@ window.cerrarModalDato = function(idModal) {
         volverPaso1Correo();
     }
 };
+
+// =========================================
+// FORZAR RECÁLCULO AL GIRAR EL MÓVIL
+// =========================================
+window.addEventListener('orientationchange', () => {
+    // Le damos al navegador 150 milisegundos para estabilizarse y subimos la cámara
+    setTimeout(() => {
+        window.scrollTo(0, 0);
+    }, 150);
+});

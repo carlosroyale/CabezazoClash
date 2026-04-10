@@ -7,6 +7,11 @@
     box-sizing: border-box;
     font-family: 'Poppins', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     -webkit-tap-highlight-color: transparent;
+
+    /* BLOQUEO DE LETRAS GIGANTES */
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    text-size-adjust: 100%;
 }
 
 html {
@@ -29,7 +34,8 @@ body {
     background: var(--bg-gradient);
     background-attachment: fixed; /* ¡MAGIA! Esto evita que el fondo se repita en móvil */
     background-size: cover;
-    height: 100vh;
+    height: 100vh; /* Fallback para navegadores viejos */
+    min-height: 100dvh; /* Magia para evitar márgenes al rotar */
     color: var(--text-dark);
     display: flex;
     flex-direction: column;
@@ -331,12 +337,15 @@ body {
     .dashboard-content { height: auto; padding: 20px; overflow-y: visible; }
 
     .dashboard-sidebar {
-        position: fixed; top: 0; right: 0; left: auto; /* Anclado a la derecha */
-        width: 100%; height: 100vh;
+        position: fixed; top: 0; right: 0; left: auto;
+        width: 300px;
+        height: 100vh;
+        height: 100dvh;
         z-index: 2000; padding-top: 60px;
-        transform: translateX(100%); /* Empieza escondido a la derecha */
+        transform: translateX(100%);
         transition: transform 0.3s ease-in-out;
         border-left: none;
+        box-shadow: -5px 0 25px rgba(0,0,0,0.5);
     }
     .dashboard-sidebar.active { transform: translateX(0); } /* Entra en pantalla */
 
