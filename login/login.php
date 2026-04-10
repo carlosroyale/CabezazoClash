@@ -93,7 +93,8 @@ try {
             } else {
                 echo json_encode(['success' => false, 'message' => 'Cuenta creada pero falló el envío del correo.']);
             }
-        } else {
+        }
+        else {
             echo json_encode(['success' => false, 'message' => 'Error al guardar los datos en la base de datos.']);
         }
         exit;

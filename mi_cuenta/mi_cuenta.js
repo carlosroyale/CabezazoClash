@@ -97,8 +97,27 @@ function cerrarModalDato(idModal) {
     const form = modal.querySelector('form');
     if (form) {
         form.reset();
+
+        // 1. Extraemos la palabra clave (ej: de "modal-username" sacamos "username")
+        const tipo = idModal.replace('modal-', '');
+
+        // 2. Buscamos todos los <small> y los recorremos uno a uno
         const statusElements = form.querySelectorAll('small');
-        statusElements.forEach(el => el.innerHTML = "");
+        statusElements.forEach(status => {
+            // Solo ponemos el texto de aviso si es username o correo
+            if (tipo === 'username' || tipo === 'correo') {
+                status.innerHTML = `Ya dispones de este ${tipo}.`;
+                status.style.color = '#f39c12'; // Naranja / Aviso
+            } else {
+                status.innerHTML = ''; // Limpiamos por defecto para los demás
+            }
+        });
+
+        // 3. BONUS DE SEGURIDAD: Volver a bloquear el botón de guardar
+        const btnGuardar = form.querySelector('.btn-guardar');
+        if (btnGuardar && (tipo === 'username' || tipo === 'correo')) {
+            btnGuardar.disabled = true;
+        }
     }
 }
 
@@ -191,8 +210,8 @@ function setupValidation(inputId, statusId, btnId, tipo) {
         const current = input.getAttribute('data-current');
 
         // Reiniciamos estado visual
-        status.innerHTML = '';
-        status.style.color = '';
+        status.innerHTML = `Ya dispones de este ${tipo}.`;
+        status.style.color = '#f39c12'; // Naranja / Aviso
         btn.disabled = true;
 
         if (value === '') return;

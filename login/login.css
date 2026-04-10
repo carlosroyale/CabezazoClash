@@ -1,4 +1,8 @@
 /* El CSS unificado y mejorado para el OTP */
+html {
+    background-color: #000;
+}
+
 body {
     font-family: 'Poppins', sans-serif;
     background: linear-gradient(to bottom, #d4a1d6, #5c2d91, #2e7d32);

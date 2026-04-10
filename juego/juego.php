@@ -21,10 +21,10 @@ if (!defined('ACCESO_PERMITIDO')) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 </head>
 <body>
-<a href="mi_cuenta/mi_cuenta.php" id="btn-mi-cuenta" class="btn-mi-cuenta hidden" title="Mi Cuenta">
-    <i class="bi bi-person-circle"></i>
-</a>
 <div id="game-wrap" class="game-wrap">
+    <a href="mi_cuenta/mi_cuenta.php" id="btn-mi-cuenta" class="btn-mi-cuenta hidden" title="Mi Cuenta">
+        <i class="bi bi-person-circle"></i>
+    </a>
     <section id="screen-tap-to-start" class="screen active" style="z-index: 999; background: #000; cursor: pointer;">
         <div class="card" style="background: transparent; box-shadow: none; backdrop-filter: none;">
             <h1 class="title" style="font-size: 3rem; animation: pulse-text 1.5s infinite alternate ease-in-out;">TOCA PARA EMPEZAR</h1>

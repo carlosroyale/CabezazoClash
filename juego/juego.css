@@ -761,13 +761,18 @@ body {
 /* Botón de Mi Cuenta en la esquina */
 .btn-mi-cuenta {
     position: absolute;
-    top: 25px;
-    right: 35px;
+    top: 40px;   /* Misma distancia arriba que el Info tiene abajo */
+    right: 40px; /* Exactamente el mismo margen lateral que info-btn */
+    width: 70px; /* Mismo ancho para que el eje X coincida al 100% */
+    height: 70px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     color: #ffce00;
-    font-size: 2.8rem;
+    font-size: 3.5rem; /* Ajustado al nuevo contenedor */
     z-index: 2000; /* Por encima de las pantallas del juego */
     cursor: pointer;
-    transition: transform 0.2s ease, color 0.2s ease;
+    transition: transform 0.2s ease, filter 0.2s ease;
     text-decoration: none;
     filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
 }
