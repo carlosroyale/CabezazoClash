@@ -32,24 +32,24 @@
 
     <form id="form-registro">
       <div class="form-group">
-        <label for="reg-username">Nombre de Usuario (Único)</label>
+        <label for="reg-username">Nombre de usuario*</label>
         <input type="text" id="reg-username" placeholder="Ej: ClashMaster99" required maxlength="32" />
-        <div id="feedback-username" style="font-size: 0.85rem; margin-top: 5px; min-height: 18px; font-weight: bold;"></div>
       </div>
       <div class="form-group">
-        <label for="reg-nombre">Nombre Real</label>
-        <input type="text" id="reg-nombre" placeholder="Tu nombre" required maxlength="32" />
+        <label for="reg-nombre">Nombre real*</label>
+        <input type="text" id="reg-nombre" placeholder="Bartolomé" required maxlength="32" />
       </div>
       <div style="display: flex; gap: 10px;">
         <div class="form-group" style="flex: 1;">
-          <label for="reg-apellido1">Primer Apellido</label>
-          <input type="text" id="reg-apellido1" placeholder="Requerido" required maxlength="32" />
+          <label for="reg-apellido1">Primer apellido*</label>
+          <input type="text" id="reg-apellido1" placeholder="Palou" required maxlength="32" />
         </div>
         <div class="form-group" style="flex: 1;">
-          <label for="reg-apellido2">Segundo Apellido</label>
-          <input type="text" id="reg-apellido2" placeholder="Opcional" maxlength="32" />
+          <label for="reg-apellido2">Segundo apellido</label>
+          <input type="text" id="reg-apellido2" placeholder="Balaguer" maxlength="32" />
         </div>
       </div>
+      <p style="text-align: left; color: #888888; margin-top: 0;">Los campos con * son obligatorios.</p>
 
       <button type="submit" id="btn-registrar" class="btn">Crear Cuenta y Enviar Código</button>
       <button type="button" id="btn-volver-registro" class="btn btn-secondary">Cambiar correo</button>
