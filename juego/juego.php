@@ -16,7 +16,7 @@ if (!defined('ACCESO_PERMITIDO')) {
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="/assets/img/logo192.png">
     <link rel="icon" type="image/x-icon" href="/assets/icon/favicon.ico">
-    <link rel="stylesheet" href="juego.css?v=2">
+    <link rel="stylesheet" href="../juego/juego.css?v=2">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 </head>
