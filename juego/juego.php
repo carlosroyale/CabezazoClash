@@ -16,7 +16,7 @@ if (!defined('ACCESO_PERMITIDO')) {
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="/assets/img/logo192.png">
     <link rel="icon" type="image/x-icon" href="/assets/icon/favicon.ico">
-    <link rel="stylesheet" href="/juego/juego.css?v=1">
+    <link rel="stylesheet" href="/juego/juego.css?v=2">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 </head>
@@ -24,6 +24,9 @@ if (!defined('ACCESO_PERMITIDO')) {
 <div id="game-wrap" class="game-wrap">
     <a href="mi_cuenta/mi_cuenta.php" id="btn-mi-cuenta" class="btn-mi-cuenta hidden" title="Mi Cuenta">
         <i class="bi bi-person-circle"></i>
+    </a>
+    <a href="ranking/ranking.php" id="btn-ranking" class="btn-ranking hidden" title="Ranking Global">
+        <i class="bi bi-trophy-fill"></i>
     </a>
     <section id="screen-tap-to-start" class="screen active" style="z-index: 999; background: #000; cursor: pointer;">
         <div class="card" style="background: transparent; box-shadow: none; backdrop-filter: none;">
@@ -208,6 +211,6 @@ if (!defined('ACCESO_PERMITIDO')) {
 <script src="/juego/js/renderer.js?v=1"></script>
 <script src="/juego/js/input.js?v=2"></script>
 <script src="/juego/js/game.js?v=2"></script>
-<script src="/juego/js/main.js?v=5"></script>
+<script src="/juego/js/main.js?v=6"></script>
 </body>
 </html>

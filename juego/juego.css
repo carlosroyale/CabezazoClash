@@ -785,6 +785,49 @@ body {
     display: none !important;
 }
 
+.btn-ranking {
+    position: absolute;
+    top: 40px;   /* Misma distancia arriba que el botón de cuenta */
+    left: 40px;  /* Distancia desde la pared izquierda */
+    width: 70px;  /* Mismo tamaño que el botón de cuenta para simetría */
+    height: 70px;
+
+    /* EL DISEÑO QUE ME HAS PEDIDO: Círculo Amarillo */
+    background-color: #ffce00; /* Amarillo/Dorado vibrante */
+    border: 3px solid rgba(255, 255, 255, 0.4);
+    border-radius: 50%;         /* Lo hace perfectamente circular */
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    z-index: 2000; /* Por encima de las pantallas del juego */
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    text-decoration: none;
+
+    /* Sombra para que flote sobre el campo */
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+}
+
+/* Estilo para el icono DENTRO del círculo */
+.btn-ranking i {
+    color: #000000;   /* Icono NEGRO dentro del círculo amarillo */
+    font-size: 2.8rem; /* Tamaño ajustado para que quepa bien dentro del círculo */
+    display: flex;
+}
+
+/* Animación al pasar el ratón */
+.btn-ranking:hover {
+    transform: scale(1.1) translateY(-3px); /* Crece un poco y sube */
+    box-shadow: 0 8px 20px rgba(0,0,0,0.7);
+    background-color: #ffda45; /* Un amarillo un pelín más claro al hover */
+}
+
+.btn-ranking.hidden {
+    display: none !important;
+}
+
 /* Animación del icono girando */
 @keyframes rotatePhone {
     0% { transform: rotate(0deg); }
@@ -804,6 +847,9 @@ body {
         display: none !important;
     }
     .btn-mi-cuenta {
+        display: none !important;
+    }
+    .btn-ranking {
         display: none !important;
     }
 }

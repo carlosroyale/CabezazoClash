@@ -24,6 +24,7 @@ const btnAdvanced = document.getElementById("btn-advanced");
 const btnOptions = document.getElementById("btn-options");
 const btnOptionsBack = document.getElementById("btn-options-back");
 const btnMiCuenta = document.getElementById("btn-mi-cuenta");
+const btnRanking = document.getElementById("btn-ranking");
 const btnHowToPlay = document.getElementById("btn-how-to-play");
 const btnCloseHowToPlay = document.getElementById("btn-close-how-to-play");
 const btnInfo = document.getElementById("btn-info");
@@ -88,6 +89,12 @@ function showScreen(screenToShow) {
     if (screenToShow !== screenStart) btnMiCuenta.classList.add("hidden");
     // Para cualquier otra pantalla (Menú, Opciones, Modos), lo mostramos
     else btnMiCuenta.classList.remove("hidden");
+  }
+  if (btnRanking) {
+    // Si la pantalla no es el menu inicial, lo ocultamos
+    if (screenToShow !== screenStart) btnRanking.classList.add("hidden");
+    // Para cualquier otra pantalla (Menú, Opciones, Modos), lo mostramos
+    else btnRanking.classList.remove("hidden");
   }
 }
 
@@ -490,6 +497,7 @@ screenTapToStart.addEventListener('click', async () => {
 
   // Mostrar el botón de Mi Cuenta una vez pasado el "Tap to start"
   if (btnMiCuenta) btnMiCuenta.classList.remove("hidden");
+  if (btnRanking) btnRanking.classList.remove("hidden");
 });
 
 document.addEventListener('visibilitychange', () => {

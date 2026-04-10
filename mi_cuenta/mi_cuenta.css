@@ -67,7 +67,7 @@ body::before {
     align-items: center;
     width: 100%;
     z-index: 100;
-    flex-shrink: 0; /* Evita que la barra se aplaste */
+    flex-shrink: 0;
 }
 
 .btn-volver-top {
@@ -242,25 +242,30 @@ body::before {
 .modal-dato-overlay {
     display: none;
     position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
+    top: 0; left: 0; width: 100vw; height: 100vh; height: 100dvh;
     background: rgba(0, 0, 0, 0.6);
     z-index: 3000;
-    justify-content: center;
-    align-items: center;
+    flex-direction: column; /* Permite que el contenido fluya hacia abajo */
+    overflow-y: auto;       /* Permite hacer scroll si el modal es muy alto */
+    padding: 20px;          /* Colchón de seguridad para que no toque los bordes */
     backdrop-filter: blur(5px);
 }
 
-.modal-dato-overlay.active { display: flex; animation: fadeIn 0.2s ease-in-out; }
+.modal-dato-overlay.active {
+    display: flex;
+    animation: fadeIn 0.2s ease-in-out;
+}
 
 .modal-dato-content {
     background: #ffffff;
     border-radius: 15px;
-    width: 90%;
+    width: 100%;
     max-width: 400px;
     padding: 35px 30px;
     position: relative;
     box-shadow: 0 10px 40px rgba(0,0,0,0.4);
     text-align: center;
+    margin: auto; /* ¡LA MAGIA! Centra vertical y horizontalmente de forma segura */
 }
 
 .modal-dato-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
@@ -356,9 +361,10 @@ body::before {
    ========================================= */
 @media (max-width: 900px) {
     body {
-        height: auto;
-        overflow-x: hidden; /* Mantiene bloqueado el eje horizontal */
-        overflow-y: auto;   /* Permite hacer scroll hacia abajo normalmente */
+        /* ¡BLOQUEAMOS LA PANTALLA! Comportamiento de App Nativa */
+        height: 100vh;
+        min-height: 100dvh;
+        overflow: hidden;
         display: flex;
     }
     .top-bar { padding: 15px 20px; }
@@ -366,8 +372,15 @@ body::before {
     /* Mostrar botón de menú en la barra superior */
     .account-menu-toggle { display: flex; }
 
-    .dashboard-container { flex-direction: column; height: auto; overflow: visible; }
-    .dashboard-content { height: auto; padding: 20px; overflow-y: visible; }
+    .dashboard-container {
+        flex-direction: column;
+        overflow: hidden; /* Evita que el contenedor crezca más de la cuenta */
+    }
+
+    .dashboard-content {
+        padding: 20px;
+        overflow-y: auto; /* AHORA EL SCROLL OCURRE SOLO AQUÍ DENTRO */
+    }
 
     .dashboard-sidebar {
         position: fixed; top: 0; right: 0; left: auto;
@@ -388,4 +401,32 @@ body::before {
     }
 
     .doble { flex-direction: column; gap: 0; }
+}
+
+/* =========================================
+   MODO COMPACTO PARA MODALES (MÓVILES)
+   ========================================= */
+@media (max-width: 480px), (max-height: 800px) {
+    .modal-dato-content {
+        padding: 25px 20px; /* Reducimos los bordes blancos */
+    }
+    .modal-dato-header {
+        margin-bottom: 15px; /* Juntamos el título con el formulario */
+    }
+    .modal-dato-header h3 {
+        font-size: 1.3rem; /* Título un poco más pequeño */
+    }
+    .modal-dato-content form input {
+        padding: 12px;
+        margin-bottom: 15px;
+        font-size: 15px;
+    }
+    .doble {
+        gap: 10px; /* Juntamos un poco más el Primer y Segundo apellido */
+    }
+    .btn-guardar {
+        padding: 12px;
+        font-size: 15px;
+        margin-top: 5px;
+    }
 }

@@ -1,4 +1,44 @@
-/* El CSS unificado y mejorado para el OTP */
+/*!* El CSS unificado y mejorado para el OTP *!*/
+/*html {*/
+/*    background-color: #000;*/
+/*}*/
+
+/*body {*/
+/*    font-family: 'Poppins', sans-serif;*/
+/*    background: linear-gradient(to bottom, #d4a1d6, #5c2d91, #2e7d32);*/
+/*    background-attachment: fixed; !* ¡MAGIA! Fija el fondo a la cámara *!*/
+/*    background-size: cover;       !* Asegura que cubra todo el espacio *!*/
+/*    color: #fff;*/
+/*    display: flex;*/
+/*    justify-content: center;*/
+/*    align-items: center;*/
+/*    min-height: 100vh;            !* Cambiamos height por min-height para que sea flexible *!*/
+/*    margin: 0;*/
+/*}*/
+
+/*.card {*/
+/*    background: rgba(255, 255, 255, 0.95);*/
+/*    color: #333;*/
+/*    border-radius: 15px;*/
+/*    padding: 40px 30px;*/
+/*    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);*/
+/*    width: 100%;*/
+/*    max-width: 400px;*/
+/*    text-align: center;*/
+/*    position: relative;*/
+/*}*/
+
+/* =========================================
+   1. RESET Y BASE
+   ========================================= */
+* {
+    box-sizing: border-box;
+    /* Evita que el móvil ponga letras gigantes al abrir el teclado */
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
 html {
     background-color: #000;
 }
@@ -6,13 +46,16 @@ html {
 body {
     font-family: 'Poppins', sans-serif;
     background: linear-gradient(to bottom, #d4a1d6, #5c2d91, #2e7d32);
-    background-attachment: fixed; /* ¡MAGIA! Fija el fondo a la cámara */
-    background-size: cover;       /* Asegura que cubra todo el espacio */
+    background-attachment: fixed;
+    background-size: cover;
     color: #fff;
+
+    /* LA MAGIA DEL CENTRADO SEGURO */
     display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;            /* Cambiamos height por min-height para que sea flexible */
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100dvh; /* Altura dinámica para móviles */
+    padding: 20px;      /* Espacio para que la tarjeta no toque los bordes */
     margin: 0;
 }
 
@@ -26,6 +69,9 @@ body {
     max-width: 400px;
     text-align: center;
     position: relative;
+
+    /* Esto centra la tarjeta si hay espacio, pero le permite crecer hacia abajo sin recortar la parte de arriba */
+    margin: auto;
 }
 
 .logo {
@@ -174,4 +220,42 @@ body {
     #orientation-warning { display: flex !important; }
     /* Ocultamos la tarjeta de login para que no estorbe de fondo */
     .card { display: none !important; }
+}
+
+/* =========================================
+   MODO COMPACTO PARA MÓVILES Y TECLADO
+   ========================================= */
+@media (max-width: 480px), (max-height: 800px) {
+    .card {
+        padding: 25px 20px; /* Reducimos el colchón blanco interior */
+    }
+    .logo {
+        width: 85px;
+        margin-bottom: 10px;
+    }
+    .title {
+        font-size: 1.7rem;
+    }
+    .subtitle {
+        margin-bottom: 15px;
+        font-size: 0.9rem;
+    }
+    .form-group {
+        margin-bottom: 12px; /* Juntamos los inputs un poco más */
+    }
+    .form-group label {
+        margin-bottom: 5px;
+        font-size: 0.85rem;
+    }
+    .form-group input {
+        padding: 12px; /* Inputs un pelín más delgados */
+        font-size: 15px;
+    }
+    .btn {
+        padding: 12px;
+        font-size: 15px;
+    }
+    .btn-secondary {
+        margin-top: 10px;
+    }
 }

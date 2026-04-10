@@ -280,4 +280,21 @@ class MetodosDML {
             $stmt->close();
         }
     }
+
+    // Obtiene la lista de jugadores ordenada por puntos para el Ranking Global
+    public function obtenerRankingGlobal(): array {
+        $sql = "SELECT username, puntos_globales FROM usuario WHERE puntos_globales > 0 ORDER BY puntos_globales DESC";
+        $ranking = [];
+
+        if ($stmt = $this->conexion->prepare($sql)) {
+            $stmt->execute();
+            $resultado = $stmt->get_result();
+
+            while ($fila = $resultado->fetch_assoc()) {
+                $ranking[] = $fila;
+            }
+            $stmt->close();
+        }
+        return $ranking;
+    }
 }
