@@ -501,15 +501,14 @@ screenTapToStart.addEventListener('click', async () => {
 });
 
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    stopAllSounds();
-  } else {
+  if (document.hidden) stopAllSounds();
+  else {
     if (!musicUnlocked) return;
     if (screenGame.classList.contains("active")) {
-      playMatchAmbient();
-    } else {
-      playMenuMusic();
+      // Solo reanudamos el sonido del estadio si NO estamos en pausa
+      if (screenPause.classList.contains("hidden")) playMatchAmbient();
     }
+    else playMenuMusic();
   }
 });
 
@@ -576,15 +575,12 @@ function resizeCanvas() {
     window.Game.resize(canvas.width, canvas.height);
   }
 
-
-  // --- NUEVO: REPINTADO MANUAL SI ESTÁ EN PAUSA ---
   // Como redimensionar borra el canvas, si el juego está pausado (el bucle no corre),
   // se queda en negro. Necesitamos forzar un dibujado usando el estado actual.
   if (window.Game && window.Game.forceRedraw) {
     window.Game.forceRedraw(ctx);
   }
 
-  // --- AUTOPAUSA AL GIRAR EL MÓVIL A VERTICAL ---
   // Si la pantalla es más alta que ancha y estamos en la pantalla de juego
   if (window.innerHeight > window.innerWidth && screenGame.classList.contains("active")) {
     // Evitamos pausar si ya hay una cuenta atrás para reanudar (previene bugs visuales)
@@ -594,11 +590,26 @@ function resizeCanvas() {
   }
 }
 
-// Escuchar cambios de tamaño de ventana
-window.addEventListener('resize', resizeCanvas);
+function initResize() {
+  resizeCanvas(); // Intento inmediato
 
-// Forzar un primer ajuste al arrancar
-resizeCanvas();
+  // En móviles y PWAs, a veces el tamaño real tarda unos milisegundos en asentarse
+  setTimeout(resizeCanvas, 150);
+  setTimeout(resizeCanvas, 500); // Segundo chequeo de seguridad
+}
+
+// Escuchar cambios de tamaño de ventana y cambios de orientación específicos de móvil
+window.addEventListener('resize', resizeCanvas);
+window.addEventListener('orientationchange', () => {
+  // Al girar la pantalla, esperamos un instante a que el SO redibuje
+  setTimeout(resizeCanvas, 150);
+});
+
+// Forzar el ajuste cuando toda la página y recursos han cargado
+window.addEventListener('load', initResize);
+
+// Ejecutar inmediatamente por si acaso estamos en PC y ya está listo
+initResize();
 
 // Arrancar el modo reposo para ver las porterías de fondo
 if (window.Game && window.Game.startIdle) {

@@ -211,6 +211,6 @@ if (!defined('ACCESO_PERMITIDO')) {
 <script src="/juego/js/renderer.js?v=1"></script>
 <script src="/juego/js/input.js?v=2"></script>
 <script src="/juego/js/game.js?v=2"></script>
-<script src="/juego/js/main.js?v=6"></script>
+<script src="/juego/js/main.js?v=7"></script>
 </body>
 </html>
