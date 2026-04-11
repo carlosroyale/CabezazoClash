@@ -595,15 +595,15 @@ function initResize() {
 
   // En móviles y PWAs, a veces el tamaño real tarda unos milisegundos en asentarse
   setTimeout(resizeCanvas, 150);
-  setTimeout(resizeCanvas, 500); // Segundo chequeo de seguridad
+  setTimeout(resizeCanvas, 15000); // Segundo chequeo de seguridad
 }
 
 // Escuchar cambios de tamaño de ventana y cambios de orientación específicos de móvil
 window.addEventListener('resize', resizeCanvas);
-window.addEventListener('orientationchange', () => {
-  // Al girar la pantalla, esperamos un instante a que el SO redibuje
-  setTimeout(resizeCanvas, 150);
-});
+// window.addEventListener('orientationchange', () => {
+//   // Al girar la pantalla, esperamos un instante a que el SO redibuje
+//   setTimeout(resizeCanvas, 150);
+// });
 
 // Forzar el ajuste cuando toda la página y recursos han cargado
 window.addEventListener('load', initResize);
