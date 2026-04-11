@@ -1,26 +1,26 @@
 # Cabezazo Clash
 
-Proyecto para la asignatura de Laboratori de Software: pequeño juego de fútbol 1v1 hecho con HTML, CSS y JavaScript (sin frameworks).
+Proyecto académico de Laboratori de Software: videojuego de fútbol 1vs1 con frontend en HTML/CSS/JavaScript y backend en PHP + MySQL para login, sesiones, cuenta de usuario y ranking.
 
-La idea del proyecto era tener una base simple pero clara: menús, partida local, marcador, pausa y opciones de volumen.
+## Modificaciones y estado actual
 
-## Estado actual
+El proyecto evolucionó desde una versión estática a una versión con backend completo.
 
-Ahora mismo funciona:
+Actualmente incluye:
 
-- Partida local 1 vs 1.
-- Partida 1 vs bot (IA básica).
-- Marcador + temporizador.
-- Pausa con cuenta atrás para reanudar.
-- Menú de opciones con volumen de música y SFX guardado en localStorage.
-- Pantallas de inicio, ayuda, info y final de partido.
+- Autenticación por correo con código OTP.
+- Registro de usuarios y persistencia en base de datos.
+- Gestión de sesión en base de datos (handler personalizado).
+- Cookie de recuerdo (autologin).
+- Juego local 1vs1 y 1vsBot.
+- Ranking y módulo de gestión de cuenta.
 
-Cosas que todavía están a medio hacer:
+Pendiente/mejorable:
 
-- 1 vs 1 online (visible en el menú pero sin lógica).
-- Algunos textos y comentarios del código todavía se tienen que limpiar/unificar.
+- Modo online 1vs1 (visible en la interfaz, sin implementación completa).
+- Limpieza y unificación de algunos comentarios/mensajes.
 
-## Controls
+## Controles del juego
 
 Jugador 1:
 
@@ -36,53 +36,116 @@ Jugador 2:
 
 General:
 
-- Botón de pausa o tecla R: pausar/reanudar (con cuenta atrás)
+- R o botón de pausa: pausar/reanudar
 
-## Estructura del proyecto
+## Estructura actual del proyecto
 
 ```text
 CabezazoClash/
-├── index.html
-├── login.html
-├── styles.css
-├── main.js
+├── composer.json
+├── Conexion.php
+├── config_sesion.php
+├── GestorSesiones.php
+├── index.php
+├── logout.php
+├── manifest.json
+├── MetodosDML.php
+├── MetodosPHP.php
 ├── README.md
 ├── assets/
 │   ├── audio/
+│   ├── icon/
 │   └── img/
-└── js/
-    ├── constants.js
-    ├── entities.js
-    ├── game.js
-    ├── input.js
-    ├── physics.js
-    └── renderer.js
+├── juego/
+│   ├── juego.css
+│   ├── juego.php
+│   └── js/
+│       ├── constants.js
+│       ├── entities.js
+│       ├── game.js
+│       ├── input.js
+│       ├── main.js
+│       ├── physics.js
+│       └── renderer.js
+├── login/
+│   ├── login.css
+│   ├── login.html
+│   ├── login.js
+│   └── login.php
+├── mi_cuenta/
+│   ├── check_disponibilidad.php
+│   ├── eliminar_cuenta.php
+│   ├── enviar_codigo_correo.php
+│   ├── guardar_dato_ajax.php
+│   ├── mi_cuenta.css
+│   ├── mi_cuenta.html
+│   ├── mi_cuenta.js
+│   └── mi_cuenta.php
+├── ranking/
+│   ├── ranking.css
+│   ├── ranking.html
+│   └── ranking.php
+└── sql/
+     ├── CrowsFoot.drawio
+     └── local.sql
 ```
 
-Resumen rápido de responsabilidades:
+## Requisitos
 
-- main.js: UI, pantallas, botones, opciones y audio de menú.
-- js/game.js: bucle principal, tiempo, goles y flujo de partida.
-- js/entities.js: jugadores, bot y utilidades de movimiento.
-- js/physics.js: colisiones y respuesta física.
-- js/renderer.js: dibujo en el canvas.
-- js/input.js: teclado y entradas.
+- PHP 8.0 o superior.
+- Extensiones PHP: mysqli, pdo_mysql y curl.
+- MySQL o MariaDB.
+- XAMPP (recomendado para entorno local en Windows).
 
-## Audio
+Nota: los requisitos PHP están definidos en composer.json.
 
-La música de fondo usa estos archivos dentro de assets/audio:
+## Cómo arrancar el proyecto
 
-- SoundTrackHS.mp3
-- SoundTrackHS.ogg (opcional, compatibilidad)
+### Opción recomendada (XAMPP)
 
-Si no están, el juego arranca igual pero sin música.
+1. Copia o mantiene el proyecto en htdocs:
 
-## Notas del proyecto
+    C:/xampp/htdocs/uib/LaboratorioPS/CabezazoClash
 
-Este repositorio es una práctica, así que la prioridad ha sido que el juego sea jugable y fácil de tocar.
+2. Arranca Apache y MySQL desde el panel de XAMPP.
 
-No está pensado como producto final, sino como base para iterar: mejorar IA, añadir online y pulir arte/sonido.
+3. Crea la base de datos local:
+
+    - Abre phpMyAdmin.
+    - Importa el script sql/local.sql.
+
+4. Configura la conexión si vas a trabajar en local:
+
+    - Revisa Conexion.php y ajusta host, usuario, contraseña, nombre de BD y puerto para tu entorno local.
+    - Alternativamente, define variables de entorno DB_HOST, DB_USER, DB_PASS, DB_NAME.
+
+5. Abre el proyecto en el navegador:
+
+    http://localhost/uib/LaboratorioPS/CabezazoClash/
+
+6. El flujo normal redirige a login/login.html cuando no hay sesión activa.
+
+### Opción alternativa (servidor embebido de PHP)
+
+Desde la raíz del proyecto:
+
+```bash
+php -S localhost:8000
+```
+
+Y abre:
+
+http://localhost:8000/
+
+Importante: esta opción también necesita MySQL operativo y la conexión correctamente configurada.
+
+## Notas técnicas
+
+- index.php protege el acceso y redirige al login cuando no existe sesión.
+- config_sesion.php registra un SessionHandler personalizado (GestorSesiones.php) para guardar sesiones en BD.
+- MetodosPHP.php integra envío de OTP por correo mediante API externa.
+- sql/local.sql crea las tablas base de usuarios, OTP, sesiones, partidas y ranking.
 
 ## Licencia
 
-Proyecto académico. Uso libre para aprender, probar y modificar. No se permite uso comercial ni distribución sin permiso.
+Proyecto académico con fines educativos.
