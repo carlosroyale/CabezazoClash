@@ -498,6 +498,10 @@ screenTapToStart.addEventListener('click', async () => {
   // Mostrar el botón de Mi Cuenta una vez pasado el "Tap to start"
   if (btnMiCuenta) btnMiCuenta.classList.remove("hidden");
   if (btnRanking) btnRanking.classList.remove("hidden");
+
+  // Al tocar, el móvil asienta las barras del sistema operativo.
+  resizeCanvas();
+  setTimeout(resizeCanvas, 200); // Pequeño margen de seguridad para que termine la animación del SO
 });
 
 document.addEventListener('visibilitychange', () => {
@@ -600,10 +604,10 @@ function initResize() {
 
 // Escuchar cambios de tamaño de ventana y cambios de orientación específicos de móvil
 window.addEventListener('resize', resizeCanvas);
-// window.addEventListener('orientationchange', () => {
-//   // Al girar la pantalla, esperamos un instante a que el SO redibuje
-//   setTimeout(resizeCanvas, 150);
-// });
+window.addEventListener('orientationchange', () => {
+  // Al girar la pantalla, esperamos un instante a que el SO redibuje
+  setTimeout(resizeCanvas, 150);
+});
 
 // Forzar el ajuste cuando toda la página y recursos han cargado
 window.addEventListener('load', initResize);
