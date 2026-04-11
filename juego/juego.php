@@ -7,16 +7,21 @@ if (!defined('ACCESO_PERMITIDO')) {
     header("Location: ../index.php");
     exit;
 }
+
+$basePath = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/');
+$asset = static function (string $path) use ($basePath): string {
+    return ($basePath === '' ? '' : $basePath) . '/' . ltrim($path, '/');
+};
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8" />
     <title>Cabezazo Clash</title>
-    <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="/assets/img/logo192.png">
-    <link rel="icon" type="image/x-icon" href="/assets/icon/favicon.ico">
-    <link rel="stylesheet" href="../juego/juego.css?v=2">
+    <link rel="manifest" href="<?= htmlspecialchars($asset('manifest.json'), ENT_QUOTES, 'UTF-8') ?>">
+    <link rel="apple-touch-icon" href="<?= htmlspecialchars($asset('assets/img/logo192.png'), ENT_QUOTES, 'UTF-8') ?>">
+    <link rel="icon" type="image/x-icon" href="<?= htmlspecialchars($asset('assets/icon/favicon.ico'), ENT_QUOTES, 'UTF-8') ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars($asset('juego/juego.css?v=2'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 </head>
@@ -123,7 +128,7 @@ if (!defined('ACCESO_PERMITIDO')) {
     <!-- Pantalla 5: Acerca de -->
     <section id="screen-info" class="pause-menu hidden">
         <div class="card info-card">
-            <img src="assets/img/logo129.png" alt="Logo Cabezazo Clash" class="info-logo">
+            <img src="<?= htmlspecialchars($asset('assets/img/logo129.png'), ENT_QUOTES, 'UTF-8') ?>" alt="Logo Cabezazo Clash" class="info-logo">
             <h2 class="subtitle">Acerca de</h2>
             <p class="info-description">
                 ¡Bienvenido a <b>Cabezazo Clash</b>!<br><br>
@@ -198,19 +203,19 @@ if (!defined('ACCESO_PERMITIDO')) {
 
 <!-- música de fondo -->
 <audio id="bg-music" loop preload="auto">
-    <source src="/assets/audio/menu_music.mp3" type="audio/mpeg">
+    <source src="<?= htmlspecialchars($asset('assets/audio/menu_music.mp3'), ENT_QUOTES, 'UTF-8') ?>" type="audio/mpeg">
 </audio>
 
 <audio id="sfx-crowd-ambient" loop preload="auto">
-    <source src="/assets/audio/crowd_ambient.mp3" type="audio/mpeg">
+    <source src="<?= htmlspecialchars($asset('assets/audio/crowd_ambient.mp3'), ENT_QUOTES, 'UTF-8') ?>" type="audio/mpeg">
 </audio>
 
-<script src="/juego/js/constants.js?v=2"></script>
-<script src="/juego/js/entities.js?v=2"></script>
-<script src="/juego/js/physics.js?v=2"></script>
-<script src="/juego/js/renderer.js?v=1"></script>
-<script src="/juego/js/input.js?v=2"></script>
-<script src="/juego/js/game.js?v=2"></script>
-<script src="/juego/js/main.js?v=9"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/constants.js?v=2'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/entities.js?v=2'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/physics.js?v=2'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/renderer.js?v=1'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/input.js?v=2'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/game.js?v=2'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=9'), ENT_QUOTES, 'UTF-8') ?>"></script>
 </body>
 </html>

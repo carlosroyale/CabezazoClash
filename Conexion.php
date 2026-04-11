@@ -1,13 +1,17 @@
 <?php
 class Database {
     public function getConnection() {
-
-        // Usamos getenv para intentar leer de Railway, si no, usa las fijas
-        $host = getenv('DB_HOST') ?: 'mainline.proxy.rlwy.net';
+        // Valores locales por defecto (XAMPP) y override por variables de entorno.
+        $host = getenv('DB_HOST') ?: '127.0.0.1';
         $user = getenv('DB_USER') ?: 'root';
-        $pass = getenv('DB_PASS') ?: 'XjXvsHuWJAVyuOvABMTrNTaKfnoXLHse';
-        $db   = getenv('DB_NAME') ?: 'railway';
-        $port = 43465;
+        $pass = getenv('DB_PASS');
+        $db   = getenv('DB_NAME') ?: 'cabezazo_clash';
+        $port = (int)(getenv('DB_PORT') ?: 3306);
+
+        // En la mayoría de instalaciones XAMPP la contraseña de root está vacía.
+        if ($pass === false) {
+            $pass = '';
+        }
 
         mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 

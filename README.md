@@ -103,8 +103,9 @@ Nota: los requisitos PHP están definidos en composer.json.
 
 ### Opción recomendada (XAMPP)
 
-1. Copia o mantiene el proyecto en htdocs:
+1. Copia o mantén el proyecto en `htdocs` (puede ser en cualquier carpeta/nombre):
 
+    Ejemplo:
     C:/xampp/htdocs/uib/LaboratorioPS/CabezazoClash
 
 2. Arranca Apache y MySQL desde el panel de XAMPP.
@@ -112,16 +113,21 @@ Nota: los requisitos PHP están definidos en composer.json.
 3. Crea la base de datos local:
 
     - Abre phpMyAdmin.
-    - Importa el script sql/local.sql.
+    - Importa el script `sql/local.sql` completo.
 
 4. Configura la conexión si vas a trabajar en local:
 
-    - Revisa Conexion.php y ajusta host, usuario, contraseña, nombre de BD y puerto para tu entorno local.
-    - Alternativamente, define variables de entorno DB_HOST, DB_USER, DB_PASS, DB_NAME.
+    - El proyecto ya viene con valores locales por defecto en `Conexion.php`:
+      - `DB_HOST=127.0.0.1`
+      - `DB_USER=root`
+      - `DB_PASS=` (vacía por defecto en XAMPP)
+      - `DB_NAME=cabezazo_clash`
+      - `DB_PORT=3306`
+        - Si necesitas cambiarlos, usa variables de entorno: `DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME`, `DB_PORT`.
 
 5. Abre el proyecto en el navegador:
 
-    http://localhost/uib/LaboratorioPS/CabezazoClash/
+    - `http://localhost/<ruta_en_htdocs>/CabezazoClash/`
 
 6. El flujo normal redirige a login/login.html cuando no hay sesión activa.
 
@@ -130,14 +136,19 @@ Nota: los requisitos PHP están definidos en composer.json.
 Desde la raíz del proyecto:
 
 ```bash
-php -S localhost:8000
+C:/xampp/php/php.exe -S localhost:8000
 ```
 
 Y abre:
 
-http://localhost:8000/
+`http://localhost:8000/`
 
 Importante: esta opción también necesita MySQL operativo y la conexión correctamente configurada.
+
+## Ejecución para compañeros
+
+- Cada compañero puede usar cualquier carpeta dentro de `htdocs`.
+- La URL siempre será: `http://localhost/<ruta_en_htdocs>/CabezazoClash/`.
 
 ## Notas técnicas
 
