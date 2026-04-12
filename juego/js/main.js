@@ -403,7 +403,7 @@ function updateOptionsUI() {
 let musicUnlocked = false;
 
 // 1. Inicializar el motor de audio de alto rendimiento
-const AudioContext = window.AudioContext || window.webkitAudioContext;
+const AudioContext = window.AudioContext;
 const audioCtx = new AudioContext();
 const sfxBuffers = {}; // Aquí guardaremos los audios decodificados en RAM
 let activeSFXNodes = new Set(); // Para poder pararlos al pausar
@@ -511,7 +511,7 @@ screenTapToStart.addEventListener('click', async () => {
 
   // AQUI ESTÁ LA MAGIA: Al tocar, obligamos al sistema a buscar la medida real
   // durante el próximo segundo, que es cuando iOS contraerá la barra.
-  forceAggressiveResize();
+  // forceAggressiveResize();
 });
 
 // 4. Función global para reproducir efectos (Latencia Cero)
@@ -570,115 +570,115 @@ loadSettings();
 updateOptionsUI();
 
 // Listener de redimensión para el Canvas y la UI
-// function resizeCanvas() {
-//   const wrap = document.getElementById('game-wrap');
-//   const baseW = 1845;
-//   const baseH = 1038;
-//
-//   // 1. Calcular la escala necesaria (zoom)
-//   const scale = Math.min(window.innerWidth / baseW, window.innerHeight / baseH);
-//
-//   // 2. Aplicar el zoom a TODA la caja, ajustando el punto central
-//   wrap.style.transform = `translate(-50%, -50%) scale(${scale})`;
-//
-//   // 3. Fijamos la resolución interna
-//   canvas.width = baseW;
-//   canvas.height = baseH;
-//
-//   // 4. Le avisamos al motor para que recalcule las porterías
-//   if (window.Game && window.Game.resize) {
-//     window.Game.resize(canvas.width, canvas.height);
-//   }
-//
-//   // Como redimensionar borra el canvas, si el juego está pausado (el bucle no corre),
-//   // se queda en negro. Necesitamos forzar un dibujado usando el estado actual.
-//   if (window.Game && window.Game.forceRedraw) {
-//     window.Game.forceRedraw(ctx);
-//   }
-//
-//   // Si la pantalla es más alta que ancha y estamos en la pantalla de juego
-//   if (window.innerHeight > window.innerWidth && screenGame.classList.contains("active")) {
-//     // Evitamos pausar si ya hay una cuenta atrás para reanudar (previene bugs visuales)
-//     if (!cuentaAtrasActiva && window.Game && window.Game.pauseGame) {
-//       window.Game.pauseGame();
-//     }
-//   }
-// }
-
-// Escuchar cambios de tamaño de ventana
-// window.addEventListener('resize', resizeCanvas);
-//
-// // Forzar un primer ajuste al arrancar
-// resizeCanvas();
-/* ==========================================================================
-   SISTEMA DE REDIMENSIÓN (MODO "FUERZA BRUTA")
-   ========================================================================== */
-
 function resizeCanvas() {
   const wrap = document.getElementById('game-wrap');
-  const tester = document.getElementById('viewport-tester');
   const baseW = 1845;
   const baseH = 1038;
 
-  // LEYENDO EL CSS (dvh), NO EL NAVEGADOR
-  let vw = tester ? tester.clientWidth : window.innerWidth;
-  let vh = tester ? tester.clientHeight : window.innerHeight;
+  // 1. Calcular la escala necesaria (zoom)
+  const scale = Math.min(window.innerWidth / baseW, window.innerHeight / baseH);
 
-  const scale = Math.min(vw / baseW, vh / baseH);
+  // 2. Aplicar el zoom a TODA la caja, ajustando el punto central
   wrap.style.transform = `translate(-50%, -50%) scale(${scale})`;
 
+  // 3. Fijamos la resolución interna
   canvas.width = baseW;
   canvas.height = baseH;
 
-  if (window.Game && window.Game.resize) window.Game.resize(canvas.width, canvas.height);
-  if (window.Game && window.Game.forceRedraw) window.Game.forceRedraw(ctx);
-}
+  // 4. Le avisamos al motor para que recalcule las porterías
+  if (window.Game && window.Game.resize) {
+    window.Game.resize(canvas.width, canvas.height);
+  }
 
-// Función que insiste en recalcular las medidas durante 1.5 segundos
-let resizeHistory = []; // Guardará el historial de intentos
+  // Como redimensionar borra el canvas, si el juego está pausado (el bucle no corre),
+  // se queda en negro. Necesitamos forzar un dibujado usando el estado actual.
+  if (window.Game && window.Game.forceRedraw) {
+    window.Game.forceRedraw(ctx);
+  }
 
-function forceAggressiveResize() {
-  let attempts = 0;
-  resizeHistory = []; // Limpiamos el historial en cada nuevo evento
-
-  resizeCanvas();
-  window.scrollTo(0, 0);
-
-  const interval = setInterval(() => {
-    // 1. Tomamos las medidas en este instante exacto
-    let vw = document.documentElement.clientWidth || window.innerWidth;
-    let vh = document.documentElement.clientHeight || window.innerHeight;
-
-    // 2. Guardamos el dato en el historial
-    resizeHistory.push(`Int: ${attempts} -> ${vw} x ${vh}`);
-
-    // 3. Redimensionamos
-    resizeCanvas();
-    attempts++;
-
-    // 4. Al terminar, lo imprimimos en tu caja de debug
-    if (attempts >= 15) {
-      clearInterval(interval);
-      // Añadimos el historial al final del texto del debugger
-      const historyHtml = resizeHistory.join("<br>");
-
-      // Sobrescribimos temporalmente el updateDebugger para ver el historial
-      debugDiv.innerHTML = `
-        <b>HISTORIAL DE FUERZA BRUTA:</b><br>
-        ${historyHtml}
-        <hr>
-        Medida Final: ${document.getElementById('game-wrap').style.transform}
-      `;
+  // Si la pantalla es más alta que ancha y estamos en la pantalla de juego
+  if (window.innerHeight > window.innerWidth && screenGame.classList.contains("active")) {
+    // Evitamos pausar si ya hay una cuenta atrás para reanudar (previene bugs visuales)
+    if (!cuentaAtrasActiva && window.Game && window.Game.pauseGame) {
+      window.Game.pauseGame();
     }
-  }, 100);
+  }
 }
 
-// Escuchar cambios estándar
-window.addEventListener('resize', forceAggressiveResize);
-window.addEventListener('orientationchange', forceAggressiveResize);
+//Escuchar cambios de tamaño de ventana
+window.addEventListener('resize', resizeCanvas);
 
-// Arrancar el martillo al cargar la página
-window.addEventListener('load', forceAggressiveResize);
+// Forzar un primer ajuste al arrancar
+resizeCanvas();
+/* ==========================================================================
+   SISTEMA DE REDIMENSIÓN (MODO "FUERZA BRUTA")
+   ========================================================================== */
+//
+// function resizeCanvas() {
+//   const wrap = document.getElementById('game-wrap');
+//   const tester = document.getElementById('viewport-tester');
+//   const baseW = 1845;
+//   const baseH = 1038;
+//
+//   // LEYENDO EL CSS (dvh), NO EL NAVEGADOR
+//   let vw = tester ? tester.clientWidth : window.innerWidth;
+//   let vh = tester ? tester.clientHeight : window.innerHeight;
+//
+//   const scale = Math.min(vw / baseW, vh / baseH);
+//   wrap.style.transform = `translate(-50%, -50%) scale(${scale})`;
+//
+//   canvas.width = baseW;
+//   canvas.height = baseH;
+//
+//   if (window.Game && window.Game.resize) window.Game.resize(canvas.width, canvas.height);
+//   if (window.Game && window.Game.forceRedraw) window.Game.forceRedraw(ctx);
+// }
+//
+// // Función que insiste en recalcular las medidas durante 1.5 segundos
+// let resizeHistory = []; // Guardará el historial de intentos
+//
+// function forceAggressiveResize() {
+//   let attempts = 0;
+//   resizeHistory = []; // Limpiamos el historial en cada nuevo evento
+//
+//   resizeCanvas();
+//   window.scrollTo(0, 0);
+//
+//   const interval = setInterval(() => {
+//     // 1. Tomamos las medidas en este instante exacto
+//     let vw = document.documentElement.clientWidth || window.innerWidth;
+//     let vh = document.documentElement.clientHeight || window.innerHeight;
+//
+//     // 2. Guardamos el dato en el historial
+//     resizeHistory.push(`Int: ${attempts} -> ${vw} x ${vh}`);
+//
+//     // 3. Redimensionamos
+//     resizeCanvas();
+//     attempts++;
+//
+//     // 4. Al terminar, lo imprimimos en tu caja de debug
+//     if (attempts >= 15) {
+//       clearInterval(interval);
+//       // Añadimos el historial al final del texto del debugger
+//       const historyHtml = resizeHistory.join("<br>");
+//
+//       // Sobrescribimos temporalmente el updateDebugger para ver el historial
+//       debugDiv.innerHTML = `
+//         <b>HISTORIAL DE FUERZA BRUTA:</b><br>
+//         ${historyHtml}
+//         <hr>
+//         Medida Final: ${document.getElementById('game-wrap').style.transform}
+//       `;
+//     }
+//   }, 100);
+// }
+//
+// // Escuchar cambios estándar
+// window.addEventListener('resize', forceAggressiveResize);
+// window.addEventListener('orientationchange', forceAggressiveResize);
+//
+// // Arrancar el martillo al cargar la página
+// window.addEventListener('load', forceAggressiveResize);
 
 // Arrancar el modo reposo para ver las porterías de fondo
 if (window.Game && window.Game.startIdle) {
@@ -731,27 +731,27 @@ window.addEventListener("blur", () => {
 // ==========================================
 // MODO DEBUG: CAZADOR DE DIMENSIONES
 // ==========================================
-const debugDiv = document.createElement('div');
-debugDiv.style.cssText = 'position:fixed; top:0; left:0; background:rgba(200,0,0,0.9); color:#fff; z-index:99999; padding:10px; font-family:monospace; font-size:12px; pointer-events:none; border:2px solid yellow;';
-document.body.appendChild(debugDiv);
-
-function updateDebugger() {
-  const vw = window.visualViewport ? Math.round(window.visualViewport.width) : 'N/A';
-  const vh = window.visualViewport ? Math.round(window.visualViewport.height) : 'N/A';
-  const iw = window.innerWidth;
-  const ih = window.innerHeight;
-  const docW = document.documentElement.clientWidth;
-  const docH = document.documentElement.clientHeight;
-
-  // Imprimimos los 3 métodos de lectura
-  debugDiv.innerHTML = `
-    <b>Medidas detectadas:</b><br>
-    visualViewport: ${vw} x ${vh}<br>
-    innerWidth/Height: ${iw} x ${ih}<br>
-    documentElement: ${docW} x ${docH}<br>
-    <hr style="margin:5px 0">
-    Escala actual: ${document.getElementById('game-wrap').style.transform}
-  `;
-  requestAnimationFrame(updateDebugger);
-}
-updateDebugger();
+// const debugDiv = document.createElement('div');
+// debugDiv.style.cssText = 'position:fixed; top:0; left:0; background:rgba(200,0,0,0.9); color:#fff; z-index:99999; padding:10px; font-family:monospace; font-size:12px; pointer-events:none; border:2px solid yellow;';
+// document.body.appendChild(debugDiv);
+//
+// function updateDebugger() {
+//   const vw = window.visualViewport ? Math.round(window.visualViewport.width) : 'N/A';
+//   const vh = window.visualViewport ? Math.round(window.visualViewport.height) : 'N/A';
+//   const iw = window.innerWidth;
+//   const ih = window.innerHeight;
+//   const docW = document.documentElement.clientWidth;
+//   const docH = document.documentElement.clientHeight;
+//
+//   // Imprimimos los 3 métodos de lectura
+//   debugDiv.innerHTML = `
+//     <b>Medidas detectadas:</b><br>
+//     visualViewport: ${vw} x ${vh}<br>
+//     innerWidth/Height: ${iw} x ${ih}<br>
+//     documentElement: ${docW} x ${docH}<br>
+//     <hr style="margin:5px 0">
+//     Escala actual: ${document.getElementById('game-wrap').style.transform}
+//   `;
+//   requestAnimationFrame(updateDebugger);
+// }
+// updateDebugger();

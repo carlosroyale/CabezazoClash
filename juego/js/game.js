@@ -337,8 +337,8 @@ function resetRound(lastScorer = null) {
     p2.vx = 0;
     p2.vy = 0;
 
-    ball.x = W ;
-    ball.y = FLOOR_Y - 200 - 200;
+    ball.x = W / 2;
+    ball.y = FLOOR_Y - 200;
 
     if (lastScorer === "left") {
         ball.vx = 220;  // Marcó el P1 (izq), así que saca el P2 (der)
@@ -353,10 +353,9 @@ function resetRound(lastScorer = null) {
         serveState.server = ball.vx > 0 ? "right" : "left";
     }
 
-    //ball.vy = -220;
-    ball.vx = 0;
-    ball.vy = 0;
-    //serveState.active = true;
+    ball.vy = -220;
+    // ball.vx = 0;
+    serveState.active = true;
 }
 
 function updateScore() {
