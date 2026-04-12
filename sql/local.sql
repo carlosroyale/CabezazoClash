@@ -10,6 +10,9 @@ CREATE TABLE tipo_usuario (
     CONSTRAINT tipo_usuario_pk PRIMARY KEY (id_tipo_usuario)
 );
 
+INSERT INTO tipo_usuario (nombre)
+VALUES ('jugador'), ('admin');
+
 CREATE TABLE usuario (
     id_usuario INT NOT NULL AUTO_INCREMENT,
     username VARCHAR(32) NOT NULL,
