@@ -16,7 +16,7 @@ class MetodosPHP {
 
         // Es altamente recomendable poner la API Key en las variables de tu servidor (DigitalOcean/Railway)
         // Si no la encuentra, usará el valor por defecto que pongas después del ?:
-        $apiKey = getenv('BREVO_API_KEY') ?: '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';
+        $apiKey = getenv('BREVO_API_KEY');
 
         // Correo del remitente (¡DEBE estar verificado en tu panel de Brevo!)
         $emailRemitente = getenv('MAIL_FROM') ?: 'carlos-antonio.segura1@estudiant.uib.cat';
@@ -84,7 +84,7 @@ class MetodosPHP {
      */
     public function enviarCorreoCambio(string $correoDestino, string $codigo): bool {
         $url = 'https://api.brevo.com/v3/smtp/email';
-        $apiKey = getenv('BREVO_API_KEY') ?: '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';
+        $apiKey = getenv('BREVO_API_KEY');
         $emailRemitente = getenv('MAIL_FROM') ?: 'carlos-antonio.segura1@estudiant.uib.cat';
 
         $data = [
