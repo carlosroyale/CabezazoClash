@@ -16,7 +16,8 @@ const onKeyDown = (e) => {
         // Si el menú de pausa está abierto, "clicamos" en reanudar
         if (pauseMenu && !pauseMenu.classList.contains("hidden")) {
             if (btnResume) btnResume.click();
-        } else {
+        }
+        else {
             // Si está cerrado, pausamos normalmente
             if (window.Game && window.Game.pauseGame) {
                 window.Game.pauseGame();

@@ -198,6 +198,15 @@ function update(dt) {
     // 2.1 Colisiones entre jugadores
     collidePlayers(p1, p2);
 
+    // 2.2 Colisiones del jugador con los postes
+    const postSize = 8;
+    const leftCrossbar  = { x: leftGoal.x,  y: leftGoal.y,  w: leftGoal.w,  h: postSize };
+    const rightCrossbar = { x: rightGoal.x, y: rightGoal.y, w: rightGoal.w, h: postSize };
+    collidePlayerStaticRect(p1, leftCrossbar);
+    collidePlayerStaticRect(p1, rightCrossbar);
+    collidePlayerStaticRect(p2, leftCrossbar);
+    collidePlayerStaticRect(p2, rightCrossbar);
+
     // 3. Física pelota
     updateBall(ball, dt, W, FLOOR_Y);
 
@@ -209,23 +218,45 @@ function update(dt) {
     }
     collidePlayerBall(p1, ball);
     collidePlayerBall(p2, ball);
-    if (playersBackToBack) {
-        resolveBackToBackBallSqueeze(ball, p1, p2);
-    } else {
-        resolveBallSqueezeUp(ball, p1, p2);
-    }
+    if (playersBackToBack) resolveBackToBackBallSqueeze(ball, p1, p2);
+    else resolveBallSqueezeUp(ball, p1, p2);
 
-    // 5. Colisiones con las porterías (largueros)
+    // 5. Colisiones pelota - porterías
     checkGoalCollisions(ball, leftGoal, rightGoal);
 
-    // 5.1 Jugadores no pueden pasar por encima del larguero
-    const postSize = 8;
-    const leftCrossbar  = { x: leftGoal.x,  y: leftGoal.y,  w: leftGoal.w,  h: postSize };
-    const rightCrossbar = { x: rightGoal.x, y: rightGoal.y, w: rightGoal.w, h: postSize };
-    collidePlayerStaticRect(p1, leftCrossbar);
-    collidePlayerStaticRect(p1, rightCrossbar);
-    collidePlayerStaticRect(p2, leftCrossbar);
-    collidePlayerStaticRect(p2, rightCrossbar);
+    // --- 5.1 MURO DE CONTENCIÓN ABSOLUTO (EL TRUCO PARA LA VELOCIDAD REAL) ---
+    // Si la pelota es empujada fuera del mapa, devolvemos la pelota a su sitio,
+    // y si el jugador la está pisando, lo frenamos a él también.
+
+    // Distancia: Mitad del ancho del jugador (28) + Radio del balón (18) + pequeño margen
+    const crushDist = 50;
+
+    if (ball.x - ball.r < 0) {
+        const exceso = ball.r - ball.x;
+        ball.x = ball.r;
+        if (p2.x > ball.x && (p2.x - ball.x) < crushDist) p2.x += exceso;
+        if (p1.x > ball.x && (p1.x - ball.x) < crushDist) p1.x += exceso;
+    }
+    if (ball.x + ball.r > W) {
+        const exceso = (ball.x + ball.r) - W;
+        ball.x = W - ball.r;
+        if (p1.x < ball.x && (ball.x - p1.x) < crushDist) p1.x -= exceso;
+        if (p2.x < ball.x && (ball.x - p2.x) < crushDist) p2.x -= exceso;
+    }
+
+    // --- 5.2 CÁLCULO DE VELOCIDAD REAL EXACTA ---
+    // Leemos cuánto se han desplazado de verdad las coordenadas en este frame
+    p1.realVx = p1.lastX !== undefined ? (p1.x - p1.lastX) / dt : 0;
+    p1.realVy = p1.lastY !== undefined ? (p1.y - p1.lastY) / dt : 0;
+    p2.realVx = p2.lastX !== undefined ? (p2.x - p2.lastX) / dt : 0;
+    p2.realVy = p2.lastY !== undefined ? (p2.y - p2.lastY) / dt : 0;
+    ball.realVx = ball.lastX !== undefined ? (ball.x - ball.lastX) / dt : 0;
+    ball.realVy = ball.lastY !== undefined ? (ball.y - ball.lastY) / dt : 0;
+
+    // Guardamos las coordenadas finales reales para el próximo frame
+    p1.lastX = p1.x; p1.lastY = p1.y;
+    p2.lastX = p2.x; p2.lastY = p2.y;
+    ball.lastX = ball.x; ball.lastY = ball.y;
 
     // 6. Gol
     checkGoal();
@@ -306,8 +337,8 @@ function resetRound(lastScorer = null) {
     p2.vx = 0;
     p2.vy = 0;
 
-    ball.x = W / 2;
-    ball.y = FLOOR_Y - 200;
+    ball.x = W ;
+    ball.y = FLOOR_Y - 200 - 200;
 
     if (lastScorer === "left") {
         ball.vx = 220;  // Marcó el P1 (izq), así que saca el P2 (der)
@@ -322,8 +353,10 @@ function resetRound(lastScorer = null) {
         serveState.server = ball.vx > 0 ? "right" : "left";
     }
 
-    ball.vy = -220;
-    serveState.active = true;
+    //ball.vy = -220;
+    ball.vx = 0;
+    ball.vy = 0;
+    //serveState.active = true;
 }
 
 function updateScore() {
@@ -356,5 +389,5 @@ window.Game = {
     stopBasicGame,
     resize,
     resetRound,
-    forceRedraw // Exportamos la nueva función
+    forceRedraw
 };

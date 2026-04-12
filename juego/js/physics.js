@@ -61,7 +61,13 @@ function collidePlayerBall(p, ball) {
         return;
     }
 
-    // 1. Obtenemos las hitboxes centralizadas con una sola línea de código
+    // 1. Guardamos si ya estábamos tocando el balón en el fotograma anterior
+    p.wasTouchingBall = p.isTouchingBall || false;
+
+    // 2. Lo reseteamos. Si hay choque abajo, se volverá a poner en true.
+    p.isTouchingBall = false;
+
+    // 3. Obtenemos las hitboxes centralizadas con una sola línea de código
     const h = getPlayerHitboxes(p);
 
     // --- A. CHOQUE CON EL CUERPO (Rectángulo AABB) ---
@@ -122,15 +128,26 @@ function resolveCircleToCircle(ball, p, dx, dy, dist2, shapeR) {
 }
 
 function applyBounce(ball, p, nx, ny) {
-    const rvx = ball.vx - p.vx;
-    const rvy = ball.vy - p.vy;
-    const velAlongNormal = rvx * nx + rvy * ny;
+    // AVISAMOS QUE HAY CONTACTO ESTE FRAME
+    p.isTouchingBall = true;
 
-    if (velAlongNormal >= -40) return;
+    // 1. MATEMÁTICAS ARCADE
+    const mathRvx = ball.vx - p.vx;
+    const mathRvy = ball.vy - p.vy;
+    const mathVelAlongNormal = mathRvx * nx + mathRvy * ny;
 
-    window.playSound('sfx-kick',0.8);
+    if (mathVelAlongNormal >= -40) return;
 
-    const j = -(1 + RESTITUTION) * velAlongNormal;
+    // 2. SISTEMA DE AUDIO (Usa la velocidad REAL)
+    // Si estás atascado contra un muro, realVelAlongNormal será literalmente 0
+    const realRvx = (ball.realVx || 0) - (p.realVx || 0);
+    const realRvy = (ball.realVy || 0) - (p.realVy || 0);
+    const realVelAlongNormal = realRvx * nx + realRvy * ny;
+
+    if (realVelAlongNormal < -120 && !p.wasTouchingBall) window.playSound('sfx-rebound', 0.6);
+
+    // 3. RESOLUCIÓN DE REBOTE
+    const j = -(1 + RESTITUTION) * mathVelAlongNormal;
     ball.vx += j * nx;
     ball.vy += j * ny;
 
@@ -157,6 +174,9 @@ function checkGoalCollisions(ball, leftGoal, rightGoal) {
 }
 
 function resolveShoeToCircle(ball, p, dx, dy, dist2, shapeR) {
+    // AVISAMOS QUE HAY CONTACTO ESTE FRAME
+    p.isTouchingBall = true;
+
     const dist = Math.sqrt(dist2);
     if (dist < 0.001) return;
 
@@ -197,7 +217,8 @@ function resolveShoeToCircle(ball, p, dx, dy, dist2, shapeR) {
             ny /= mag;
         }
 
-    } else if (isLegMovingDown) {
+    }
+    else if (isLegMovingDown) {
         shoeVx += (p.isRightFacing ? -1 : 1) * 200;
         shoeVy += 300;
     }
@@ -208,6 +229,11 @@ function resolveShoeToCircle(ball, p, dx, dy, dist2, shapeR) {
     const velAlongNormal = rvx * nx + rvy * ny;
 
     if (velAlongNormal >= 0) return;
+
+    // Si el impacto del zapato contra el balón es fuerte, suena el rebote
+    if (velAlongNormal < -50 && (!p.wasTouchingBall || isLegMovingUp)) {
+        window.playSound('sfx-rebound', 0.6);
+    }
 
     const currentRestitution = isLegMovingUp ? 1.0 : RESTITUTION;
     const j = -(1 + currentRestitution) * velAlongNormal;
@@ -260,9 +286,15 @@ function collideBallStaticRect(ball, rect) {
 
         // Reflejar velocidad
         const velAlongNormal = ball.vx * nx + ball.vy * ny;
+        //
+        // // Solo suena si el golpe es un poco fuerte (evita ruidos si la pelota rueda por encima)
+        // if (velAlongNormal < -40) {
+        //     window.playSound('sfx-ball-post');
+        // }
 
-        // Solo suena si el golpe es un poco fuerte (evita ruidos si la pelota rueda por encima)
-        if (velAlongNormal < -40) {
+        // Usamos la Velocidad Real contra los postes estáticos
+        const realVelAlongNormal = (ball.realVx || 0) * nx + (ball.realVy || 0) * ny;
+        if (realVelAlongNormal < -40) {
             window.playSound('sfx-ball-post');
         }
 
@@ -361,6 +393,20 @@ function resolveCircStaticRectPlayer(p, circ, rect) {
 
 // 2. La nueva función principal
 function collidePlayers(p1, p2) {
+    // 1. Guardamos si se estaban tocando en el fotograma anterior
+    p1.wasTouchingRival = p1.isTouchingRival || false;
+    p2.wasTouchingRival = p2.isTouchingRival || false;
+
+    p1.wasKickingRival = p1.isKickingRival || false;
+    p2.wasKickingRival = p2.isKickingRival || false;
+
+    // 2. Reseteamos el estado actual. Si más abajo alguna hitbox choca, lo pondrán a true.
+    p1.isTouchingRival = false;
+    p2.isTouchingRival = false;
+
+    p1.isKickingRival = false;
+    p2.isKickingRival = false;
+
     let h1 = getPlayerHitboxes(p1);
     let h2 = getPlayerHitboxes(p2);
 
@@ -375,14 +421,16 @@ function collidePlayers(p1, p2) {
     // C. ZAPATO vs CUERPO (La magia para subirse encima del pie del otro)
     h1 = getPlayerHitboxes(p1);
     h2 = getPlayerHitboxes(p2);
-    resolveCircRectPlayer(h1.shoe, p2, h2.body);
-    resolveCircRectPlayer(h2.shoe, p1, h1.body);
+    // Le pasamos el jugador atacante como segundo parámetro
+    resolveCircRectPlayer(h1.shoe, p1, p2, h2.body);
+    resolveCircRectPlayer(h2.shoe, p2, p1, h1.body);
 
     // D. ZAPATO vs CABEZA (Para que la cabeza no atraviese los pies)
     h1 = getPlayerHitboxes(p1);
     h2 = getPlayerHitboxes(p2);
-    resolveShoeHeadPlayer(h1.shoe, p2, h2.head);
-    resolveShoeHeadPlayer(h2.shoe, p1, h1.head);
+    // Le pasamos el atacante y el objetivo
+    resolveShoeHeadPlayer(h1.shoe, p1, p2, h2.head);
+    resolveShoeHeadPlayer(h2.shoe, p2, p1, h1.head);
 }
 
 // 3. Resoluciones físicas específicas para Jugador vs Jugador
@@ -392,15 +440,12 @@ function resolveBodyBody(p1, p2, b1, b2) {
     const overlapY = Math.max(0, Math.min(b1.y + b1.h, b2.y + b2.h) - Math.max(b1.y, b2.y));
 
     if (overlapX > 0 && overlapY > 0) {
+        // AVISAMOS QUE HAY CONTACTO ESTE FRAME
+        p1.isTouchingRival = true;
+        p2.isTouchingRival = true;
 
         //  Sonido de choque de cuerpos (con cooldown y velocidad mínima)
-        if (!p1.lastBump || performance.now() - p1.lastBump > 300) {
-            if (Math.abs(p1.vx) > 50 || Math.abs(p2.vx) > 50) {
-                window.playSound('sfx-player-collide');
-                p1.lastBump = performance.now();
-                p2.lastBump = performance.now();
-            }
-        }
+        playPlayerCollideSound(p1,p2);
 
         if (overlapX < overlapY) {
             const dir = (b1.x + b1.w/2) < (b2.x + b2.w/2) ? -1 : 1;
@@ -429,6 +474,13 @@ function resolveCircCircPlayer(p1, p2, c1, c2) {
     const radSum = c1.r + c2.r;
 
     if (dist2 < radSum * radSum && dist2 > 0) {
+        // AVISAMOS QUE HAY CONTACTO ESTE FRAME
+        p1.isTouchingRival = true;
+        p2.isTouchingRival = true;
+
+        //  Sonido de choque de cuerpos (con cooldown y velocidad mínima)
+        playPlayerCollideSound(p1,p2);
+
         const dist = Math.sqrt(dist2);
         const overlap = radSum - dist;
         const nx = dx / dist;
@@ -440,7 +492,7 @@ function resolveCircCircPlayer(p1, p2, c1, c2) {
         p1.y -= ny * overlap / 2;
         p2.y += ny * overlap / 2;
 
-        // CORRECCIÓN: Solo si el choque es vertical (>0.7) y el de arriba cae
+        // Solo si el choque es vertical (>0.7) y el de arriba cae
         if (ny > 0.7 && p1.vy >= 0) {
             p1.vy = 0; p1.onGround = true;
         } else if (ny < -0.7 && p2.vy >= 0) {
@@ -449,7 +501,7 @@ function resolveCircCircPlayer(p1, p2, c1, c2) {
     }
 }
 
-function resolveCircRectPlayer(circ, pTarget, rect) {
+function resolveCircRectPlayer(circ, pAttacker, pTarget, rect) {
     const closestX = clamp(circ.x, rect.x, rect.x + rect.w);
     const closestY = clamp(circ.y, rect.y, rect.y + rect.h);
     const dx = circ.x - closestX;
@@ -457,11 +509,20 @@ function resolveCircRectPlayer(circ, pTarget, rect) {
     const dist2 = dx*dx + dy*dy;
 
     if (dist2 < circ.r * circ.r) {
-        // Sonido de patada a otro jugador
-        if (!pTarget.lastKickHit || performance.now() - pTarget.lastKickHit > 300) {
-            window.playSound('sfx-player-kick');
-            pTarget.lastKickHit = performance.now();
+        // AVISAMOS QUE HAY CONTACTO ESTE FRAME
+        pAttacker.isTouchingRival = true;
+        pTarget.isTouchingRival = true;
+
+        // Aviso exclusivo de contacto con la pierna levantada
+        if (pAttacker.kickAngle > 0) {
+            pAttacker.isKickingRival = true;
         }
+
+        // Sonido de patada a otro jugador
+        // ¡Solo suena si el dueño del zapato está presionando la tecla de chutar!
+        if (pAttacker.isKicking) playPlayerKickSound(pAttacker, pTarget);
+        //  Sonido de choque de cuerpos (con cooldown y velocidad mínima)
+        else playPlayerCollideSound(pAttacker, pTarget);
 
         const dist = Math.sqrt(dist2);
         if (dist < 0.001) return;
@@ -477,16 +538,31 @@ function resolveCircRectPlayer(circ, pTarget, rect) {
             pTarget.vy = 0;
             pTarget.onGround = true;
         }
+        else if (ny < -0.7) pTarget.vy = Math.max(0, pTarget.vy);
     }
 }
 
-function resolveShoeHeadPlayer(shoe, pTarget, head) {
+function resolveShoeHeadPlayer(shoe, pAttacker, pTarget, head) {
     const dx = shoe.x - head.x;
     const dy = shoe.y - head.y;
     const dist2 = dx * dx + dy * dy;
     const radSum = shoe.r + head.r;
 
     if (dist2 < radSum * radSum && dist2 > 0) {
+        // AVISAMOS QUE HAY CONTACTO ESTE FRAME
+        pAttacker.isTouchingRival = true;
+        pTarget.isTouchingRival = true;
+
+        // Aviso exclusivo de contacto con la pierna levantada
+        if (pAttacker.kickAngle > 0) {
+            pAttacker.isKickingRival = true;
+        }
+
+        //  Sonido de patada de jugadores (con cooldown y velocidad mínima)
+        if (pAttacker.isKicking) playPlayerKickSound(pAttacker, pTarget);
+        //  Sonido de choque de jugadores (con cooldown y velocidad mínima)
+        else playPlayerCollideSound(pAttacker, pTarget);
+
         const dist = Math.sqrt(dist2);
         const overlap = radSum - dist;
         const nx = dx / dist;
@@ -499,8 +575,6 @@ function resolveShoeHeadPlayer(shoe, pTarget, head) {
         if (ny > 0.7 && pTarget.vy >= 0) {
             pTarget.vy = 0;
             pTarget.onGround = true;
-        } else if (ny < -0.7) {
-            pTarget.vy = Math.max(0, pTarget.vy);
         }
     }
 }
@@ -587,4 +661,49 @@ function resolveBallSqueezeUp(ball, p1, p2) {
 
 function clamp(v, min, max) {
     return Math.max(min, Math.min(max, v));
+}
+
+// Función centralizada para reproducir el sonido de patadas entre jugadores
+function playPlayerKickSound(pAttacker, pTarget) {
+    // Si YA estaban tenía la pierna levantada en el frame anterior, ignoramos el sonido
+    if (pAttacker.wasKickingRival) return;
+
+    if (!pTarget.lastKickHit || performance.now() - pTarget.lastKickHit > 300) {
+
+        // 1. Leemos la velocidad real de los cuerpos en el último frame
+        const rVx1 = pAttacker.realVx || 0;
+        const rVy1 = pAttacker.realVy || 0;
+        const rVx2 = pTarget.realVx || 0;
+        const rVy2 = pTarget.realVy || 0;
+
+        // 2. Comprobamos si la pierna se está moviendo activamente hacia arriba
+        const isLegSwinging = pAttacker.kickAngle > 0 && pAttacker.kickAngle < pAttacker.maxKickAngle;
+
+        // Suena si hay movimiento real de los cuerpos, o si la pierna está dando el latigazo
+        if (Math.abs(rVx1) > 50 || Math.abs(rVx2) > 50 || Math.abs(rVy1) > 50 || Math.abs(rVy2) > 50 || isLegSwinging) {
+            window.playSound('sfx-player-kick', 0.5);
+            pTarget.lastKickHit = performance.now();
+        }
+    }
+}
+
+// Función centralizada para reproducir el sonido de impacto entre jugadores
+function playPlayerCollideSound(p1, p2) {
+    // Si YA estaban tocándose en el frame anterior, ignoramos el sonido
+    if (p1.wasTouchingRival) return;
+
+    if (!p1.lastBump || performance.now() - p1.lastBump > 300) {
+
+        // Usamos la Velocidad Real para evitar el spam de sonido cuando se empujan sin moverse
+        const rVx1 = p1.realVx || 0;
+        const rVy1 = p1.realVy || 0;
+        const rVx2 = p2.realVx || 0;
+        const rVy2 = p2.realVy || 0;
+
+        if (Math.abs(rVx1) > 50 || Math.abs(rVx2) > 50 || Math.abs(rVy1) > 50 || Math.abs(rVy2) > 50) {
+            window.playSound('sfx-player-collide', 1);
+            p1.lastBump = performance.now();
+            p2.lastBump = performance.now();
+        }
+    }
 }

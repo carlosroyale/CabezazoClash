@@ -26,6 +26,7 @@ $asset = static function (string $path) use ($basePath): string {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 </head>
 <body>
+<div id="viewport-tester" style="position: absolute; top: 0; left: 0; width: 100vw; height: 100dvh; pointer-events: none; visibility: hidden; z-index: -9999;"></div>
 <div id="game-wrap" class="game-wrap">
     <a href="mi_cuenta/mi_cuenta.php" id="btn-mi-cuenta" class="btn-mi-cuenta hidden" title="Mi Cuenta">
         <i class="bi bi-person-circle"></i>
@@ -210,12 +211,12 @@ $asset = static function (string $path) use ($basePath): string {
     <source src="<?= htmlspecialchars($asset('assets/audio/crowd_ambient.mp3'), ENT_QUOTES, 'UTF-8') ?>" type="audio/mpeg">
 </audio>
 
-<script src="<?= htmlspecialchars($asset('juego/js/constants.js?v=2'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/entities.js?v=2'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/physics.js?v=2'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/renderer.js?v=1'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/input.js?v=2'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/game.js?v=2'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=9'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/constants.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/entities.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/physics.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/renderer.js?v=2'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/input.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/game.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=10'), ENT_QUOTES, 'UTF-8') ?>"></script>
 </body>
 </html>

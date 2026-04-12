@@ -14,8 +14,7 @@ class MetodosPHP {
     public function enviarCorreoOTP(string $correoDestino, string $codigo): bool {
         $url = 'https://api.brevo.com/v3/smtp/email';
 
-        // Es altamente recomendable poner la API Key en las variables de tu servidor (DigitalOcean/Railway)
-        // Si no la encuentra, usará el valor por defecto que pongas después del ?:
+        // Ponemos la API Key en las variables del servidor (Railway)
         $apiKey = getenv('BREVO_API_KEY');
 
         // Correo del remitente (¡DEBE estar verificado en tu panel de Brevo!)

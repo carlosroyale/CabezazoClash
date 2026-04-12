@@ -34,7 +34,7 @@ function updatePlayer(p, dt, W, FLOOR_Y) {
     // suelo
     if (p.y + p.h / 2 >= FLOOR_Y) {
         if (!p.onGround && p.vy > 100) {
-            window.playSound('sfx-land');
+            window.playSound('sfx-land', 0.5);
         }
         p.y = FLOOR_Y - p.h / 2;
         p.vy = 0;
@@ -48,14 +48,19 @@ function updateBall(ball, dt, W, FLOOR_Y) {
     ball.x += ball.vx * dt;
     ball.y += ball.vy * dt;
 
+    // chivato para saber si toca la pared
+    let isTouchingWall = false;
+
     // paredes
     if (ball.x - ball.r < 0) {
         ball.x = ball.r;
         ball.vx = -ball.vx * RESTITUTION;
+        isTouchingWall = true; // Avisamos que está tocando
     }
     if (ball.x + ball.r > W) {
         ball.x = W - ball.r;
         ball.vx = -ball.vx * RESTITUTION;
+        isTouchingWall = true; // Avisamos que está tocando
     }
 
     // techo
@@ -68,7 +73,7 @@ function updateBall(ball, dt, W, FLOOR_Y) {
     if (ball.y + ball.r > FLOOR_Y) {
         // Solo suena si el bote es contundente (tiene velocidad vertical)
         if (ball.vy > 100) {
-            window.playSound('sfx-kick',0.5);
+            window.playSound('sfx-rebound',0.5);
         }
         ball.y = FLOOR_Y - ball.r;
         ball.vy = -ball.vy * RESTITUTION;
@@ -76,7 +81,10 @@ function updateBall(ball, dt, W, FLOOR_Y) {
     }
 
     // Fórmula: Ángulo = (Velocidad * Tiempo) / Radio
-    ball.angle += (ball.vx * dt) / ball.r;
+    // Si está presionado contra la pared, bloqueamos la rotación horizontal
+    if (!isTouchingWall) {
+        ball.angle += (ball.vx * dt) / ball.r;
+    }
 }
 
 function controlPlayer(p, dt, leftKey, rightKey, jumpKey, kickKey, keys) {
@@ -95,16 +103,11 @@ function controlPlayer(p, dt, leftKey, rightKey, jumpKey, kickKey, keys) {
     if (keys.has(jumpKey) && p.onGround && p.canJump) {
         p.vy = -p.jump;
         p.onGround = false;
-        window.playSound('sfx-jump');
+        window.playSound('sfx-jump', 0.5);
     }
 
     // --- LÓGICA DE CARGA DE PIERNA ---
     if (keys.has(kickKey)) {
-        // Solo suena en el instante exacto en que empieza a levantar la pierna
-        if (!p.isKicking) {
-            window.playSound('sfx-kick',1.2);
-        }
-
         p.isKicking = true;
         p.kickAngle += p.kickSpeed * dt;
         // Topar en el ángulo máximo
@@ -250,15 +253,9 @@ function controlBot(bot, dt, ball, W, FLOOR_Y, keys, serveChaseMode = false) {
     const distToBallFull = Math.hypot(bot.x - ball.x, bot.y - ball.y);
     const canKick     = bot.kickCooldown <= 0 && bot.ballEscaped;
     // Agrefamos !ballGoingWrong para evitar que el bot intente patear la pelota si esta ya va de cabeza hacia su portería
-    const wantsToKick = distToBallFull < KICK_DIST 
-                     && bot.state === "attack"
-                     && !ballGoingWrong;
+    const wantsToKick = distToBallFull < KICK_DIST && bot.state === "attack" && !ballGoingWrong;
 
     if (wantsToKick && canKick) {
-        // Solo suena en el instante exacto en que el bot decide chutar
-        if (!bot.isKicking) {
-            window.playSound('sfx-kick', 1.2);
-        }
         // Activar patada
         bot.isKicking  = true;
         bot.kickAngle += bot.kickSpeed * dt;
@@ -271,7 +268,8 @@ function controlBot(bot, dt, ball, W, FLOOR_Y, keys, serveChaseMode = false) {
             bot.lastKickBallY = ball.y;
             bot.ballEscaped   = false;
         }
-    } else {
+    }
+    else {
         // Sin patada: retorno progresivo de la pierna a reposo
         bot.isKicking = false;
         if (bot.kickAngle > 0) {
