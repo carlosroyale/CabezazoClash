@@ -281,9 +281,19 @@ class MetodosDML {
         }
     }
 
-    // Obtiene la lista de jugadores ordenada por puntos para el Ranking Global
+    // Obtiene la lista de jugadores ordenada por puntos y su posición anterior para las tendencias
     public function obtenerRankingGlobal(): array {
-        $sql = "SELECT username, puntos_globales FROM usuario WHERE puntos_globales > 0 ORDER BY puntos_globales DESC";
+        // Consulta actualizada con LEFT JOIN para traer la posicion_anterior de la foto diaria
+        $sql = "SELECT 
+                u.id_usuario, 
+                u.username, 
+                u.puntos_globales, 
+                f.posicion AS posicion_anterior
+            FROM usuario u
+            LEFT JOIN global_foto_ranking f ON u.id_usuario = f.id_usuario
+            WHERE u.puntos_globales > 0 
+            ORDER BY u.puntos_globales DESC, u.fecha_registro";
+
         $ranking = [];
 
         if ($stmt = $this->conexion->prepare($sql)) {

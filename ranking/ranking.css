@@ -57,6 +57,43 @@ body::before {
 .rank-name { font-size: 1.5rem; font-weight: bold; color: var(--primary-color); }
 .rank-points { font-size: 1.8rem; font-weight: 900; color: var(--secondary-color); }
 
+/* =========================================
+   TENDENCIAS DEL RANKING (Flechitas)
+   ========================================= */
+.rank-trend {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 45px;
+    margin-right: 15px;
+}
+
+.rank-trend i {
+    font-size: 1.5rem;
+    line-height: 0.8;
+}
+
+.trend-number {
+    font-size: 0.85rem;
+    font-weight: 800;
+}
+
+/* Colores de estado */
+.trend-up { color: #4caf50; }    /* Verde éxito */
+.trend-down { color: #f44336; }  /* Rojo peligro */
+.trend-neutral { color: #9e9e9e; } /* Gris sin cambios */
+
+.trend-new {
+    font-size: 0.75rem;
+    font-weight: 900;
+    color: #ff9800;
+    background: rgba(255, 152, 0, 0.15);
+    padding: 3px 6px;
+    border-radius: 4px;
+    letter-spacing: 1px;
+}
+
 /* TOP 3 ESPECIAL */
 .ranking-card.oro { border: 2px solid #ffd700; box-shadow: 0 0 20px rgba(255,215,0,0.4); }
 .ranking-card.oro .rank-pos { color: #ffd700; }
@@ -83,4 +120,8 @@ body::before {
     .rank-pos { font-size: 2rem; width: 40px; }
     .rank-name { font-size: 1.1rem; }
     .rank-points { font-size: 1.3rem; }
+    .rank-trend { width: 35px; margin-right: 10px; }
+    .rank-trend i { font-size: 1.2rem; }
+    .trend-number { font-size: 0.75rem; }
+    .trend-new { font-size: 0.65rem; }
 }

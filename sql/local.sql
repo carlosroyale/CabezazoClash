@@ -80,3 +80,22 @@ CREATE TABLE partida (
 
 -- Creamos índice para que las consultas sean rápidas
 CREATE INDEX idx_ranking ON partida(fecha);
+
+
+-- Evento para la foto diaria del ranking
+CREATE DEFINER = CURRENT_USER EVENT ev_foto_diaria_ranking_cabezazo
+ON SCHEDULE EVERY 1 DAY
+STARTS CURRENT_DATE + INTERVAL 1 DAY -- Se ejecuta cada medianoche
+DO
+BEGIN
+    -- 1. Vaciamos la foto del día anterior
+    TRUNCATE TABLE global_foto_ranking;
+
+    -- 2. Insertamos la posición de todos los jugadores que tengan puntos
+    INSERT INTO global_foto_ranking (id_usuario, posicion)
+    SELECT
+        id_usuario,
+        RANK() OVER (ORDER BY puntos_globales DESC) as posicion
+    FROM usuario
+    WHERE puntos_globales > 0;
+END;
