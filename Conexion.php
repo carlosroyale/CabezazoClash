@@ -2,16 +2,12 @@
 class Database {
     public function getConnection() {
         // Valores locales por defecto (XAMPP) y override por variables de entorno.
-        $host = getenv('DB_HOST') ?: '127.0.0.1';
-        $user = getenv('DB_USER') ?: 'root';
-        $pass = getenv('DB_PASS');
-        $db   = getenv('DB_NAME') ?: 'cabezazo_clash';
-        $port = (int)(getenv('DB_PORT') ?: 3306);
-
-        // En la mayoría de instalaciones XAMPP la contraseña de root está vacía.
-        if ($pass === false) {
-            $pass = '';
-        }
+        $host = getenv('RAILWAY_TCP_PROXY_DOMAIN') ?: '127.0.0.1';
+        $user = getenv('MYSQLUSER') ?: 'root';
+        $pass = getenv('MYSQL_ROOT_PASSWORD') ?: '';
+        $db   = getenv('MYSQL_DATABASE') ?: 'cabezazo_clash';
+        $port = getenv('RAILWAY_TCP_PROXY_PORT') ?: 3306;
+        echo getenv('RAILWAY_TCP_PROXY_DOMAIN') . $user . $pass . $db . $port;
 
         mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
