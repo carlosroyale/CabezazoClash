@@ -474,38 +474,67 @@ function resolveShoeHeadPlayer(shoe, pTarget, head) {
     }
 }
 
-// Detecta si la pelota está atrapada entre dos jugadores y la lanza hacia arriba.
-// Usa proximidad entre jugadores para detectarlo de forma fiable,
-// ya que las colisiones individuales ya habrán separado el solapamiento exacto.
+// Detecta si la pelota está atrapada entre dos jugadores que se empujan mutuamente
+// y la protege para evitar que se atraviese. Funciona de frente Y de espaldas.
 function resolveBallSqueezeUp(ball, p1, p2) {
-    // Ambos jugadores deben estar a lados opuestos y la pelota MUY cerca de ambos (usando hitboxes)
     const h1 = getPlayerHitboxes(p1);
     const h2 = getPlayerHitboxes(p2);
 
-    // La pelota debe estar "tocando" el cuerpo de ambos jugadores (o casi)
-    const ballTouchesBody1 =
-        ball.x + ball.r > h1.body.x &&
-        ball.x - ball.r < h1.body.x + h1.body.w &&
-        ball.y + ball.r > h1.body.y &&
-        ball.y - ball.r < h1.body.y + h1.body.h;
-
-    const ballTouchesBody2 =
-        ball.x + ball.r > h2.body.x &&
-        ball.x - ball.r < h2.body.x + h2.body.w &&
-        ball.y + ball.r > h2.body.y &&
-        ball.y - ball.r < h2.body.y + h2.body.h;
-
-    // Además, deben estar a lados opuestos de la pelota
+    // Determinar izquierdo y derecho
     const leftPlayer = p1.x < p2.x ? p1 : p2;
     const rightPlayer = p1.x < p2.x ? p2 : p1;
+    const leftHitbox = p1.x < p2.x ? h1 : h2;
+    const rightHitbox = p1.x < p2.x ? h2 : h1;
+    
+    // La pelota debe estar entre los dos jugadores horizontalmente
     if (!(leftPlayer.x < ball.x && ball.x < rightPlayer.x)) return;
 
-    // Solo si la pelota está tocando ambos cuerpos
-    if (!(ballTouchesBody1 && ballTouchesBody2)) return;
+    // DETECTAR COMPRESIÓN: Los cuerpos deben estar muy cerca o solapados
+    const leftBodyRight = leftHitbox.body.x + leftHitbox.body.w;
+    const rightBodyLeft = rightHitbox.body.x;
+    const bodyGap = rightBodyLeft - leftBodyRight;
+    
+    // Distancia de la pelota a los bordes de los cuerpos
+    const distToBallFromLeftBody = Math.max(0, leftBodyRight - (ball.x - ball.r));
+    const distToBallFromRightBody = Math.max(0, (ball.x + ball.r) - rightBodyLeft);
+    
+    // ACTIVAR PROTECCIÓN si:
+    // 1. Los cuerpos están muy comprimidos (gap < 40px) O
+    // 2. La pelota está DENTRO de ambos cuerpos (solapada)
+    const bodiesCompressed = bodyGap < 40;
+    const ballOverlapped = (ball.x + ball.r > leftHitbox.body.x && 
+                            ball.x - ball.r < rightHitbox.body.x + rightHitbox.body.w);
+    
+    if (!(bodiesCompressed && ballOverlapped)) return;
 
-    // Pelota atrapada: cancelar velocidad horizontal y lanzar hacia arriba suavemente
+    // Además, verificar que la pelota está verticalmente en rango
+    const ballInVerticalRange = (ball.y + ball.r > Math.max(leftHitbox.body.y, rightHitbox.body.y) &&
+                                 ball.y - ball.r < Math.min(leftHitbox.body.y + leftHitbox.body.h, rightHitbox.body.y + rightHitbox.body.h));
+    
+    if (!ballInVerticalRange) return;
+
+    // PROTECCIÓN: Detener completamente y posicionar de forma segura
     ball.vx = 0;
-    if (ball.vy > -350) ball.vy = -350;
+    ball.vy = 0;
+
+    const safeZoneLeft = leftBodyRight + ball.r + 2;
+    const safeZoneRight = rightBodyLeft - ball.r - 2;
+
+    // Extraer la pelota al centro seguro entre los dos cuerpos
+    const centerSafeX = (safeZoneLeft + safeZoneRight) / 2;
+    
+    // Si está dentro del cuerpo izquierdo, sacarla hacia la derecha
+    if (ball.x < leftBodyRight) {
+        ball.x = safeZoneLeft;
+    } 
+    // Si está dentro del cuerpo derecho, sacarla hacia la izquierda
+    else if (ball.x > rightBodyLeft) {
+        ball.x = safeZoneRight;
+    }
+    // Si está en el medio pero solapada, centrarla
+    else {
+        ball.x = centerSafeX;
+    }
 }
 
 function clamp(v, min, max) {
