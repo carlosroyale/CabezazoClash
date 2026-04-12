@@ -478,20 +478,30 @@ function resolveShoeHeadPlayer(shoe, pTarget, head) {
 // Usa proximidad entre jugadores para detectarlo de forma fiable,
 // ya que las colisiones individuales ya habrán separado el solapamiento exacto.
 function resolveBallSqueezeUp(ball, p1, p2) {
-    // Los dos jugadores deben estar frente a frente (menos de la suma de sus medios anchos + diámetro del balón)
-    const playerDist = Math.abs(p1.x - p2.x);
-    const squeezeDist = (p1.w + p2.w) / 2 + ball.r * 2;
-    if (playerDist > squeezeDist) return;
+    // Ambos jugadores deben estar a lados opuestos y la pelota MUY cerca de ambos (usando hitboxes)
+    const h1 = getPlayerHitboxes(p1);
+    const h2 = getPlayerHitboxes(p2);
 
-    // El balón debe estar entre ellos horizontalmente
-    const minX = Math.min(p1.x, p2.x);
-    const maxX = Math.max(p1.x, p2.x);
-    if (ball.x < minX - ball.r || ball.x > maxX + ball.r) return;
+    // La pelota debe estar "tocando" el cuerpo de ambos jugadores (o casi)
+    const ballTouchesBody1 =
+        ball.x + ball.r > h1.body.x &&
+        ball.x - ball.r < h1.body.x + h1.body.w &&
+        ball.y + ball.r > h1.body.y &&
+        ball.y - ball.r < h1.body.y + h1.body.h;
 
-    // El balón debe estar a altura de los cuerpos
-    const topY = Math.min(p1.y - p1.h / 2, p2.y - p2.h / 2) - 22; // incluye cabeza
-    const botY = Math.max(p1.y + p1.h / 2, p2.y + p2.h / 2);
-    if (ball.y < topY || ball.y > botY) return;
+    const ballTouchesBody2 =
+        ball.x + ball.r > h2.body.x &&
+        ball.x - ball.r < h2.body.x + h2.body.w &&
+        ball.y + ball.r > h2.body.y &&
+        ball.y - ball.r < h2.body.y + h2.body.h;
+
+    // Además, deben estar a lados opuestos de la pelota
+    const leftPlayer = p1.x < p2.x ? p1 : p2;
+    const rightPlayer = p1.x < p2.x ? p2 : p1;
+    if (!(leftPlayer.x < ball.x && ball.x < rightPlayer.x)) return;
+
+    // Solo si la pelota está tocando ambos cuerpos
+    if (!(ballTouchesBody1 && ballTouchesBody2)) return;
 
     // Pelota atrapada: cancelar velocidad horizontal y lanzar hacia arriba suavemente
     ball.vx = 0;
