@@ -79,7 +79,7 @@ $asset = static function (string $path) use ($basePath): string {
                 <button id="btn-1vbot" class="btn">1 VS BOT LOCAL</button>
                 <button id="btn-1v1Online" class="btn">1 VS 1 ONLINE</button>
             </div>
-            <button id="btn-mode-back" class="btn btn-secondary" style="margin-top: 1rem;">Volver</button>
+            <button id="btn-mode-back" class="btn btn large-got-it-btn" style="margin-top: 1rem;">Volver</button>
         </div>
     </section>
 
