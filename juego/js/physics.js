@@ -29,7 +29,38 @@ function getPlayerHitboxes(p) {
     };
 }
 
+function arePlayersBackToBack(p1, p2) {
+    const leftPlayer = p1.x < p2.x ? p1 : p2;
+    const rightPlayer = p1.x < p2.x ? p2 : p1;
+
+    return !leftPlayer.isRightFacing && rightPlayer.isRightFacing;
+}
+
+function isBackToBackBallSqueeze(ball, p1, p2) {
+    if (!p1 || !p2 || !arePlayersBackToBack(p1, p2)) return false;
+
+    const h1 = getPlayerHitboxes(p1);
+    const h2 = getPlayerHitboxes(p2);
+    const leftHitbox = p1.x < p2.x ? h1 : h2;
+    const rightHitbox = p1.x < p2.x ? h2 : h1;
+
+    const leftBodyRight = leftHitbox.body.x + leftHitbox.body.w;
+    const rightBodyLeft = rightHitbox.body.x;
+    const bodyGap = rightBodyLeft - leftBodyRight;
+    const squeezeMargin = 8;
+    const ballBetweenBacks = ball.x + ball.r > leftBodyRight - squeezeMargin &&
+        ball.x - ball.r < rightBodyLeft + squeezeMargin;
+    const ballInVerticalRange = ball.y + ball.r > Math.max(leftHitbox.body.y, rightHitbox.body.y) &&
+        ball.y - ball.r < Math.min(leftHitbox.body.y + leftHitbox.body.h, rightHitbox.body.y + rightHitbox.body.h);
+
+    return bodyGap < ball.r * 2 + 14 && ballBetweenBacks && ballInVerticalRange;
+}
+
 function collidePlayerBall(p, ball) {
+    if (window.currentPlayers && isBackToBackBallSqueeze(ball, window.currentPlayers[0], window.currentPlayers[1])) {
+        return;
+    }
+
     // 1. Obtenemos las hitboxes centralizadas con una sola línea de código
     const h = getPlayerHitboxes(p);
 
@@ -472,6 +503,23 @@ function resolveShoeHeadPlayer(shoe, pTarget, head) {
             pTarget.vy = Math.max(0, pTarget.vy);
         }
     }
+}
+
+function resolveBackToBackBallSqueeze(ball, p1, p2) {
+    if (!isBackToBackBallSqueeze(ball, p1, p2)) return;
+
+    const h1 = getPlayerHitboxes(p1);
+    const h2 = getPlayerHitboxes(p2);
+    const leftHitbox = p1.x < p2.x ? h1 : h2;
+    const rightHitbox = p1.x < p2.x ? h2 : h1;
+
+    const leftBodyRight = leftHitbox.body.x + leftHitbox.body.w;
+    const rightBodyLeft = rightHitbox.body.x;
+    const gapCenterX = (leftBodyRight + rightBodyLeft) / 2;
+
+    ball.vx = 0;
+    ball.vy = 0;
+    ball.x = gapCenterX;
 }
 
 // Detecta si la pelota está atrapada entre dos jugadores que se empujan mutuamente
