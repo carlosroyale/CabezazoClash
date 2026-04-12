@@ -202,9 +202,18 @@ function update(dt) {
     updateBall(ball, dt, W, FLOOR_Y);
 
     // 4. Colisiones jugador-pelota
+    window.currentPlayers = [p1, p2];
+    const playersBackToBack = arePlayersBackToBack(p1, p2);
+    if (playersBackToBack) {
+        resolveBackToBackBallSqueeze(ball, p1, p2);
+    }
     collidePlayerBall(p1, ball);
     collidePlayerBall(p2, ball);
-    resolveBallSqueezeUp(ball, p1, p2);
+    if (playersBackToBack) {
+        resolveBackToBackBallSqueeze(ball, p1, p2);
+    } else {
+        resolveBallSqueezeUp(ball, p1, p2);
+    }
 
     // 5. Colisiones con las porterías (largueros)
     checkGoalCollisions(ball, leftGoal, rightGoal);
