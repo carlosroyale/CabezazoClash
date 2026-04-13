@@ -48,8 +48,6 @@ const canvas = document.getElementById("game-canvas");
 const ctx = canvas.getContext("2d");
 const scoreEl = document.getElementById("score");
 const timerEl = document.getElementById("timer");
-const bgMusic = document.getElementById("bg-music");
-const sfxCrowdAmbient = document.getElementById("sfx-crowd-ambient");
 
 // Elementos de la pantalla de fin
 const finalScoreEl = document.getElementById("final-score");
@@ -180,16 +178,6 @@ function beginBotGame() {
       playMenuMusic();
     }
   };
-
-  loadSound('sfx-whistle', 'assets/audio/whistle.mp3'),
-      loadSound('sfx-goal', 'assets/audio/goal_cheer.mp3'),
-      loadSound('sfx-rebound', 'assets/audio/ball_rebound.mp3'),
-      loadSound('sfx-ball-post', 'assets/audio/ball_post.mp3'),
-      loadSound('sfx-ball-grass', 'assets/audio/ball_grass.mp3'),
-      loadSound('sfx-jump', 'assets/audio/jump.mp3'),
-      loadSound('sfx-land', 'assets/audio/land.mp3'),
-      loadSound('sfx-player-collide', 'assets/audio/player_collide.mp3'),
-      loadSound('sfx-player-kick', 'assets/audio/player_kick.mp3')
 
   playMatchAmbient();
   window.playSound('sfx-whistle');
@@ -412,13 +400,17 @@ function updateOptionsUI() {
    ========================================================================== */
 let musicUnlocked = false;
 
-// 1. Inicializar el motor de audio de alto rendimiento
 const AudioContext = window.AudioContext;
 const audioCtx = new AudioContext();
-const sfxBuffers = {}; // Aquí guardaremos los audios decodificados en RAM
-let activeSFXNodes = new Set(); // Para poder pararlos al pausar
+const sfxBuffers = {};
+let activeSFXNodes = new Set();
 
-// 2. Función para cargar los MP3 en memoria
+// Variables para mantener control de las pistas en bucle (Música y Ambiente)
+let bgMusicNode = null;
+let bgMusicGain = null;
+let ambientNode = null;
+let ambientGain = null;
+
 async function loadSound(id, url) {
   try {
     const response = await fetch(url);
@@ -431,13 +423,21 @@ async function loadSound(id, url) {
 }
 
 function applyVolumes() {
-  if (bgMusic) bgMusic.volume = settings.musicVolume / 100;
-  if (sfxCrowdAmbient) sfxCrowdAmbient.volume = (settings.sfxVolume / 100) * 0.5;
+  if (bgMusicGain) bgMusicGain.gain.value = settings.musicVolume / 100;
+  if (ambientGain) ambientGain.gain.value = (settings.sfxVolume / 100) * 0.5;
 }
 
 function stopAllSounds() {
-  if(bgMusic) bgMusic.pause();
-  if(sfxCrowdAmbient) sfxCrowdAmbient.pause();
+  // Parar música de fondo
+  if (bgMusicNode) {
+    try { bgMusicNode.stop(); } catch(e){}
+    bgMusicNode = null;
+  }
+  // Parar ambiente de estadio
+  if (ambientNode) {
+    try { ambientNode.stop(); } catch(e){}
+    ambientNode = null;
+  }
 
   // Parar todos los efectos de Web Audio API
   activeSFXNodes.forEach(source => {
@@ -448,21 +448,62 @@ function stopAllSounds() {
 
 function playMenuMusic() {
   if (!musicUnlocked) return;
-  if(sfxCrowdAmbient) sfxCrowdAmbient.pause();
-  if(bgMusic) {
-    bgMusic.currentTime = 0;
-    applyVolumes();
-    bgMusic.play().catch(()=>{});
+
+  // Detener estadio si estaba sonando
+  if (ambientNode) {
+    try { ambientNode.stop(); } catch(e){}
+    ambientNode = null;
   }
+
+  // Reiniciar música si ya estaba sonando
+  if (bgMusicNode) {
+    try { bgMusicNode.stop(); } catch(e){}
+  }
+
+  const buffer = sfxBuffers['bg-music'];
+  if (!buffer) return;
+
+  bgMusicNode = audioCtx.createBufferSource();
+  bgMusicNode.buffer = buffer;
+  bgMusicNode.loop = true; // Que se repita infinitamente
+
+  bgMusicGain = audioCtx.createGain();
+  bgMusicGain.gain.value = settings.musicVolume / 100;
+
+  bgMusicNode.connect(bgMusicGain);
+  bgMusicGain.connect(audioCtx.destination);
+
+  bgMusicNode.start(0);
 }
 
 function playMatchAmbient() {
   if (!musicUnlocked) return;
-  if(bgMusic) bgMusic.pause();
-  if(sfxCrowdAmbient) {
-    applyVolumes();
-    sfxCrowdAmbient.play().catch(()=>{});
+
+  // Detener música si estaba sonando
+  if (bgMusicNode) {
+    try { bgMusicNode.stop(); } catch(e){}
+    bgMusicNode = null;
   }
+
+  // Reiniciar ambiente si ya estaba sonando
+  if (ambientNode) {
+    try { ambientNode.stop(); } catch(e){}
+  }
+
+  const buffer = sfxBuffers['sfx-crowd-ambient'];
+  if (!buffer) return;
+
+  ambientNode = audioCtx.createBufferSource();
+  ambientNode.buffer = buffer;
+  ambientNode.loop = true; // Que se repita infinitamente
+
+  ambientGain = audioCtx.createGain();
+  ambientGain.gain.value = (settings.sfxVolume / 100) * 0.5;
+
+  ambientNode.connect(ambientGain);
+  ambientGain.connect(audioCtx.destination);
+
+  ambientNode.start(0);
 }
 
 // Listeners para los deslizadores
@@ -609,75 +650,6 @@ window.addEventListener('resize', resizeCanvas);
 
 // Forzar un primer ajuste al arrancar
 resizeCanvas();
-/* ==========================================================================
-   SISTEMA DE REDIMENSIÓN (MODO "FUERZA BRUTA")
-   ========================================================================== */
-//
-// function resizeCanvas() {
-//   const wrap = document.getElementById('game-wrap');
-//   const tester = document.getElementById('viewport-tester');
-//   const baseW = 1845;
-//   const baseH = 1038;
-//
-//   // LEYENDO EL CSS (dvh), NO EL NAVEGADOR
-//   let vw = tester ? tester.clientWidth : window.innerWidth;
-//   let vh = tester ? tester.clientHeight : window.innerHeight;
-//
-//   const scale = Math.min(vw / baseW, vh / baseH);
-//   wrap.style.transform = `translate(-50%, -50%) scale(${scale})`;
-//
-//   canvas.width = baseW;
-//   canvas.height = baseH;
-//
-//   if (window.Game && window.Game.resize) window.Game.resize(canvas.width, canvas.height);
-//   if (window.Game && window.Game.forceRedraw) window.Game.forceRedraw(ctx);
-// }
-//
-// // Función que insiste en recalcular las medidas durante 1.5 segundos
-// let resizeHistory = []; // Guardará el historial de intentos
-//
-// function forceAggressiveResize() {
-//   let attempts = 0;
-//   resizeHistory = []; // Limpiamos el historial en cada nuevo evento
-//
-//   resizeCanvas();
-//   window.scrollTo(0, 0);
-//
-//   const interval = setInterval(() => {
-//     // 1. Tomamos las medidas en este instante exacto
-//     let vw = document.documentElement.clientWidth || window.innerWidth;
-//     let vh = document.documentElement.clientHeight || window.innerHeight;
-//
-//     // 2. Guardamos el dato en el historial
-//     resizeHistory.push(`Int: ${attempts} -> ${vw} x ${vh}`);
-//
-//     // 3. Redimensionamos
-//     resizeCanvas();
-//     attempts++;
-//
-//     // 4. Al terminar, lo imprimimos en tu caja de debug
-//     if (attempts >= 15) {
-//       clearInterval(interval);
-//       // Añadimos el historial al final del texto del debugger
-//       const historyHtml = resizeHistory.join("<br>");
-//
-//       // Sobrescribimos temporalmente el updateDebugger para ver el historial
-//       debugDiv.innerHTML = `
-//         <b>HISTORIAL DE FUERZA BRUTA:</b><br>
-//         ${historyHtml}
-//         <hr>
-//         Medida Final: ${document.getElementById('game-wrap').style.transform}
-//       `;
-//     }
-//   }, 100);
-// }
-//
-// // Escuchar cambios estándar
-// window.addEventListener('resize', forceAggressiveResize);
-// window.addEventListener('orientationchange', forceAggressiveResize);
-//
-// // Arrancar el martillo al cargar la página
-// window.addEventListener('load', forceAggressiveResize);
 
 // Arrancar el modo reposo para ver las porterías de fondo
 if (window.Game && window.Game.startIdle) {
@@ -730,82 +702,70 @@ window.addEventListener("blur", () => {
 // --- SISTEMA DE CARGA MAESTRO ---
 
 // Envolvemos la carga de cualquier imagen
-// function esperarImagen(imgObj) {
-//   return new Promise((resolve) => {
-//     if (!imgObj || imgObj.complete) {
-//       resolve();
-//     } else {
-//       imgObj.onload = () => resolve();
-//       imgObj.onerror = () => resolve(); // Si falla, resolvemos igual para no bloquear el juego
-//     }
-//   });
-// }
-//
-// // Escaneamos todas las etiquetas <audio> del HTML y esperamos a que el navegador las pre-cargue
-// function esperarTodosLosAudios() {
-//   const audios = document.querySelectorAll('audio');
-//   const promesas = Array.from(audios).map(audio => {
-//     return new Promise((resolve) => {
-//       // readyState >= 3 significa HAVE_FUTURE_DATA (se puede reproducir)
-//       if (audio.readyState >= 3) {
-//         resolve();
-//       } else {
-//         audio.addEventListener('canplaythrough', () => resolve(), { once: true });
-//         audio.addEventListener('error', () => resolve(), { once: true });
-//         // Timeout de seguridad: Si un audio tarda más de 3 segundos, lo ignoramos y seguimos
-//         setTimeout(resolve, 3000);
-//       }
-//     });
-//   });
-//   return Promise.all(promesas);
-// }
-//
-// async function inicializarJuego() {
-//   const pantallaCarga = document.getElementById('pantalla-carga');
-//   const screenTapToStart = document.getElementById('screen-tap-to-start');
-//
-//   // Por seguridad, forzamos que la pantalla de inicio esté oculta
-//   if (screenTapToStart) screenTapToStart.classList.add('hidden');
-//
-//   try {
-//     const promesasDeCarga = [
-//       // 1. Imágenes del canvas
-//       esperarImagen(typeof bgImage !== 'undefined' ? bgImage : null),
-//       esperarImagen(typeof imgP1Body !== 'undefined' ? imgP1Body : null),
-//       esperarImagen(typeof imgP1Shoe !== 'undefined' ? imgP1Shoe : null),
-//       esperarImagen(typeof imgP2Body !== 'undefined' ? imgP2Body : null),
-//       esperarImagen(typeof imgP2Shoe !== 'undefined' ? imgP2Shoe : null),
-//       esperarImagen(typeof imgCrowd !== 'undefined' ? imgCrowd : null),
-//
-//       // 2. Audios en etiquetas HTML (Música y Ambiente)
-//       // esperarTodosLosAudios(),
-//
-//       // 3. Efectos de sonido Web Audio API (Latencia Cero)
-//       loadSound('sfx-whistle', 'assets/audio/whistle.mp3'),
-//       loadSound('sfx-goal', 'assets/audio/goal_cheer.mp3'),
-//       loadSound('sfx-rebound', 'assets/audio/ball_rebound.mp3'),
-//       loadSound('sfx-ball-post', 'assets/audio/ball_post.mp3'),
-//       loadSound('sfx-ball-grass', 'assets/audio/ball_grass.mp3'),
-//       loadSound('sfx-jump', 'assets/audio/jump.mp3'),
-//       loadSound('sfx-land', 'assets/audio/land.mp3'),
-//       loadSound('sfx-player-collide', 'assets/audio/player_collide.mp3'),
-//       loadSound('sfx-player-kick', 'assets/audio/player_kick.mp3')
-//     ];
-//
-//     // Bloqueamos la pantalla hasta que TODO (imágenes y audios) esté listo
-//     await Promise.all(promesasDeCarga);
-//
-//     // --- TODO CARGADO CON ÉXITO ---
-//     if (pantallaCarga) pantallaCarga.classList.add('hidden');
-//     if (screenTapToStart) screenTapToStart.classList.remove('hidden');
-//
-//   } catch (error) {
-//     console.error("Fallo crítico en la carga inicial:", error);
-//     // Si algo falla catastróficamente, quitamos el bloqueo para que se pueda intentar jugar
-//     if (pantallaCarga) pantallaCarga.classList.add('hidden');
-//     if (screenTapToStart) screenTapToStart.classList.remove('hidden');
-//   }
-// }
+function esperarImagen(imgObj) {
+  return new Promise((resolve) => {
+    if (!imgObj || imgObj.complete) {
+      resolve();
+    } else {
+      imgObj.onload = () => resolve();
+      imgObj.onerror = () => resolve(); // Si falla, resolvemos igual para no bloquear el juego
+    }
+  });
+}
+
+async function inicializarJuego() {
+  const pantallaCarga = document.getElementById('pantalla-carga');
+  const screenTapToStart = document.getElementById('screen-tap-to-start');
+
+  // Por seguridad, forzamos que la pantalla de inicio esté oculta
+  if (screenTapToStart) screenTapToStart.classList.add('hidden');
+
+  try {
+    const promesasDeCarga = [
+      // 1. Imágenes del canvas
+      esperarImagen(typeof bgImage !== 'undefined' ? bgImage : null),
+      esperarImagen(typeof imgP1Body !== 'undefined' ? imgP1Body : null),
+      esperarImagen(typeof imgP1Shoe !== 'undefined' ? imgP1Shoe : null),
+      esperarImagen(typeof imgP2Body !== 'undefined' ? imgP2Body : null),
+      esperarImagen(typeof imgP2Shoe !== 'undefined' ? imgP2Shoe : null),
+      esperarImagen(typeof imgCrowd !== 'undefined' ? imgCrowd : null),
+
+      // 2. Efectos de sonido Web Audio API (Latencia Cero)
+      loadSound('bg-music', 'assets/audio/menu_music.mp3'),
+      loadSound('sfx-crowd-ambient', 'assets/audio/crowd_ambient.mp3'),
+      loadSound('sfx-whistle', 'assets/audio/whistle.mp3'),
+      loadSound('sfx-goal', 'assets/audio/goal_cheer.mp3'),
+      loadSound('sfx-rebound', 'assets/audio/ball_rebound.mp3'),
+      loadSound('sfx-ball-post', 'assets/audio/ball_post.mp3'),
+      loadSound('sfx-ball-grass', 'assets/audio/ball_grass.mp3'),
+      loadSound('sfx-jump', 'assets/audio/jump.mp3'),
+      loadSound('sfx-land', 'assets/audio/land.mp3'),
+      loadSound('sfx-player-collide', 'assets/audio/player_collide.mp3'),
+      loadSound('sfx-player-kick', 'assets/audio/player_kick.mp3')
+    ];
+
+    // Bloqueamos la pantalla hasta que TODO (imágenes y audios) esté listo
+    await Promise.all(promesasDeCarga);
+
+    // --- TODO CARGADO CON ÉXITO ---
+    // if (pantallaCarga) pantallaCarga.classList.add('hidden');
+    if (pantallaCarga) pantallaCarga.style.display = 'none'; // <-- ¡Y ESTO!
+    if (screenTapToStart) {
+      screenTapToStart.classList.remove('hidden');
+      screenTapToStart.classList.add('active');
+    }
+
+  } catch (error) {
+    console.error("Fallo crítico en la carga inicial:", error);
+    // Si algo falla catastróficamente, quitamos el bloqueo para que se pueda intentar jugar
+    // if (pantallaCarga) pantallaCarga.classList.add('hidden');
+    if (pantallaCarga) pantallaCarga.style.display = 'none'; // <-- ¡Y ESTO!
+    if (screenTapToStart) {
+      screenTapToStart.classList.remove('hidden');
+      screenTapToStart.classList.add('active');
+    }
+  }
+}
 
 // Arrancamos el proceso al cargar el archivo
 inicializarJuego();

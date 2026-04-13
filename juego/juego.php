@@ -40,10 +40,10 @@ $asset = static function (string $path) use ($basePath): string {
         </div>
     </section>
 
-<!--    <div id="pantalla-carga" class="screen" style="z-index: 10000; background-color: #000; display: flex; flex-direction: column; justify-content: center; align-items: center;">-->
-<!--        <h2 id="titulo-carga" style="color: white; font-family: 'Arial', sans-serif; letter-spacing: 2px;">CARGANDO...</h2>-->
-<!--        <div class="spinner"></div>-->
-<!--    </div>-->
+    <div id="pantalla-carga" class="screen" style="z-index: 10000; background-color: #000; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+        <h2 id="titulo-carga" style="color: white; font-family: 'Arial', sans-serif; letter-spacing: 2px;">CARGANDO...</h2>
+        <div class="spinner"></div>
+    </div>
 
     <div id="contador-pausa" class="hidden">3</div>
     <canvas id="game-canvas"></canvas>
@@ -207,21 +207,12 @@ $asset = static function (string $path) use ($basePath): string {
     </div>
 </div>
 
-<!-- música de fondo -->
-<audio id="bg-music" loop preload="auto">
-    <source src="<?= htmlspecialchars($asset('assets/audio/menu_music.mp3'), ENT_QUOTES, 'UTF-8') ?>" type="audio/mpeg">
-</audio>
-
-<audio id="sfx-crowd-ambient" loop preload="auto">
-    <source src="<?= htmlspecialchars($asset('assets/audio/crowd_ambient.mp3'), ENT_QUOTES, 'UTF-8') ?>" type="audio/mpeg">
-</audio>
-
 <script src="<?= htmlspecialchars($asset('juego/js/constants.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/entities.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/physics.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/renderer.js?v=2'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/input.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/game.js?v=4'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=14'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=15'), ENT_QUOTES, 'UTF-8') ?>"></script>
 </body>
 </html>
