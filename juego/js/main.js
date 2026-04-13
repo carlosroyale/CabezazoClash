@@ -768,7 +768,7 @@ async function inicializarJuego() {
       esperarImagen(typeof imgCrowd !== 'undefined' ? imgCrowd : null),
 
       // 2. Audios en etiquetas HTML (Música y Ambiente)
-      esperarTodosLosAudios(),
+      // esperarTodosLosAudios(),
 
       // 3. Efectos de sonido Web Audio API (Latencia Cero)
       loadSound('sfx-whistle', 'assets/audio/whistle.mp3'),
