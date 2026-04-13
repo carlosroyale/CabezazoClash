@@ -40,10 +40,10 @@ $asset = static function (string $path) use ($basePath): string {
         </div>
     </section>
 
-    <div id="pantalla-carga" class="screen" style="z-index: 10000; background-color: #000; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-        <h2 id="titulo-carga" style="color: white; font-family: 'Arial', sans-serif; letter-spacing: 2px;">CARGANDO...</h2>
-        <div class="spinner"></div>
-    </div>
+<!--    <div id="pantalla-carga" class="screen" style="z-index: 10000; background-color: #000; display: flex; flex-direction: column; justify-content: center; align-items: center;">-->
+<!--        <h2 id="titulo-carga" style="color: white; font-family: 'Arial', sans-serif; letter-spacing: 2px;">CARGANDO...</h2>-->
+<!--        <div class="spinner"></div>-->
+<!--    </div>-->
 
     <div id="contador-pausa" class="hidden">3</div>
     <canvas id="game-canvas"></canvas>
@@ -222,6 +222,6 @@ $asset = static function (string $path) use ($basePath): string {
 <script src="<?= htmlspecialchars($asset('juego/js/renderer.js?v=2'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/input.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/game.js?v=4'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=13'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=14'), ENT_QUOTES, 'UTF-8') ?>"></script>
 </body>
 </html>
