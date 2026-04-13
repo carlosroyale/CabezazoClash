@@ -21,7 +21,7 @@ $asset = static function (string $path) use ($basePath): string {
     <link rel="manifest" href="<?= htmlspecialchars($asset('manifest.json'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="apple-touch-icon" href="<?= htmlspecialchars($asset('assets/img/logo192.png'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="icon" type="image/x-icon" href="<?= htmlspecialchars($asset('assets/icon/favicon.ico'), ENT_QUOTES, 'UTF-8') ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars($asset('juego/juego.css?v=2'), ENT_QUOTES, 'UTF-8') ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars($asset('juego/juego.css?v=3'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 </head>
@@ -34,11 +34,16 @@ $asset = static function (string $path) use ($basePath): string {
     <a href="ranking/ranking.php" id="btn-ranking" class="btn-ranking hidden" title="Ranking Global">
         <i class="bi bi-trophy-fill"></i>
     </a>
-    <section id="screen-tap-to-start" class="screen active" style="z-index: 999; background: #000; cursor: pointer;">
+    <section id="screen-tap-to-start" class="screen hidden" style="z-index: 999; background: #000; cursor: pointer;">
         <div class="card" style="background: transparent; box-shadow: none; backdrop-filter: none;">
             <h1 class="title" style="font-size: 3rem; animation: pulse-text 1.5s infinite alternate ease-in-out;">TOCA PARA EMPEZAR</h1>
         </div>
     </section>
+
+    <div id="pantalla-carga" class="screen" style="z-index: 10000; background-color: #000; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+        <h2 id="titulo-carga" style="color: white; font-family: 'Arial', sans-serif; letter-spacing: 2px;">CARGANDO...</h2>
+        <div class="spinner"></div>
+    </div>
 
     <div id="contador-pausa" class="hidden">3</div>
     <canvas id="game-canvas"></canvas>
@@ -217,6 +222,6 @@ $asset = static function (string $path) use ($basePath): string {
 <script src="<?= htmlspecialchars($asset('juego/js/renderer.js?v=2'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/input.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/game.js?v=4'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=11'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=12'), ENT_QUOTES, 'UTF-8') ?>"></script>
 </body>
 </html>

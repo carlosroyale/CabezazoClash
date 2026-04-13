@@ -420,17 +420,6 @@ async function loadSound(id, url) {
   }
 }
 
-// 3. Cargar todos los efectos de sonido al iniciar la página
-loadSound('sfx-whistle', 'assets/audio/whistle.mp3').then();
-loadSound('sfx-goal', 'assets/audio/goal_cheer.mp3').then();
-loadSound('sfx-rebound', 'assets/audio/ball_rebound.mp3').then();
-loadSound('sfx-ball-post', 'assets/audio/ball_post.mp3').then();
-loadSound('sfx-ball-grass', 'assets/audio/ball_grass.mp3').then();
-loadSound('sfx-jump', 'assets/audio/jump.mp3').then();
-loadSound('sfx-land', 'assets/audio/land.mp3').then();
-loadSound('sfx-player-collide', 'assets/audio/player_collide.mp3').then();
-loadSound('sfx-player-kick', 'assets/audio/player_kick.mp3').then();
-
 function applyVolumes() {
   if (bgMusic) bgMusic.volume = settings.musicVolume / 100;
   if (sfxCrowdAmbient) sfxCrowdAmbient.volume = (settings.sfxVolume / 100) * 0.5;
@@ -727,6 +716,89 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener("blur", () => {
   forcePauseIfPlaying();
 });
+
+// --- SISTEMA DE CARGA MAESTRO ---
+
+// Envolvemos la carga de cualquier imagen
+function esperarImagen(imgObj) {
+  return new Promise((resolve) => {
+    if (!imgObj || imgObj.complete) {
+      resolve();
+    } else {
+      imgObj.onload = () => resolve();
+      imgObj.onerror = () => resolve(); // Si falla, resolvemos igual para no bloquear el juego
+    }
+  });
+}
+
+// Escaneamos todas las etiquetas <audio> del HTML y esperamos a que el navegador las pre-cargue
+function esperarTodosLosAudios() {
+  const audios = document.querySelectorAll('audio');
+  const promesas = Array.from(audios).map(audio => {
+    return new Promise((resolve) => {
+      // readyState >= 3 significa HAVE_FUTURE_DATA (se puede reproducir)
+      if (audio.readyState >= 3) {
+        resolve();
+      } else {
+        audio.addEventListener('canplaythrough', () => resolve(), { once: true });
+        audio.addEventListener('error', () => resolve(), { once: true });
+        // Timeout de seguridad: Si un audio tarda más de 3 segundos, lo ignoramos y seguimos
+        setTimeout(resolve, 3000);
+      }
+    });
+  });
+  return Promise.all(promesas);
+}
+
+async function inicializarJuego() {
+  const pantallaCarga = document.getElementById('pantalla-carga');
+  const screenTapToStart = document.getElementById('screen-tap-to-start');
+
+  // Por seguridad, forzamos que la pantalla de inicio esté oculta
+  if (screenTapToStart) screenTapToStart.classList.add('hidden');
+
+  try {
+    const promesasDeCarga = [
+      // 1. Imágenes del canvas
+      esperarImagen(typeof bgImage !== 'undefined' ? bgImage : null),
+      esperarImagen(typeof imgP1Body !== 'undefined' ? imgP1Body : null),
+      esperarImagen(typeof imgP1Shoe !== 'undefined' ? imgP1Shoe : null),
+      esperarImagen(typeof imgP2Body !== 'undefined' ? imgP2Body : null),
+      esperarImagen(typeof imgP2Shoe !== 'undefined' ? imgP2Shoe : null),
+      esperarImagen(typeof imgCrowd !== 'undefined' ? imgCrowd : null),
+
+      // 2. Audios en etiquetas HTML (Música y Ambiente)
+      esperarTodosLosAudios(),
+
+      // 3. Efectos de sonido Web Audio API (Latencia Cero)
+      loadSound('sfx-whistle', 'assets/audio/whistle.mp3'),
+      loadSound('sfx-goal', 'assets/audio/goal_cheer.mp3'),
+      loadSound('sfx-rebound', 'assets/audio/ball_rebound.mp3'),
+      loadSound('sfx-ball-post', 'assets/audio/ball_post.mp3'),
+      loadSound('sfx-ball-grass', 'assets/audio/ball_grass.mp3'),
+      loadSound('sfx-jump', 'assets/audio/jump.mp3'),
+      loadSound('sfx-land', 'assets/audio/land.mp3'),
+      loadSound('sfx-player-collide', 'assets/audio/player_collide.mp3'),
+      loadSound('sfx-player-kick', 'assets/audio/player_kick.mp3')
+    ];
+
+    // Bloqueamos la pantalla hasta que TODO (imágenes y audios) esté listo
+    await Promise.all(promesasDeCarga);
+
+    // --- TODO CARGADO CON ÉXITO ---
+    if (pantallaCarga) pantallaCarga.classList.add('hidden');
+    if (screenTapToStart) screenTapToStart.classList.remove('hidden');
+
+  } catch (error) {
+    console.error("Fallo crítico en la carga inicial:", error);
+    // Si algo falla catastróficamente, quitamos el bloqueo para que se pueda intentar jugar
+    if (pantallaCarga) pantallaCarga.classList.add('hidden');
+    if (screenTapToStart) screenTapToStart.classList.remove('hidden');
+  }
+}
+
+// Arrancamos el proceso al cargar el archivo
+inicializarJuego();
 
 // ==========================================
 // MODO DEBUG: CAZADOR DE DIMENSIONES
