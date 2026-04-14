@@ -27,8 +27,6 @@ const btnMiCuenta = document.getElementById("btn-mi-cuenta");
 const btnRanking = document.getElementById("btn-ranking");
 const btnHowToPlay = document.getElementById("btn-how-to-play");
 const btnCloseHowToPlay = document.getElementById("btn-close-how-to-play");
-const btnInfo = document.getElementById("btn-info");
-const btnCloseInfo = document.getElementById("btn-close-info");
 const btn1v1 = document.getElementById("btn-1v1");
 const btn1vBot = document.getElementById("btn-1vbot");
 const btnModeBack = document.getElementById("btn-mode-back");
@@ -302,6 +300,10 @@ asignarBoton(btnExitPause, () => {
   touchControls.classList.add("hidden");
   showScreen(screenStart);
   window.Game.startIdle({ canvas, ctx });
+  // --- FORZAR DESPERTAR EL AUDIO ---
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
   playMenuMusic();
 });
 asignarBoton(btnPauseOptions, () => {
