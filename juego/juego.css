@@ -759,22 +759,22 @@ body {
 }
 
 /* Efectos visuales */
-.touch-btn:active {
-    background: rgba(255, 206, 0, 0.6);
-    border-color: #ffce00;
-    color: #fff;
-    transform: scale(0.9);
-}
+/*.touch-btn:active {*/
+/*    background: rgba(255, 206, 0, 0.6);*/
+/*    border-color: #ffce00;*/
+/*    color: #fff;*/
+/*    transform: scale(0.9);*/
+/*}*/
 
 .kick-btn {
     background: rgba(225, 29, 72, 0.2);
     border-color: rgba(225, 29, 72, 0.5);
 }
 
-.kick-btn:active {
-    background: rgba(225, 29, 72, 0.8);
-    border-color: #e11d48;
-}
+/*.kick-btn:active {*/
+/*    background: rgba(225, 29, 72, 0.8);*/
+/*    border-color: #e11d48;*/
+/*}*/
 
 /* Botón de Mi Cuenta en la esquina */
 .btn-mi-cuenta {
