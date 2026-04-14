@@ -675,10 +675,7 @@ if (window.Game && window.Game.startIdle) {
 
 // Función auxiliar para forzar la pausa
 function forcePauseIfPlaying() {
-  // Solo pausamos si estamos activamente en la pantalla de juego
-  // y el juego no está ya en pausa.
   if (screenGame.classList.contains("active") && window.Game && window.Game.pauseGame) {
-    // Importante: No pausamos si está en la cuenta atrás para reanudar
     if (!cuentaAtrasActiva) {
       window.Game.pauseGame();
     }
@@ -688,28 +685,37 @@ function forcePauseIfPlaying() {
 // 1. Cuando el usuario cambia de pestaña o minimiza el navegador
 document.addEventListener('visibilitychange', () => {
   if (document.hidden){
-    // 1. Forzar pausa del juego
     forcePauseIfPlaying();
 
-    // 2. Pausar motor de audio para evitar bloqueos
+    // Congelamos el motor de audio entero. Esto pausa la música
+    // y el ambiente exactamente en el milisegundo en el que están.
     if (audioCtx.state === 'running') audioCtx.suspend().then();
-    stopAllSounds();
+
+    // IMPORTANTE: Hemos borrado stopAllSounds() aquí para no destruir las pistas.
   }
   else {
     if (!musicUnlocked) return;
-    // Despertamos el motor de audio al volver a la pestaña
+
+    // Despertamos el motor de audio al volver a la pestaña. Todo sigue por donde iba.
     if (audioCtx.state === 'suspended') audioCtx.resume().then();
-    if (screenGame.classList.contains("active")) {
-      // Solo reanudamos el sonido del estadio si NO estamos en pausa
-      if (screenPause.classList.contains("hidden")) playMatchAmbient();
-    }
-    else playMenuMusic();
+
+    // IMPORTANTE: Hemos borrado los playMenuMusic() y playMatchAmbient()
+    // porque las pistas siguen ahí, solo estaban congeladas.
   }
 });
 
-// 2. Cuando el navegador pierde el foco (ej. hace clic en otra ventana/monitor)
+// 2. Cuando el navegador pierde el foco (hace clic en otra ventana/monitor)
 window.addEventListener("blur", () => {
   forcePauseIfPlaying();
+
+  // También congelamos el audio si pincha fuera de la ventana
+  if (audioCtx.state === 'running') audioCtx.suspend().then();
+});
+
+// 3. Cuando la ventana recupera el foco
+window.addEventListener("focus", () => {
+  if (!musicUnlocked) return;
+  if (audioCtx.state === 'suspended') audioCtx.resume().then();
 });
 
 // --- SISTEMA DE CARGA MAESTRO ---
