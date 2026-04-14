@@ -11,13 +11,13 @@ const screenOptions = document.getElementById("screen-options");
 const screenGame = document.getElementById("screen-game");
 const screenEnd = document.getElementById("screen-end");
 const screenHowToPlay = document.getElementById("screen-how-to-play");
-const screenInfo = document.getElementById("screen-info");
 const screenModeSelect = document.getElementById("screen-mode-select");
 const screenTouchWarning = document.getElementById("screen-touch-warning");
 const touchControls = document.getElementById("touch-controls");
 
 // Botones de navegación
 const btnPlay = document.getElementById("btn-play");
+const btnSalir = document.getElementById("btn-salir");
 const btnBack = document.getElementById("btn-back");
 const btnBasic = document.getElementById("btn-basic");
 const btnAdvanced = document.getElementById("btn-advanced");
@@ -39,6 +39,8 @@ const musicVolumeSlider = document.getElementById("music-volume");
 const musicVolumeValue = document.getElementById("music-volume-value");
 const sfxVolumeSlider = document.getElementById("sfx-volume");
 const sfxVolumeValue = document.getElementById("sfx-volume-value");
+const switchFps = document.getElementById('switch-fps');
+const contadorFpsDiv = document.getElementById('contador-fps');
 
 // Renombramos el botón de volver
 const btnEntendido = document.getElementById("btn-entendido");
@@ -68,6 +70,10 @@ let cuentaAtrasActiva = false; // Evita que se dispare varias veces a la vez
 // estado adicional
 let lastGameParams = null;      // para reiniciar con los mismos parámetros
 let pausedFromMenu = false;     // indicador de si volvemos desde ajustes mientras está en pausa
+
+// Lógica de carga de memoria
+let mostrarFPS = localStorage.getItem('mostrarFPSCabezazo') === 'true';
+if (switchFps) switchFps.checked = mostrarFPS;
 
 
 /* ==========================================================================
@@ -205,6 +211,13 @@ function showEndScreen(leftScore, rightScore) {
 window.showEndScreen = showEndScreen;
 
 asignarBoton(btnPlay, () => showScreen(screenModeSelect));
+asignarBoton(btnSalir, () => {
+  // Paramos la música si estuviera sonando
+  stopAllSounds();
+  // Redirigimos al inicio
+  window.location.href = '../../inicio/inicio.php';
+});
+
 // Volver desde la selección de modo al inicio
 asignarBoton(btnModeBack, () => showScreen(screenStart));
 // Iniciar partida 1v1 (con comprobación táctil)
@@ -330,14 +343,6 @@ asignarBoton(btnCloseHowToPlay, () => {
     showScreen(screenGame);       // volver al juego para que el HUD+pausa se vean correctamente
   }
   else showScreen(screenStart);
-});
-
-// Controles del Pop-up de Información
-asignarBoton(btnInfo, () => {
-  screenInfo.classList.remove("hidden"); // Muestra el overlay oscuro
-});
-asignarBoton(btnCloseInfo, () => {
-  screenInfo.classList.add("hidden");    // Oculta el overlay oscuro
 });
 
 // sincronizar con teclas en el motor
@@ -519,6 +524,14 @@ sfxVolumeSlider.addEventListener("input", () => {
   saveSettings();
   updateOptionsUI();
   applyVolumes();
+});
+
+switchFps.addEventListener('change', (e) => {
+  window.mostrarFPS = e.target.checked;
+  localStorage.setItem('mostrarFPSCabezazo', window.mostrarFPS);
+  if (window.mostrarFPS) contadorFpsDiv.classList.remove('hidden');
+  else contadorFpsDiv.classList.add('hidden');
+  switchFps.blur();
 });
 
 // Desbloqueo inicial (Tap to Start)
@@ -753,6 +766,7 @@ async function inicializarJuego() {
     if (screenTapToStart) {
       screenTapToStart.classList.remove('hidden');
       screenTapToStart.classList.add('active');
+      if (mostrarFPS) contadorFpsDiv.classList.remove('hidden');
     }
 
   } catch (error) {

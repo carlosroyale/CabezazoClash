@@ -1,5 +1,4 @@
 // game.js - El bucle principal: update y llamadas a los demás
-
 // Constantes físicas y dimensiones (nivel BÁSICO)
 let W, H;
 let FLOOR_Y;                 // suelo
@@ -28,6 +27,31 @@ let celebrationTimer = 0;
 let nextScorer = null;
 let serveState = { server: null, active: false };
 
+let frameCount = 0;
+let lastFpsTime = 0;
+let currentFPS = 0;
+
+function calcularFPS(time) {
+    if (!window.mostrarFPS) return; // Si está apagado, no gastamos cálculos
+
+    frameCount++;
+    if (time - lastFpsTime >= 1000) {
+        currentFPS = frameCount;
+        frameCount = 0;
+        lastFpsTime = time;
+
+        // Lo buscamos directamente aquí adentro para evitar choques de variables
+        const fpsDiv = document.getElementById('contador-fps');
+        if (fpsDiv) {
+            fpsDiv.innerText = `FPS: ${currentFPS}`;
+            // Color dinámico
+            if (currentFPS >= 55) fpsDiv.style.color = '#0DFF72';
+            else if (currentFPS >= 30) fpsDiv.style.color = '#FFE138';
+            else fpsDiv.style.color = '#FF0D72';
+        }
+    }
+}
+
 // Variables para el modo menú
 let idleRunning = false;
 let idleAnimationId = null;
@@ -54,8 +78,13 @@ function startIdle({canvas, ctx: ctxParam}) {
     gameCtx = ctxParam;
     idleRunning = true;
     resize(canvas.width, canvas.height);
+    frameCount = 0;
+    lastFpsTime = performance.now();
 
-    function idleLoop() {
+
+    function idleLoop(time) {
+        calcularFPS(time);
+
         // Pasamos null a las entidades para que desaparezcan en el menú
         dibujar(gameCtx, W, H, null, null, null, leftGoal, rightGoal);
         if (idleRunning) {
@@ -63,7 +92,7 @@ function startIdle({canvas, ctx: ctxParam}) {
         }
     }
 
-    idleLoop();
+    idleLoop(performance.now());
 }
 
 // Detener el fondo del menú
@@ -151,6 +180,8 @@ function resumeGame() {
 
 function gameLoop(time) {
     if (!gameRunning || gamePaused) return;
+
+    calcularFPS(time)
 
     let dt = (time - lastTime) / 1000;
     lastTime = time;

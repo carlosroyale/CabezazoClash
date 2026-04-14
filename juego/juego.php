@@ -21,7 +21,7 @@ $asset = static function (string $path) use ($basePath): string {
     <link rel="manifest" href="<?= htmlspecialchars($asset('manifest.json'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="apple-touch-icon" href="<?= htmlspecialchars($asset('assets/img/logo192.png'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="icon" type="image/x-icon" href="<?= htmlspecialchars($asset('assets/icon/favicon.ico'), ENT_QUOTES, 'UTF-8') ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars($asset('juego/juego.css?v=4'), ENT_QUOTES, 'UTF-8') ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars($asset('juego/juego.css?v=5'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 </head>
@@ -91,27 +91,47 @@ $asset = static function (string $path) use ($basePath): string {
     <!-- Pantalla 3: Opciones -->
     <section id="screen-options" class="screen">
         <div class="card large-options-card">
-            <h2 class="subtitle">OPCIONES</h2>
+            <h2 class="subtitle">AJUSTES</h2>
 
-            <div class="large-option-row">
-                <label for="music-volume" class="large-label">MÚSICA</label>
-                <div class="audio-control-group">
-                    <input id="music-volume" class="large-slider" type="range" min="0" max="100" value="70">
-                    <span id="music-volume-value" class="large-small">70%</span>
+            <div class="options-scroll-area">
+                <div class="seccion-ajustes">
+                    <h3><i class="bi bi-volume-up-fill"></i> AUDIO</h3>
+
+                    <div class="control-row">
+                        <div class="control-info">
+                            <span class="control-label">Música</span>
+                            <span id="music-volume-value" class="control-percentage">70%</span>
+                        </div>
+                        <input type="range" id="music-volume" class="custom-slider" min="0" max="100" step="1" value="70">
+                    </div>
+
+                    <div class="control-row">
+                        <div class="control-info">
+                            <span class="control-label">Efectos de sonido</span>
+                            <span id="sfx-volume-value" class="control-percentage">80%</span>
+                        </div>
+                        <input type="range" id="sfx-volume" class="custom-slider" min="0" max="100" step="1" value="80">
+                    </div>
                 </div>
-            </div>
 
-            <div class="large-option-row">
-                <label for="sfx-volume" class="large-label">EFECTOS DE SONIDO</label>
-                <div class="audio-control-group">
-                    <input id="sfx-volume" class="large-slider" type="range" min="0" max="100" value="85">
-                    <span id="sfx-volume-value" class="large-small">85%</span>
+                <div class="seccion-ajustes">
+                    <h3><i class="bi bi-display"></i> VISUALIZACIÓN</h3>
+
+                    <div class="control-row inline">
+                        <span class="control-label">Mostrar FPS</span>
+                        <label class="rocker-switch">
+                            <input type="checkbox" id="switch-fps">
+                            <span class="switch-state"></span>
+                        </label>
+                    </div>
                 </div>
             </div>
 
             <button id="btn-entendido" class="btn large-got-it-btn">CERRAR</button>
         </div>
     </section>
+
+    <div id="contador-fps" class="hidden">FPS: 0</div>
 
     <!-- Pantalla 4: Como jugar -->
     <section id="screen-how-to-play" class="screen">
@@ -212,7 +232,7 @@ $asset = static function (string $path) use ($basePath): string {
 <script src="<?= htmlspecialchars($asset('juego/js/physics.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/renderer.js?v=2'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/input.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/game.js?v=4'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=15'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/game.js?v=5'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=16'), ENT_QUOTES, 'UTF-8') ?>"></script>
 </body>
 </html>
