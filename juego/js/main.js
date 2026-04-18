@@ -287,8 +287,14 @@ asignarBoton(btnResume, () => {
 asignarBoton(btnRestart, () => {
   hidePauseMenu();
   if (lastGameParams) {
-    // En lugar de llamar a beginBasicGame(), le pasamos directamente
-    // los parámetros de la última partida (que ya saben si había bot o no)
+    // 1. Volver a encender el sonido ambiente del público y el silbato
+    playMatchAmbient();
+    window.playSound('sfx-whistle');
+
+    // 2. Quitar el estado de pausa del HTML para que las animaciones no se queden congeladas
+    document.getElementById('game-wrap').classList.remove('is-paused');
+
+    // 3. Arrancar la partida limpia
     window.Game.startBasicGame(lastGameParams);
   }
 });
