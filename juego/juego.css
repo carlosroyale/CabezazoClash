@@ -42,13 +42,12 @@ body {
 
 /* 2. EL CONTENEDOR MAESTRO: Tamaño fijo, se escalará por JS */
 .game-wrap {
-    position: absolute;   /* Cambiamos de relative a absolute */
-    top: 50%;             /* Lo empujamos al centro de la pantalla */
-    left: 50%;            /* Lo empujamos al centro de la pantalla */
-
+    position: absolute;
+    top: 0;           /* Reseteado a 0 */
+    left: 0;          /* Reseteado a 0 */
     width: 1845px;
     height: 1038px;
-    transform-origin: center center;
+    transform-origin: top left; /* Vital para que el JS calcule bien */
     overflow: hidden;
     background-color: #000;
     flex-shrink: 0;
@@ -1051,7 +1050,7 @@ input:checked + .switch-state:before {
 }
 
 /* BLOQUEO VERTICAL A PRUEBA DE BALAS */
-@media (orientation: portrait), (max-aspect-ratio: 1/1) {
+@media (orientation: portrait) {
     #orientation-warning {
         display: flex !important;
     }

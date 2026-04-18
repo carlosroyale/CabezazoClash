@@ -664,14 +664,19 @@ function resizeCanvas() {
   // 1. Calcular la escala necesaria (zoom)
   const scale = Math.min(window.innerWidth / baseW, window.innerHeight / baseH);
 
-  // 2. Aplicar el zoom a TODA la caja, ajustando el punto central
-  wrap.style.transform = `translate(-50%, -50%) scale(${scale})`;
+  // 2. Centrado matemático exacto (evita el bug de CSS translate(-50%, -50%) con anchos estrechos)
+  const leftOffset = (window.innerWidth - (baseW * scale)) / 2;
+  const topOffset = (window.innerHeight - (baseH * scale)) / 2;
 
-  // 3. Fijamos la resolución interna
+  // 3. Aplicar el desplazamiento exacto y el zoom desde la esquina superior izquierda
+  wrap.style.transformOrigin = 'top left';
+  wrap.style.transform = `translate(${leftOffset}px, ${topOffset}px) scale(${scale})`;
+
+  // 4. Fijamos la resolución interna
   canvas.width = baseW;
   canvas.height = baseH;
 
-  // 4. Le avisamos al motor para que recalcule las porterías
+  // 5. Le avisamos al motor para que recalcule las porterías
   if (window.Game && window.Game.resize) {
     window.Game.resize(canvas.width, canvas.height);
   }

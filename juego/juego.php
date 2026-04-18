@@ -21,7 +21,7 @@ $asset = static function (string $path) use ($basePath): string {
     <link rel="manifest" href="<?= htmlspecialchars($asset('manifest.json'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="apple-touch-icon" href="<?= htmlspecialchars($asset('assets/img/logo192.png'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="icon" type="image/x-icon" href="<?= htmlspecialchars($asset('assets/icon/favicon.ico'), ENT_QUOTES, 'UTF-8') ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars($asset('juego/juego.css?v=6'), ENT_QUOTES, 'UTF-8') ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars($asset('juego/juego.css?v=7'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 </head>
@@ -242,6 +242,6 @@ $asset = static function (string $path) use ($basePath): string {
 <script src="<?= htmlspecialchars($asset('juego/js/renderer.js?v=2'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/input.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/game.js?v=5'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=19'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=20'), ENT_QUOTES, 'UTF-8') ?>"></script>
 </body>
 </html>
