@@ -21,7 +21,7 @@ $asset = static function (string $path) use ($basePath): string {
     <link rel="manifest" href="<?= htmlspecialchars($asset('manifest.json'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="apple-touch-icon" href="<?= htmlspecialchars($asset('assets/img/logo192.png'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="icon" type="image/x-icon" href="<?= htmlspecialchars($asset('assets/icon/favicon.ico'), ENT_QUOTES, 'UTF-8') ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars($asset('juego/juego.css?v=5'), ENT_QUOTES, 'UTF-8') ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars($asset('juego/juego.css?v=6'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 </head>
@@ -100,17 +100,17 @@ $asset = static function (string $path) use ($basePath): string {
                     <div class="control-row">
                         <div class="control-info">
                             <span class="control-label">Música</span>
-                            <span id="music-volume-value" class="control-percentage">70%</span>
+                            <span id="valor-musica" class="control-percentage">50%</span>
                         </div>
-                        <input type="range" id="music-volume" class="custom-slider" min="0" max="100" step="1" value="70">
+                        <input type="range" id="slider-musica" class="custom-slider" min="0" max="1" step="0.05" value="0.5">
                     </div>
 
                     <div class="control-row">
                         <div class="control-info">
                             <span class="control-label">Efectos de sonido</span>
-                            <span id="sfx-volume-value" class="control-percentage">80%</span>
+                            <span id="valor-efectos" class="control-percentage">100%</span>
                         </div>
-                        <input type="range" id="sfx-volume" class="custom-slider" min="0" max="100" step="1" value="80">
+                        <input type="range" id="slider-efectos" class="custom-slider" min="0" max="1" step="0.05" value="1.0">
                     </div>
                 </div>
 
@@ -126,8 +126,17 @@ $asset = static function (string $path) use ($basePath): string {
                     </div>
                 </div>
             </div>
+            <div style="width: 100%; display: flex; flex-direction: column; align-items: center;">
 
-            <button id="btn-entendido" class="btn large-got-it-btn">CERRAR</button>
+                <button id="btn-restablecer-config" class="btn large-got-it-btn" style="background: linear-gradient(180deg, #4b5563 0%, #374151 100%); border: 1px solid #6b7280; color: #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+                    RESTABLECER
+                </button>
+
+                <button id="btn-entendido" class="btn large-got-it-btn">
+                    CERRAR
+                </button>
+
+            </div>
         </div>
     </section>
 
@@ -233,6 +242,6 @@ $asset = static function (string $path) use ($basePath): string {
 <script src="<?= htmlspecialchars($asset('juego/js/renderer.js?v=2'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/input.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/game.js?v=5'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=18'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=19'), ENT_QUOTES, 'UTF-8') ?>"></script>
 </body>
 </html>

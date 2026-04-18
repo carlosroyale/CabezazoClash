@@ -33,14 +33,14 @@ const btnModeBack = document.getElementById("btn-mode-back");
 const btnTouchWarningOk = document.getElementById("btn-touch-warning-ok");
 
 // Elementos de opciones
-const musicVolumeSlider = document.getElementById("music-volume");
-const musicVolumeValue = document.getElementById("music-volume-value");
-const sfxVolumeSlider = document.getElementById("sfx-volume");
-const sfxVolumeValue = document.getElementById("sfx-volume-value");
+const sliderMusica = document.getElementById("slider-musica");
+const valorMusicaTx = document.getElementById("valor-musica");
+const sliderEfectos = document.getElementById("slider-efectos");
+const valorEfectosTx = document.getElementById("valor-efectos");
+
 const switchFps = document.getElementById('switch-fps');
 const contadorFpsDiv = document.getElementById('contador-fps');
-
-// Renombramos el botón de volver
+const btnRestablecerConfig = document.getElementById("btn-restablecer-config");
 const btnEntendido = document.getElementById("btn-entendido");
 
 // Elementos del juego
@@ -362,13 +362,13 @@ document.addEventListener('game-resumed', () => {
 
 
 /* ==========================================================================
-   SISTEMA DE AJUSTES (LOCALSTORAGE - MODIFICADO CON DOS VOLÚMENES)
+   SISTEMA DE AJUSTES UNIFICADO (VALORES 0.0 A 1.0)
    ========================================================================== */
 
-// Nueva estructura de ajustes: solo volúmenes del 0 al 100
 const settings = {
-  musicVolume: 70,
-  sfxVolume: 80
+  musicVolume: 0.5,
+  sfxVolume: 1.0,
+  mostrarFPS: false
 };
 
 // Cargar ajustes al arrancar
@@ -379,10 +379,12 @@ function loadSettings() {
       const parsed = JSON.parse(saved);
       if (typeof parsed.musicVolume === "number") settings.musicVolume = parsed.musicVolume;
       if (typeof parsed.sfxVolume === "number") settings.sfxVolume = parsed.sfxVolume;
+      if (typeof parsed.mostrarFPS === "boolean") settings.mostrarFPS = parsed.mostrarFPS;
     } catch (e) {
       console.warn("Error leyendo settings:", e);
     }
   }
+  window.mostrarFPS = settings.mostrarFPS;
 }
 
 // Guardar ajustes
@@ -390,15 +392,19 @@ function saveSettings() {
   localStorage.setItem("cabezazo_settings", JSON.stringify(settings));
 }
 
-// Actualizar toda la UI de opciones con los valores cargados
+// Actualizar toda la UI de opciones
 function updateOptionsUI() {
-  // Música
-  musicVolumeSlider.value = settings.musicVolume;
-  musicVolumeValue.textContent = `${settings.musicVolume}%`;
+  if (sliderMusica) sliderMusica.value = settings.musicVolume;
+  if (valorMusicaTx) valorMusicaTx.textContent = Math.round(settings.musicVolume * 100) + '%';
 
-  // SFX (Nuevos elementos)
-  sfxVolumeSlider.value = settings.sfxVolume;
-  sfxVolumeValue.textContent = `${settings.sfxVolume}%`;
+  if (sliderEfectos) sliderEfectos.value = settings.sfxVolume;
+  if (valorEfectosTx) valorEfectosTx.textContent = Math.round(settings.sfxVolume * 100) + '%';
+
+  if (switchFps) switchFps.checked = settings.mostrarFPS;
+  if (contadorFpsDiv) {
+    if (settings.mostrarFPS) contadorFpsDiv.classList.remove('hidden');
+    else contadorFpsDiv.classList.add('hidden');
+  }
 }
 
 
@@ -430,8 +436,8 @@ async function loadSound(id, url) {
 }
 
 function applyVolumes() {
-  if (bgMusicGain) bgMusicGain.gain.value = settings.musicVolume / 100;
-  if (ambientGain) ambientGain.gain.value = (settings.sfxVolume / 100) * 0.5;
+  if (bgMusicGain) bgMusicGain.gain.value = settings.musicVolume * 0.4;
+  if (ambientGain) ambientGain.gain.value = settings.sfxVolume * 0.5;
 }
 
 function stopAllSounds() {
@@ -475,7 +481,7 @@ function playMenuMusic() {
   bgMusicNode.loop = true; // Que se repita infinitamente
 
   bgMusicGain = audioCtx.createGain();
-  bgMusicGain.gain.value = settings.musicVolume / 100;
+  bgMusicGain.gain.value = settings.musicVolume * 0.4;
 
   bgMusicNode.connect(bgMusicGain);
   bgMusicGain.connect(audioCtx.destination);
@@ -505,7 +511,7 @@ function playMatchAmbient() {
   ambientNode.loop = true; // Que se repita infinitamente
 
   ambientGain = audioCtx.createGain();
-  ambientGain.gain.value = (settings.sfxVolume / 100) * 0.5;
+  ambientGain.gain.value = settings.sfxVolume * 0.5;
 
   ambientNode.connect(ambientGain);
   ambientGain.connect(audioCtx.destination);
@@ -513,25 +519,50 @@ function playMatchAmbient() {
   ambientNode.start(0);
 }
 
-// Listeners para los deslizadores
-musicVolumeSlider.addEventListener("input", () => {
-  settings.musicVolume = Number(musicVolumeSlider.value);
+/* ==========================================================================
+   EVENTOS DE INTERFAZ DE OPCIONES
+   ========================================================================== */
+
+btnRestablecerConfig.addEventListener('click', () => {
+  // 1. Valores base
+  settings.musicVolume = 0.5;
+  settings.sfxVolume = 1.0;
+  settings.mostrarFPS = false;
+  window.mostrarFPS = false;
+
+  // 2. Guardar y sincronizar
   saveSettings();
   updateOptionsUI();
+  applyVolumes();
+
+  // 3. Sonido de confirmación
+  if (window.playSound) window.playSound('sfx-player-kick', 0.5);
+});
+
+sliderMusica.addEventListener("input", (e) => {
+  settings.musicVolume = parseFloat(e.target.value);
+  saveSettings();
+  if (valorMusicaTx) valorMusicaTx.textContent = Math.round(settings.musicVolume * 100) + '%';
   applyVolumes();
 });
 
-sfxVolumeSlider.addEventListener("input", () => {
-  settings.sfxVolume = Number(sfxVolumeSlider.value);
+sliderEfectos.addEventListener("input", (e) => {
+  settings.sfxVolume = parseFloat(e.target.value);
   saveSettings();
-  updateOptionsUI();
+  if (valorEfectosTx) valorEfectosTx.textContent = Math.round(settings.sfxVolume * 100) + '%';
   applyVolumes();
+});
+
+// Al soltar el slider de efectos, reproducimos un sonido de prueba
+sliderEfectos.addEventListener('change', () => {
+  playSound('sfx-player-kick', 0.5);
 });
 
 switchFps.addEventListener('change', (e) => {
-  window.mostrarFPS = e.target.checked;
-  localStorage.setItem('mostrarFPSCabezazo', window.mostrarFPS);
-  if (window.mostrarFPS) contadorFpsDiv.classList.remove('hidden');
+  settings.mostrarFPS = e.target.checked;
+  window.mostrarFPS = settings.mostrarFPS;
+  saveSettings();
+  if (settings.mostrarFPS) contadorFpsDiv.classList.remove('hidden');
   else contadorFpsDiv.classList.add('hidden');
   switchFps.blur();
 });
@@ -603,7 +634,7 @@ window.playSound = function(soundId, volume = 1) {
 
   const gainNode = audioCtx.createGain();
   // Multiplicamos el volumen recibido por el ajuste global de la UI
-  gainNode.gain.value = (settings.sfxVolume / 100) * volume;
+  gainNode.gain.value = settings.sfxVolume * volume;
 
   source.connect(gainNode);
   gainNode.connect(audioCtx.destination);
