@@ -40,7 +40,7 @@ if (typeof socket !== 'undefined') {
     socket.on('pongLatency', (clientTimestamp) => {
         const latency = Date.now() - clientTimestamp;
         const badWifiIcon = document.getElementById('bad-connection-warning');
-        if (latency > 120) {
+        if (latency > 200) {
             if (badWifiIcon) badWifiIcon.classList.remove('hidden');
         } else {
             if (badWifiIcon) badWifiIcon.classList.add('hidden');
@@ -198,44 +198,81 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
                 isFirstStateReceived = true;
             }
             else {
-                const CORRECTION = 0.15;
-                p1.x = lerp(p1.x, onlineState.p1.x, CORRECTION);
-                p1.y = lerp(p1.y, onlineState.p1.y, CORRECTION);
-                p2.x = lerp(p2.x, onlineState.p2.x, CORRECTION);
-                p2.y = lerp(p2.y, onlineState.p2.y, CORRECTION);
-                ball.x = lerp(ball.x, onlineState.ball.x, CORRECTION);
-                ball.y = lerp(ball.y, onlineState.ball.y, CORRECTION);
+                // --- PREDICCIÓN Y EXTRAPOLACIÓN ---
+                const ENEMY_CORRECTION = 0.12; // Más suave para evitar tirones
+                const LOCAL_CORRECTION = 0.05;
 
-                p1.vx = lerp(p1.vx, onlineState.p1.vx, CORRECTION);
-                p1.vy = lerp(p1.vy, onlineState.p1.vy, CORRECTION);
-                p2.vx = lerp(p2.vx, onlineState.p2.vx, CORRECTION);
-                p2.vy = lerp(p2.vy, onlineState.p2.vy, CORRECTION);
-                ball.vx = lerp(ball.vx, onlineState.ball.vx, CORRECTION);
-                ball.vy = lerp(ball.vy, onlineState.ball.vy, CORRECTION);
+                let myPlayer = myRole === 'p1' ? p1 : p2;
+                let enemyPlayer = myRole === 'p1' ? p2 : p1;
 
-                p1.kickAngle = lerp(p1.kickAngle, onlineState.p1.kickAngle, CORRECTION);
-                p2.kickAngle = lerp(p2.kickAngle, onlineState.p2.kickAngle, CORRECTION);
-                ball.angle = lerp(ball.angle, onlineState.ball.angle, CORRECTION);
+                const c1 = (myRole === 'p1') ? LOCAL_CORRECTION : ENEMY_CORRECTION;
+                const c2 = (myRole === 'p2') ? LOCAL_CORRECTION : ENEMY_CORRECTION;
+
+                p1.x = lerp(p1.x, onlineState.p1.x, c1);
+                p1.y = lerp(p1.y, onlineState.p1.y, c1);
+                p1.vx = lerp(p1.vx, onlineState.p1.vx, c1);
+                p1.vy = lerp(p1.vy, onlineState.p1.vy, c1);
+                p1.kickAngle = lerp(p1.kickAngle, onlineState.p1.kickAngle, c1);
+
+                p2.x = lerp(p2.x, onlineState.p2.x, c2);
+                p2.y = lerp(p2.y, onlineState.p2.y, c2);
+                p2.vx = lerp(p2.vx, onlineState.p2.vx, c2);
+                p2.vy = lerp(p2.vy, onlineState.p2.vy, c2);
+                p2.kickAngle = lerp(p2.kickAngle, onlineState.p2.kickAngle, c2);
+
+                // --- LERP DINÁMICO SUAVIZADO ---
+                let distToMe = Math.hypot(myPlayer.x - ball.x, myPlayer.y - ball.y);
+                let distToEnemy = Math.hypot(enemyPlayer.x - ball.x, enemyPlayer.y - ball.y);
+
+                let ballCorrection = 0.1; // Base más suave
+                if (distToMe < distToEnemy && distToMe < 180) {
+                    ballCorrection = 0.03; // Contigo es casi 100% local (fluidez total)
+                } else if (distToEnemy < distToMe && distToEnemy < 180) {
+                    ballCorrection = 0.20; // Con él obedece al servidor, pero sin ser brusco
+                }
+
+                ball.x = lerp(ball.x, onlineState.ball.x, ballCorrection);
+                ball.y = lerp(ball.y, onlineState.ball.y, ballCorrection);
+                ball.vx = lerp(ball.vx, onlineState.ball.vx, ballCorrection);
+                ball.vy = lerp(ball.vy, onlineState.ball.vy, ballCorrection);
+                ball.angle = lerp(ball.angle, onlineState.ball.angle, ballCorrection);
             }
 
             p1.isRightFacing = onlineState.p1.isRightFacing;
             p2.isRightFacing = onlineState.p2.isRightFacing;
         }
 
+        // SIMULACIÓN LOCAL MEJORADA (Dead Reckoning)
         if (!isOnlineCountdownActive && !gamePaused && !matchFinishedExternally) {
-            if (myRole === 'p1') controlPlayer(p1, dt, "KeyA", "KeyD", "KeyW", "Space", keys);
-            else if (myRole === 'p2') controlPlayer(p2, dt, "KeyA", "KeyD", "KeyW", "Space", keys);
+            let myPlayer = myRole === 'p1' ? p1 : p2;
+            let enemyPlayer = myRole === 'p1' ? p2 : p1;
 
-            updatePlayer(p1, dt, W, FLOOR_Y);
-            updatePlayer(p2, dt, W, FLOOR_Y);
+            // 1. Control local (Solo nosotros)
+            controlPlayer(myPlayer, dt, "KeyA", "KeyD", "KeyW", "Space", keys);
+
+            // 2. FÍSICAS CONTINUAS PARA AMBOS
+            updatePlayer(myPlayer, dt, W, FLOOR_Y);
+
+            // ¡Vuelve el update para el enemigo! Al no tener controlPlayer,
+            // se deslizará suavemente usando la última velocidad (vx/vy) que mandó el servidor.
+            updatePlayer(enemyPlayer, dt, W, FLOOR_Y);
+
+            // Permitimos que nuestros cuerpos choquen entre sí
             collidePlayers(p1, p2);
+
+            // 3. Físicas de la pelota
             updateBall(ball, dt, W, FLOOR_Y);
 
             window.currentPlayers = [p1, p2];
             const playersBackToBack = arePlayersBackToBack(p1, p2);
             if (playersBackToBack) resolveBackToBackBallSqueeze(ball, p1, p2);
-            collidePlayerBall(p1, ball);
-            collidePlayerBall(p2, ball);
+
+            // 4. ANULACIÓN SENSORIAL
+            // Solo calculamos el choque entre NOSOTROS y la pelota.
+            // Borramos por completo el collidePlayerBall(enemyPlayer, ball).
+            // Si el enemigo la toca, será el Lerp Dinámico quien mueva la pelota visualmente.
+            collidePlayerBall(myPlayer, ball);
+
             if (playersBackToBack) resolveBackToBackBallSqueeze(ball, p1, p2);
             else resolveBallSqueezeUp(ball, p1, p2);
 
