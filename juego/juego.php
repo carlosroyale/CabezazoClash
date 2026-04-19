@@ -244,7 +244,7 @@ $asset = static function (string $path) use ($basePath): string {
     if (typeof io !== 'undefined') {
         // 1. Apuntamos a tu dominio principal
         // 2. Le indicamos por qué 'ruta' debe meterse para encontrar el Node.js
-        socket = io('https://cabezazoclash-production.up.railway.app', {
+        socket = io('https://confident-energy-production-c6ea.up.railway.app', {
             transports: ['websocket'],
             upgrade: false
         });
