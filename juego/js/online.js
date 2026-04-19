@@ -52,10 +52,9 @@ if (typeof socket !== 'undefined') {
         gameRunning = false;
         document.dispatchEvent(new Event('game-paused'));
 
-        if (window.onlineCountdownInterval) {
-            clearInterval(window.onlineCountdownInterval);
-            document.getElementById("contador-pausa").classList.add("hidden");
-        }
+        // Si el rival se va durante el 3,2,1, ocultamos el número
+        const contador = document.getElementById("contador-pausa");
+        if (contador) contador.classList.add("hidden");
 
         document.getElementById("screen-game").classList.remove("active");
         document.getElementById("screen-online-waiting").classList.remove("active");

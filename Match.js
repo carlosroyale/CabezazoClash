@@ -1,6 +1,6 @@
 // Match.js - Molde para partidas individuales
 const { makePlayer, updatePlayer, updateBall, controlPlayer } = require('./juego/js/entities.js');
-const { collidePlayers, collidePlayerBall, checkGoalCollisions, collidePlayerStaticRect, arePlayersBackToBack, resolveBackToBackBallSqueeze, resolveBallSqueezeUp } = require('./juegos/cabezazo/js/physics.js');
+const { collidePlayers, collidePlayerBall, checkGoalCollisions, collidePlayerStaticRect, arePlayersBackToBack, resolveBackToBackBallSqueeze, resolveBallSqueezeUp } = require('./juego/js/physics.js');
 
 const W = 1845;
 const H = 1038;

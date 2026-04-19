@@ -916,6 +916,7 @@ window.Main = {
   isTouchDevice,
   playMatchAmbient,
   stopAllSounds,
+  showScreen,
   showEndScreen
 };
 
