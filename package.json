@@ -1,18 +1,30 @@
 {
   "name": "cabezazoclash",
   "version": "1.0.0",
-  "description": "",
+  "description": "Proyecto académico de Laboratori de Software: videojuego de fútbol 1vs1 con frontend en HTML/CSS/JavaScript y backend en PHP + MySQL para login, sesiones, cuenta de usuario y ranking.",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/paubib10/CabezazoClash.git"
+    "url": "git+https://github.com/paubib10/CabezazoClash.git"
   },
   "private": true,
   "dependencies": {
     "express": "^5.2.1",
     "socket.io": "^4.8.3"
+  },
+  "bugs": {
+    "url": "https://github.com/paubib10/CabezazoClash/issues"
+  },
+  "homepage": "https://github.com/paubib10/CabezazoClash#readme",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }
