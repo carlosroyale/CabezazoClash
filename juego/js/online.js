@@ -83,11 +83,17 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
     let lastCountdownInt = 0;
 
     document.getElementById("btn-cancel-online").onclick = () => {
+        // 1. Nos desconectamos del servidor para salir de la cola de espera
         if (typeof socket !== 'undefined') socket.disconnect();
+
+        // 2. Apagamos el motor y reseteamos el estado online
         window.Game.stopBasicGame();
-        waitingScreen.classList.remove("active");
-        if(window.Main && window.Main.showScreen) window.Main.showScreen(document.getElementById("screen-start"));
-        window.location.reload();
+
+        // 3. Volvemos suavemente a la pantalla de modos sin recargar
+        if (window.Main && window.Main.showScreen) {
+            const screenModeSelect = document.getElementById("screen-mode-select");
+            window.Main.showScreen(screenModeSelect);
+        }
     };
 
     socket.off('matchReady');
