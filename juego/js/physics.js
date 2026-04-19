@@ -607,7 +607,7 @@ function resolveBallSqueezeUp(ball, p1, p2) {
     const rightPlayer = p1.x < p2.x ? p2 : p1;
     const leftHitbox = p1.x < p2.x ? h1 : h2;
     const rightHitbox = p1.x < p2.x ? h2 : h1;
-    
+
     // La pelota debe estar entre los dos jugadores horizontalmente
     if (!(leftPlayer.x < ball.x && ball.x < rightPlayer.x)) return;
 
@@ -615,24 +615,24 @@ function resolveBallSqueezeUp(ball, p1, p2) {
     const leftBodyRight = leftHitbox.body.x + leftHitbox.body.w;
     const rightBodyLeft = rightHitbox.body.x;
     const bodyGap = rightBodyLeft - leftBodyRight;
-    
+
     // Distancia de la pelota a los bordes de los cuerpos
     const distToBallFromLeftBody = Math.max(0, leftBodyRight - (ball.x - ball.r));
     const distToBallFromRightBody = Math.max(0, (ball.x + ball.r) - rightBodyLeft);
-    
+
     // ACTIVAR PROTECCIÓN si:
     // 1. Los cuerpos están muy comprimidos (gap < 40px) O
     // 2. La pelota está DENTRO de ambos cuerpos (solapada)
     const bodiesCompressed = bodyGap < 40;
-    const ballOverlapped = (ball.x + ball.r > leftHitbox.body.x && 
-                            ball.x - ball.r < rightHitbox.body.x + rightHitbox.body.w);
-    
+    const ballOverlapped = (ball.x + ball.r > leftHitbox.body.x &&
+        ball.x - ball.r < rightHitbox.body.x + rightHitbox.body.w);
+
     if (!(bodiesCompressed && ballOverlapped)) return;
 
     // Además, verificar que la pelota está verticalmente en rango
     const ballInVerticalRange = (ball.y + ball.r > Math.max(leftHitbox.body.y, rightHitbox.body.y) &&
-                                 ball.y - ball.r < Math.min(leftHitbox.body.y + leftHitbox.body.h, rightHitbox.body.y + rightHitbox.body.h));
-    
+        ball.y - ball.r < Math.min(leftHitbox.body.y + leftHitbox.body.h, rightHitbox.body.y + rightHitbox.body.h));
+
     if (!ballInVerticalRange) return;
 
     // PROTECCIÓN: Detener completamente y posicionar de forma segura
@@ -644,11 +644,11 @@ function resolveBallSqueezeUp(ball, p1, p2) {
 
     // Extraer la pelota al centro seguro entre los dos cuerpos
     const centerSafeX = (safeZoneLeft + safeZoneRight) / 2;
-    
+
     // Si está dentro del cuerpo izquierdo, sacarla hacia la derecha
     if (ball.x < leftBodyRight) {
         ball.x = safeZoneLeft;
-    } 
+    }
     // Si está dentro del cuerpo derecho, sacarla hacia la izquierda
     else if (ball.x > rightBodyLeft) {
         ball.x = safeZoneRight;
@@ -706,4 +706,13 @@ function playPlayerCollideSound(p1, p2) {
             p2.lastBump = performance.now();
         }
     }
+}
+
+// --- EXPORTACIÓN PARA NODE.JS ---
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        getPlayerHitboxes, arePlayersBackToBack, isBackToBackBallSqueeze,
+        collidePlayerBall, checkGoalCollisions, collidePlayerStaticRect,
+        collidePlayers, resolveBackToBackBallSqueeze, resolveBallSqueezeUp
+    };
 }

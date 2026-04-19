@@ -26,6 +26,12 @@ const onKeyDown = (e) => {
     }
 
     keys.add(e.code);
+
+    // --- MAGIA ONLINE ---
+    // Si la variable global de online está activa y el socket existe, avisamos al servidor
+    if (window.isOnlineMode && typeof socket !== 'undefined') {
+        socket.emit('playerInput', { key: e.code, isDown: true });
+    }
 };
 
 /* ==========================================================================
@@ -66,12 +72,25 @@ const handleTouchMovement = (e) => {
     for (const key of Object.values(touchKeyMap)) {
         if (keys.has(key) && !activeKeysThisFrame.has(key)) {
             keys.delete(key);
+
+            // --- MAGIA ONLINE TÁCTIL (Soltar) ---
+            if (window.isOnlineMode && typeof socket !== 'undefined') {
+                socket.emit('playerInput', { key: key, isDown: false });
+            }
         }
     }
 
     // 2. Apretar las teclas que estamos tocando
     for (const key of activeKeysThisFrame) {
-        keys.add(key);
+        // Importante: comprobar que no estuviera ya pulsada para no saturar el servidor
+        if (!keys.has(key)) {
+            keys.add(key);
+
+            // --- MAGIA ONLINE TÁCTIL (Pulsar) ---
+            if (window.isOnlineMode && typeof socket !== 'undefined') {
+                socket.emit('playerInput', { key: key, isDown: true });
+            }
+        }
     }
 };
 
@@ -87,7 +106,14 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-const onKeyUp = (e) => keys.delete(e.code);
+const onKeyUp = (e) => {
+    keys.delete(e.code);
+
+    // --- MAGIA ONLINE ---
+    if (window.isOnlineMode && typeof socket !== 'undefined') {
+        socket.emit('playerInput', { key: e.code, isDown: false });
+    }
+};
 
 // Añadimos { passive: false } para que el preventDefault del espacio funcione correctamente
 window.addEventListener("keydown", onKeyDown, { passive: false });

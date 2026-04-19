@@ -235,13 +235,36 @@ $asset = static function (string $path) use ($basePath): string {
         <p>Este juego está diseñado para jugarse en modo horizontal.</p>
     </div>
 </div>
+<script src="<?= htmlspecialchars($asset('/socket.io/socket.io.js'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
-<script src="<?= htmlspecialchars($asset('juego/js/constants.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/entities.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/physics.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/renderer.js?v=2'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/input.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/game.js?v=5'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=21'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script>
+    let socket;
+
+    if (typeof io !== 'undefined') {
+        // 1. Apuntamos a tu dominio principal
+        // 2. Le indicamos por qué 'ruta' debe meterse para encontrar el Node.js
+        socket = io('https://cabezazoclash-production.up.railway.app', {
+            transports: ['websocket'],
+            upgrade: false
+        });
+
+        socket.on('connect', () => {
+            console.log('Conectado al servidor de WebSockets con el ID:', socket.id);
+        });
+
+        socket.on('connect_error', (err) => {
+            console.warn('Error de conexión WebSockets:', err.message);
+        });
+    }
+    else console.error("No se pudo cargar la librería Socket.io desde la CDN");
+</script>
+<script src="<?= htmlspecialchars($asset('juego/js/constants.js?v=4'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/entities.js?v=4'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/physics.js?v=4'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/renderer.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/input.js?v=4'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/game.js?v=6'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=22'), ENT_QUOTES, 'UTF-8') ?>"></script>
 </body>
 </html>

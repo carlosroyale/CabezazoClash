@@ -27,8 +27,9 @@ const btnMiCuenta = document.getElementById("btn-mi-cuenta");
 const btnRanking = document.getElementById("btn-ranking");
 const btnHowToPlay = document.getElementById("btn-how-to-play");
 const btnCloseHowToPlay = document.getElementById("btn-close-how-to-play");
-const btn1v1 = document.getElementById("btn-1v1");
+const btn1v1Local = document.getElementById("btn-1v1");
 const btn1vBot = document.getElementById("btn-1vbot");
+const btn1v1Online = document.getElementById("btn-1v1Online");
 const btnModeBack = document.getElementById("btn-mode-back");
 const btnTouchWarningOk = document.getElementById("btn-touch-warning-ok");
 
@@ -219,7 +220,7 @@ asignarBoton(btnSalir, () => {
 // Volver desde la selección de modo al inicio
 asignarBoton(btnModeBack, () => showScreen(screenStart));
 // Iniciar partida 1v1 (con comprobación táctil)
-asignarBoton(btn1v1, () => {
+asignarBoton(btn1v1Local, () => {
   if (isTouchDevice()) {
     // Si es táctil, mostramos el aviso
     screenTouchWarning.classList.remove("hidden");
@@ -237,6 +238,28 @@ asignarBoton(btnTouchWarningOk, () => {
 });
 asignarBoton(btn1vBot, () => {
   beginBotGame();
+});
+asignarBoton(btn1v1Online, () => {
+  if (isTouchDevice()) {
+    touchControls.classList.remove("hidden");
+  } else {
+    touchControls.classList.add("hidden");
+  }
+
+  // Paramos música del menú
+  stopAllSounds();
+  playMatchAmbient();
+  window.playSound('sfx-whistle');
+
+  showScreen(screenGame);
+
+  // Invocamos al nuevo bucle títere
+  window.Game.startOnlineGame({
+    canvas,
+    ctx,
+    scoreEl,
+    timerEl
+  });
 });
 asignarBoton(btnBack, () => showScreen(screenStart));
 asignarBoton(btnOptions, () => showScreen(screenOptions));

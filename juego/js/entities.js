@@ -283,3 +283,8 @@ function controlBot(bot, dt, ball, W, FLOOR_Y, keys, serveChaseMode = false) {
 function clamp(v, min, max) {
     return Math.max(min, Math.min(max, v));
 }
+
+// --- EXPORTACIÓN PARA NODE.JS ---
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { makePlayer, updatePlayer, updateBall, controlPlayer, controlBot, clamp };
+}
