@@ -198,44 +198,35 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
                 isFirstStateReceived = true;
             }
             else {
-                // --- PREDICCIÓN Y EXTRAPOLACIÓN ---
-                const ENEMY_CORRECTION = 0.12; // Más suave para evitar tirones
-                const LOCAL_CORRECTION = 0.05;
+                // --- NUEVO SISTEMA DE PREDICCIÓN SUAVIZADA ---
+                const ENEMY_CORRECTION = 0.25; // El enemigo obedece al servidor muy rápido
+                const LOCAL_CORRECTION = 0.03; // Tu jugador confía casi al 100% en tu teclado local
+                const BALL_CORRECTION = 0.15;  // La pelota es un punto intermedio
 
-                let myPlayer = myRole === 'p1' ? p1 : p2;
-                let enemyPlayer = myRole === 'p1' ? p2 : p1;
-
+                // Asignamos la fuerza de corrección dependiendo de quién somos nosotros
                 const c1 = (myRole === 'p1') ? LOCAL_CORRECTION : ENEMY_CORRECTION;
                 const c2 = (myRole === 'p2') ? LOCAL_CORRECTION : ENEMY_CORRECTION;
 
+                // Corregimos Jugador 1
                 p1.x = lerp(p1.x, onlineState.p1.x, c1);
                 p1.y = lerp(p1.y, onlineState.p1.y, c1);
                 p1.vx = lerp(p1.vx, onlineState.p1.vx, c1);
                 p1.vy = lerp(p1.vy, onlineState.p1.vy, c1);
                 p1.kickAngle = lerp(p1.kickAngle, onlineState.p1.kickAngle, c1);
 
+                // Corregimos Jugador 2
                 p2.x = lerp(p2.x, onlineState.p2.x, c2);
                 p2.y = lerp(p2.y, onlineState.p2.y, c2);
                 p2.vx = lerp(p2.vx, onlineState.p2.vx, c2);
                 p2.vy = lerp(p2.vy, onlineState.p2.vy, c2);
                 p2.kickAngle = lerp(p2.kickAngle, onlineState.p2.kickAngle, c2);
 
-                // --- LERP DINÁMICO SUAVIZADO ---
-                let distToMe = Math.hypot(myPlayer.x - ball.x, myPlayer.y - ball.y);
-                let distToEnemy = Math.hypot(enemyPlayer.x - ball.x, enemyPlayer.y - ball.y);
-
-                let ballCorrection = 0.1; // Base más suave
-                if (distToMe < distToEnemy && distToMe < 180) {
-                    ballCorrection = 0.03; // Contigo es casi 100% local (fluidez total)
-                } else if (distToEnemy < distToMe && distToEnemy < 180) {
-                    ballCorrection = 0.20; // Con él obedece al servidor, pero sin ser brusco
-                }
-
-                ball.x = lerp(ball.x, onlineState.ball.x, ballCorrection);
-                ball.y = lerp(ball.y, onlineState.ball.y, ballCorrection);
-                ball.vx = lerp(ball.vx, onlineState.ball.vx, ballCorrection);
-                ball.vy = lerp(ball.vy, onlineState.ball.vy, ballCorrection);
-                ball.angle = lerp(ball.angle, onlineState.ball.angle, ballCorrection);
+                // Corregimos la Pelota
+                ball.x = lerp(ball.x, onlineState.ball.x, BALL_CORRECTION);
+                ball.y = lerp(ball.y, onlineState.ball.y, BALL_CORRECTION);
+                ball.vx = lerp(ball.vx, onlineState.ball.vx, BALL_CORRECTION);
+                ball.vy = lerp(ball.vy, onlineState.ball.vy, BALL_CORRECTION);
+                ball.angle = lerp(ball.angle, onlineState.ball.angle, BALL_CORRECTION);
             }
 
             p1.isRightFacing = onlineState.p1.isRightFacing;
