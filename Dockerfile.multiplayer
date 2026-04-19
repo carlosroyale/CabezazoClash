@@ -1,0 +1,15 @@
+# Usamos una imagen oficial y ligera de Node.js
+FROM node:20-alpine
+
+# Creamos la carpeta de la app
+WORKDIR /app
+
+# Copiamos el DNI del proyecto y descargamos las librerías
+COPY package*.json ./
+RUN npm install
+
+# Copiamos el resto de los archivos (tu juego y el server.js)
+COPY . .
+
+# Arrancamos el servidor
+CMD ["npm", "start"]
