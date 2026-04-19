@@ -13,7 +13,9 @@ const screenEnd = document.getElementById("screen-end");
 const screenHowToPlay = document.getElementById("screen-how-to-play");
 const screenModeSelect = document.getElementById("screen-mode-select");
 const screenTouchWarning = document.getElementById("screen-touch-warning");
+const screenOnlineWaiting = document.getElementById("screen-online-waiting");
 const touchControls = document.getElementById("touch-controls");
+const badWifiIcon = document.getElementById('bad-connection-warning');
 
 // Botones de navegación
 const btnPlay = document.getElementById("btn-play");
@@ -32,6 +34,8 @@ const btn1vBot = document.getElementById("btn-1vbot");
 const btn1v1Online = document.getElementById("btn-1v1Online");
 const btnModeBack = document.getElementById("btn-mode-back");
 const btnTouchWarningOk = document.getElementById("btn-touch-warning-ok");
+const screenOpponentLeft = document.getElementById("screen-opponent-left");
+const btnOpponentLeftOk = document.getElementById("btn-opponent-left-ok");
 
 // Elementos de opciones
 const sliderMusica = document.getElementById("slider-musica");
@@ -86,17 +90,16 @@ function showScreen(screenToShow) {
   screenEnd.classList.remove("active");
   screenHowToPlay.classList.remove("active");
   if(screenModeSelect) screenModeSelect.classList.remove("active");
+  if(screenOnlineWaiting) screenOnlineWaiting.classList.remove("active"); // NUEVO
+  if(screenOpponentLeft) screenOpponentLeft.classList.remove("active");   // NUEVO
+
   screenToShow.classList.add("active");
   if (btnMiCuenta) {
-    // Si la pantalla no es el menu inicial, lo ocultamos
     if (screenToShow !== screenStart) btnMiCuenta.classList.add("hidden");
-    // Para cualquier otra pantalla (Menú, Opciones, Modos), lo mostramos
     else btnMiCuenta.classList.remove("hidden");
   }
   if (btnRanking) {
-    // Si la pantalla no es el menu inicial, lo ocultamos
     if (screenToShow !== screenStart) btnRanking.classList.add("hidden");
-    // Para cualquier otra pantalla (Menú, Opciones, Modos), lo mostramos
     else btnRanking.classList.remove("hidden");
   }
 }
@@ -152,6 +155,7 @@ function asignarBoton(elemento, callback) {
 
 // Asignar navegación
 function beginBasicGame() {
+  btnRestart.classList.remove("hidden");
   lastGameParams = {
     canvas,
     ctx,
@@ -170,6 +174,8 @@ function beginBasicGame() {
 }
 
 function beginBotGame() {
+  btnRestart.classList.remove("hidden");
+
   lastGameParams = {
     canvas,
     ctx,
@@ -196,6 +202,7 @@ function beginBotGame() {
   window.Game.startBasicGame(lastGameParams);
 }
 
+// REEMPLAZAR FUNCIÓN DE FIN DE PARTIDA
 function showEndScreen(leftScore, rightScore) {
   finalScoreEl.textContent = `${leftScore} - ${rightScore}`;
   let winnerMessage = "";
@@ -203,11 +210,12 @@ function showEndScreen(leftScore, rightScore) {
   else if (rightScore > leftScore) winnerMessage = "¡Gana el Jugador 2!";
   else winnerMessage = "¡Empate!";
   winnerMessageEl.textContent = winnerMessage;
-  showScreen(screenEnd);
+
+  // En lugar de showScreen, la superponemos oscureciendo el fondo
+  screenEnd.classList.add("active");
 }
 
-// Hacer accesible desde game.js
-window.showEndScreen = showEndScreen;
+
 
 asignarBoton(btnPlay, () => showScreen(screenModeSelect));
 asignarBoton(btnSalir, () => {
@@ -239,21 +247,15 @@ asignarBoton(btnTouchWarningOk, () => {
 asignarBoton(btn1vBot, () => {
   beginBotGame();
 });
+
+// REEMPLAZAR EL BOTÓN JUGAR ONLINE (Ahora enciende el socket)
 asignarBoton(btn1v1Online, () => {
-  if (isTouchDevice()) {
-    touchControls.classList.remove("hidden");
-  } else {
-    touchControls.classList.add("hidden");
+  btnRestart.classList.add("hidden");
+  // Solo conectamos si estábamos desconectados, evitando arrastrar partidas
+  if (typeof socket !== 'undefined' && socket.disconnected) {
+    socket.connect();
   }
-
-  // Paramos música del menú
-  stopAllSounds();
-  playMatchAmbient();
-  window.playSound('sfx-whistle');
-
-  showScreen(screenGame);
-
-  // Invocamos al nuevo bucle títere
+  showScreen(screenOnlineWaiting);
   window.Game.startOnlineGame({
     canvas,
     ctx,
@@ -273,9 +275,46 @@ asignarBoton(btnOptionsBack, () => {
   }
 });
 
+asignarBoton(btnOpponentLeftOk, () => {
+  // Escondemos la pantalla
+  screenOpponentLeft.classList.remove("active");
+
+  // Forzamos a que nuestro socket se reinicie para salir de la "sala rota"
+  if (typeof socket !== 'undefined') {
+    socket.disconnect(); // Cortamos conexión
+  }
+
+  // Ocultamos el icono de mala conexión
+  if (badWifiIcon) {
+    badWifiIcon.classList.add('hidden');
+  }
+
+  // Paramos todo usando tus propias funciones
+  window.Game.stopBasicGame();
+  stopAllSounds();
+  if (isTouchDevice()) {
+    touchControls.classList.add("hidden");
+  }
+
+  // Volvemos al menú principal
+  showScreen(screenStart);
+  window.Game.startIdle({ canvas, ctx });
+  playMenuMusic();
+});
+
+// Al darle a Continuar tras el partido, nos aseguramos de que el socket
+// esté listo para una nueva conexión futura si el usuario quiere volver a jugar.
 asignarBoton(btnContinue, () => {
+  screenEnd.classList.remove("active"); // Quitamos el modal de victoria
+  window.Game.stopBasicGame();
   stopAllSounds();
   touchControls.classList.add("hidden");
+
+  // Ocultamos el icono de mala conexión por si se quedó encendido
+  if (badWifiIcon) {
+    badWifiIcon.classList.add('hidden');
+  }
+
   showScreen(screenStart);
   window.Game.startIdle({ canvas, ctx });
   playMenuMusic();
@@ -293,19 +332,29 @@ asignarBoton(btnAdvanced, () => {
 
 // pause controls
 asignarBoton(btnPause, () => {
-  // Si el botón se pulsa desde la pausa (o pulsas espacio), inicia la cuenta atrás
-  if (screenPause && !screenPause.classList.contains('hidden')) {
-    iniciarCuentaAtrasReanudar();
-  }
-  else {
-    // Si no está en pausa, bloqueamos si hay cuenta atrás activa
-    if (cuentaAtrasActiva) return;
-    window.Game.pauseGame();
-    showPauseMenu();
+  // Bloquear clic si la cuenta atrás ya se está ejecutando
+  if (contadorPausa && !contadorPausa.classList.contains("hidden")) return;
+
+  if (window.isOnlineMode && typeof socket !== 'undefined') {
+    // En online, pedimos al servidor que cambie el estado
+    socket.emit('requestTogglePause');
+  } else {
+    // Lógica local original
+    if (screenPause && !screenPause.classList.contains('hidden')) {
+      iniciarCuentaAtrasReanudar();
+    } else {
+      if (cuentaAtrasActiva) return;
+      window.Game.pauseGame();
+      showPauseMenu();
+    }
   }
 });
 asignarBoton(btnResume, () => {
-  iniciarCuentaAtrasReanudar();
+  if (window.isOnlineMode && typeof socket !== 'undefined') {
+    socket.emit('requestTogglePause');
+  } else {
+    iniciarCuentaAtrasReanudar();
+  }
 });
 asignarBoton(btnRestart, () => {
   hidePauseMenu();
@@ -321,18 +370,21 @@ asignarBoton(btnRestart, () => {
     window.Game.startBasicGame(lastGameParams);
   }
 });
+// El botón de salir en el menú de pausa
 asignarBoton(btnExitPause, () => {
   hidePauseMenu();
-  // mismo comportamiento que onExit
+
+  // Si estamos en online, nos desconectamos limpiamente para romper la sala
+  if (window.isOnlineMode && typeof socket !== 'undefined') {
+    socket.disconnect(); // Cortamos conexión limpiamente
+  }
+
   window.Game.stopBasicGame();
-  stopAllSounds(); // Silencio total antes de salir al menú
+  stopAllSounds();
   touchControls.classList.add("hidden");
   showScreen(screenStart);
   window.Game.startIdle({ canvas, ctx });
-  // --- FORZAR DESPERTAR EL AUDIO ---
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
+  if (audioCtx.state === 'suspended') { audioCtx.resume(); }
   playMenuMusic();
 });
 asignarBoton(btnPauseOptions, () => {
@@ -742,6 +794,9 @@ if (window.Game && window.Game.startIdle) {
 
 // Función auxiliar para forzar la pausa
 function forcePauseIfPlaying() {
+  // Si estamos online, ignoramos el auto-pause al cambiar de pestaña
+  if (window.isOnlineMode) return;
+
   if (screenGame.classList.contains("active") && window.Game && window.Game.pauseGame) {
     if (!cuentaAtrasActiva) {
       window.Game.pauseGame();
@@ -856,6 +911,13 @@ async function inicializarJuego() {
 
 // Arrancamos el proceso al cargar el archivo
 inicializarJuego();
+// API pública del motor para game.js
+window.Main = {
+  isTouchDevice,
+  playMatchAmbient,
+  stopAllSounds,
+  showEndScreen
+};
 
 // ==========================================
 // MODO DEBUG: CAZADOR DE DIMENSIONES

@@ -4,23 +4,31 @@ const keys = new Set();
 
 const onKeyDown = (e) => {
 
+    // Si el juego ha terminado o no ha empezado, ignoramos las teclas
+    if (!window.Game || !window.Game.isRunning() || window.Game.isFinished()) return;
+
     // Lógica del Espacio para alternar la Pausa
     if (e.code === "KeyR") {
         const pauseMenu = document.getElementById("pause-menu");
         const btnResume = document.getElementById("btn-resume");
         const contador = document.getElementById("contador-pausa");
 
-        // Bloquear si la cuenta atrás ya se está ejecutando
+        // Si la cuenta atrás se está ejecutando, ignoramos la tecla
         if (contador && !contador.classList.contains("hidden")) return;
 
-        // Si el menú de pausa está abierto, "clicamos" en reanudar
-        if (pauseMenu && !pauseMenu.classList.contains("hidden")) {
-            if (btnResume) btnResume.click();
+        if (window.isOnlineMode && typeof socket !== 'undefined') {
+            socket.emit('requestTogglePause');
         }
         else {
-            // Si está cerrado, pausamos normalmente
-            if (window.Game && window.Game.pauseGame) {
-                window.Game.pauseGame();
+            // Si el menú de pausa está abierto, "clicamos" en reanudar
+            if (pauseMenu && !pauseMenu.classList.contains("hidden")) {
+                if (btnResume) btnResume.click();
+            }
+            else {
+                // Si está cerrado, pausamos normalmente
+                if (window.Game && window.Game.pauseGame) {
+                    window.Game.pauseGame();
+                }
             }
         }
     }
@@ -107,6 +115,12 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 const onKeyUp = (e) => {
+    // Bloqueamos también el levantamiento de tecla si el juego no corre
+    if (!window.Game || !window.Game.isRunning() || window.Game.isFinished()) {
+        keys.clear();
+        return;
+    }
+
     keys.delete(e.code);
 
     // --- MAGIA ONLINE ---

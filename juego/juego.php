@@ -21,7 +21,7 @@ $asset = static function (string $path) use ($basePath): string {
     <link rel="manifest" href="<?= htmlspecialchars($asset('manifest.json'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="apple-touch-icon" href="<?= htmlspecialchars($asset('assets/img/logo192.png'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="icon" type="image/x-icon" href="<?= htmlspecialchars($asset('assets/icon/favicon.ico'), ENT_QUOTES, 'UTF-8') ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars($asset('juego/juego.css?v=7'), ENT_QUOTES, 'UTF-8') ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars($asset('juego/juego.css?v=8'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 </head>
@@ -47,6 +47,19 @@ $asset = static function (string $path) use ($basePath): string {
 
     <div id="contador-pausa" class="hidden">3</div>
     <canvas id="game-canvas"></canvas>
+
+    <div id="bad-connection-warning" class="hidden">
+        <i class="bi bi-wifi-1"></i><span class="warning-exclamation">!</span>
+    </div>
+
+    <section id="screen-opponent-left" class="screen">
+        <div class="card info-card" style="border: 3px solid #ff0d72; box-shadow: 0 0 30px rgba(255, 13, 114, 0.4);">
+            <i class="bi bi-person-x-fill" style="font-size: 6rem; color: #ff0d72; margin-bottom: 1rem;"></i>
+            <h2 class="subtitle">¡CONEXIÓN PERDIDA!</h2>
+            <p class="info-description">Tu rival se ha desconectado o ha abandonado la partida.</p>
+            <button id="btn-opponent-left-ok" class="btn large-got-it-btn" style="margin-top: 1rem;">SALIR</button>
+        </div>
+    </section>
 
     <div id="touch-controls" class="hidden">
         <div class="touch-left">
@@ -202,6 +215,18 @@ $asset = static function (string $path) use ($basePath): string {
         </div>
     </section>
 
+    <section id="screen-online-waiting" class="screen">
+        <div class="card waiting-card">
+            <h2 class="subtitle">BUSCANDO PARTIDA</h2>
+            <div class="searching-container">
+                <div class="radar"></div>
+                <div class="ball-spinner"></div>
+            </div>
+            <p class="info-description">Esperando a un rival digno...</p>
+            <button id="btn-cancel-online" class="btn btn-secondary" style="margin-top: 2rem;">CANCELAR</button>
+        </div>
+    </section>
+
     <!-- Pantalla 7: Fin del partido -->
     <section id="screen-end" class="screen">
         <div class="card">
@@ -263,8 +288,9 @@ $asset = static function (string $path) use ($basePath): string {
 <script src="<?= htmlspecialchars($asset('juego/js/entities.js?v=4'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/physics.js?v=4'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/renderer.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/input.js?v=4'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/game.js?v=6'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=22'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/input.js?v=5'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/game.js?v=7'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/online.js?v=1'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=23'), ENT_QUOTES, 'UTF-8') ?>"></script>
 </body>
 </html>

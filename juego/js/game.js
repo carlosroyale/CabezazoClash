@@ -13,6 +13,7 @@ let p1 = {};
 let p2 = {};
 let score = {left: 0, right: 0};
 let gameTime = 60; // 60 segundos
+let matchFinishedExternally = false;
 
 // Variables de Juego y Bucle
 let gameRunning = false;
@@ -117,6 +118,10 @@ function startBasicGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl: 
     onExitCallback = onExit;
     botEnabled = !!bot;
 
+    // Resetear estados de finalización
+    matchFinishedExternally = false;
+    window.isOnlineMode = false;
+
     // APLICAR TAMAÑO Y POSICIONAR PORTERÍAS
     resize(canvas.width, canvas.height);
 
@@ -152,12 +157,50 @@ function stopBasicGame() {
 }
 
 function endGame() {
-    stopBasicGame();
-    // Llamar a la función de main.js para mostrar la pantalla de fin
-    if (window.showEndScreen) {
-        window.showEndScreen(score.left, score.right);
+    // En online NO paramos el bucle aquí para que el campo no desaparezca
+    if (window.isOnlineMode) {
+        gameRunning = true;
+        if (typeof socket !== 'undefined') {
+            socket.disconnect();
+        }
+    }
+    else {
+        stopBasicGame();
+    }
+
+    if (window.Main.showEndScreen) {
+        window.Main.showEndScreen(score.left, score.right);
     }
 }
+
+// En game.js, busca la función endGame y actualízala así:
+// function endGame() {
+//     matchFinishedExternally = true; // Marcamos que el partido ha terminado
+//
+//     // Desconectamos el socket en online para no recibir más "fantasmas"
+//     if (window.isOnlineMode && typeof socket !== 'undefined') {
+//         socket.disconnect();
+//     }
+//
+//     // 1. Detenemos el motor manualmente (sin llamar a stopBasicGame)
+//     // Esto congela la física, y como gameRunning = false, input.js bloquea las teclas
+//     gameRunning = false;
+//     if (animationId) {
+//         cancelAnimationFrame(animationId);
+//         animationId = null;
+//     }
+//
+//     // 2. FORZAMOS EL DIBUJADO DEL ÚLTIMO FRAME
+//     // Aseguramos que la pantalla se quede congelada viendo el gol o la jugada final
+//     if (gameCtx) {
+//         dibujar(gameCtx, W, H, p1, p2, ball, leftGoal, rightGoal);
+//     }
+//
+//     // 3. Mostramos la pantalla de resultados
+//     if (window.Main.showEndScreen) {
+//         window.Main.showEndScreen(score.left, score.right);
+//     }
+// }
 
 // pausa y reanuda sin perder el estado
 function pauseGame() {
@@ -397,7 +440,9 @@ function updateScore() {
 
 function updateTimer() {
     if (gameTimerEl) {
-        gameTimerEl.textContent = `${Math.max(0, Math.ceil(gameTime))}`;
+        // Evitar el frame residual que redondea a 1 al acabar el partido online
+        if (matchFinishedExternally) gameTimerEl.textContent = "0";
+        else gameTimerEl.textContent = `${Math.max(0, Math.ceil(gameTime))}`;
     }
 }
 
@@ -410,149 +455,16 @@ function forceRedraw(contexto) {
     }
 }
 
-// --- MODO ONLINE (EL TÍTERE EVOLUCIONADO) ---
-window.isOnlineMode = false;
-let onlineState = null;
-let myRole = null; // NUEVO: Saber si somos P1 o P2
-
-if (typeof socket !== 'undefined') {
-    // Escuchamos el estado del juego
-    socket.on('gameState', (state) => {
-        onlineState = state;
-    });
-
-    // El servidor nos dice quiénes somos al entrar
-    socket.on('initRole', (role) => {
-        myRole = role;
-        console.log("El servidor me ha asignado el rol:", myRole);
-    });
-}
-
-// --- FUNCIÓN MÁGICA DE SUAVIZADO (LERP) ---
-function lerp(start, end, factor) {
-    return start + (end - start) * factor;
-}
-
-function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl: timerElParam}) {
-    stopIdle();
-    stopBasicGame();
-
-    gameCtx = ctxParam;
-    gameScoreEl = scoreElParam;
-    gameTimerEl = timerElParam;
-
-    window.isOnlineMode = true;
-    gameRunning = true;
-    resize(canvas.width, canvas.height);
-
-    const scoreboardUI = document.getElementById('scoreboard');
-    if(scoreboardUI) scoreboardUI.classList.remove('goal-active');
-
-    p1 = makePlayer(180, FLOOR_Y - 90, "P1", true);
-    p2 = makePlayer(W - 180, FLOOR_Y - 90, "P2", false);
-    ball = {r: 18, x: W / 2, y: FLOOR_Y - 200, vx: 0, vy: 0, angle: 0};
-
-    let isFirstStateReceived = false;
-    lastTime = performance.now();
-
-    function onlineLoop(time) {
-        if (!gameRunning || !window.isOnlineMode) return;
-
-        let dt = (time - lastTime) / 1000;
-        lastTime = time;
-        dt = Math.min(dt, DT_MAX);
-
-        // --- 1. SIMULACIÓN TOTAL LOCAL (Latencia Cero Visual) ---
-        // Leemos nuestros controles instantáneamente
-        if (myRole === 'p1') {
-            controlPlayer(p1, dt, "KeyA", "KeyD", "KeyW", "Space", keys);
-        } else if (myRole === 'p2') {
-            controlPlayer(p2, dt, "KeyA", "KeyD", "KeyW", "Space", keys);
-        }
-
-        // ¡LA MAGIA! Ejecutamos todo el motor de físicas en nuestro ordenador
-        // Así el balón rebota al instante en nuestra pantalla sin esperar al servidor
-        updatePlayer(p1, dt, W, FLOOR_Y);
-        updatePlayer(p2, dt, W, FLOOR_Y);
-        collidePlayers(p1, p2);
-        updateBall(ball, dt, W, FLOOR_Y);
-
-        window.currentPlayers = [p1, p2];
-        const playersBackToBack = arePlayersBackToBack(p1, p2);
-        if (playersBackToBack) resolveBackToBackBallSqueeze(ball, p1, p2);
-        collidePlayerBall(p1, ball);
-        collidePlayerBall(p2, ball);
-        if (playersBackToBack) resolveBackToBackBallSqueeze(ball, p1, p2);
-        else resolveBallSqueezeUp(ball, p1, p2);
-
-        checkGoalCollisions(ball, leftGoal, rightGoal);
-
-        // --- 2. LA GUÍA DEL SERVIDOR (Reconciliación) ---
-        if (onlineState) {
-            score.left = onlineState.score.left;
-            score.right = onlineState.score.right;
-            updateScore();
-
-            if (!isFirstStateReceived) {
-                // Sincronización brusca solo la primera vez
-                p1.x = onlineState.p1.x; p1.y = onlineState.p1.y; p1.vx = onlineState.p1.vx; p1.vy = onlineState.p1.vy;
-                p2.x = onlineState.p2.x; p2.y = onlineState.p2.y; p2.vx = onlineState.p2.vx; p2.vy = onlineState.p2.vy;
-                ball.x = onlineState.ball.x; ball.y = onlineState.ball.y; ball.vx = onlineState.ball.vx; ball.vy = onlineState.ball.vy;
-                isFirstStateReceived = true;
-            } else {
-                // Factor de corrección elástico (0.15 = 15% de corrección por fotograma)
-                const CORRECTION = 0.15;
-
-                // Corregimos posiciones suavemente hacia la realidad del servidor
-                p1.x = lerp(p1.x, onlineState.p1.x, CORRECTION);
-                p1.y = lerp(p1.y, onlineState.p1.y, CORRECTION);
-                p2.x = lerp(p2.x, onlineState.p2.x, CORRECTION);
-                p2.y = lerp(p2.y, onlineState.p2.y, CORRECTION);
-                ball.x = lerp(ball.x, onlineState.ball.x, CORRECTION);
-                ball.y = lerp(ball.y, onlineState.ball.y, CORRECTION);
-
-                // IMPORTANTÍSIMO: Corregir también la VELOCIDAD (vx, vy)
-                // Esto evita que nuestra física local se vuelva loca chocando contra paredes fantasma
-                p1.vx = lerp(p1.vx, onlineState.p1.vx, CORRECTION);
-                p1.vy = lerp(p1.vy, onlineState.p1.vy, CORRECTION);
-                p2.vx = lerp(p2.vx, onlineState.p2.vx, CORRECTION);
-                p2.vy = lerp(p2.vy, onlineState.p2.vy, CORRECTION);
-                ball.vx = lerp(ball.vx, onlineState.ball.vx, CORRECTION);
-                ball.vy = lerp(ball.vy, onlineState.ball.vy, CORRECTION);
-
-                p1.kickAngle = lerp(p1.kickAngle, onlineState.p1.kickAngle, CORRECTION);
-                p2.kickAngle = lerp(p2.kickAngle, onlineState.p2.kickAngle, CORRECTION);
-                ball.angle = lerp(ball.angle, onlineState.ball.angle, CORRECTION);
-            }
-
-            p1.isRightFacing = onlineState.p1.isRightFacing;
-            p2.isRightFacing = onlineState.p2.isRightFacing;
-        }
-
-        dibujar(gameCtx, W, H, p1, p2, ball, leftGoal, rightGoal);
-
-        animationId = requestAnimationFrame(onlineLoop);
-    }
-
-    animationId = requestAnimationFrame(onlineLoop);
-}
-
-// Sobrescribimos stopBasicGame para que también apague el modo online
-const originalStop = stopBasicGame;
-stopBasicGame = function() {
-    originalStop();
-    window.isOnlineMode = false;
-};
-
 // API pública del motor para main.js e input.js
 window.Game = {
     startBasicGame,
-    startOnlineGame,
     startIdle,
     pauseGame,
     resumeGame,
     stopBasicGame,
     resize,
     resetRound,
+    isRunning: () => gameRunning,
+    isFinished: () => matchFinishedExternally,
     forceRedraw
 };
