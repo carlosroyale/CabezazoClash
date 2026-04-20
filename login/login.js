@@ -64,6 +64,16 @@ formCorreo.addEventListener('submit', async (e) => {
         btn.disabled = false;
         btn.innerText = 'Continuar';
     }
+/*    } catch (error) {
+    // Imprime el error real en la consola para ti
+    console.error("Detalle del error:", error);
+
+    // Muestra un mensaje más útil en la pantalla
+    errorDiv.innerText = `Error técnico: ${error.message}. Revisa la consola (F12).`;
+} finally {
+    btn.disabled = false;
+    btn.innerText = 'Continuar';
+} */
 });
 
 // ==========================================

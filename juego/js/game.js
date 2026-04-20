@@ -127,7 +127,9 @@ function startBasicGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl: 
 
     // Inicializar jugadores
     p1 = makePlayer(180, FLOOR_Y - 90, "P1", true);
-    p2 = makePlayer(W - 180, FLOOR_Y - 90, "P2", false);
+    p2 = botEnabled
+        ? new Bot(W - 180, FLOOR_Y - 90, "P2", false)
+        : makePlayer(W - 180, FLOOR_Y - 90, "P2", false);
 
     // Reiniciar valores
     score = {left: 0, right: 0};
@@ -248,18 +250,8 @@ function update(dt) {
     controlPlayer(p1, dt, "KeyA", "KeyD", "KeyW", "Space", keys);
 
     if (botEnabled) {
-        const botServeBlocked = serveState.active && serveState.server === "right";
-        if (botServeBlocked) {
-            // Durante el saque del bot, lo dejamos totalmente bloqueado.
-            p2.vx = 0;
-            p2.isKicking = false;
-            if (p2.kickAngle > 0) {
-                p2.kickAngle -= (p2.kickSpeed / 3) * dt;
-                if (p2.kickAngle < 0) p2.kickAngle = 0;
-            }
-        } else {
-            controlBot(p2, dt, ball, W, FLOOR_Y, keys, false);
-        }
+        const botServeChase = serveState.active && serveState.server === "right";
+        controlBot(p2, dt, ball, W, FLOOR_Y, keys, botServeChase);
     }
     else {
         controlPlayer(p2, dt, "ArrowLeft", "ArrowRight", "ArrowUp", "KeyP", keys);
@@ -430,6 +422,10 @@ function resetRound(lastScorer = null) {
     ball.vy = -220;
     // ball.vx = 0;
     serveState.active = true;
+
+    if (botEnabled && p2 instanceof Bot) {
+        p2.resetAI(ball);
+    }
 }
 
 function updateScore() {
