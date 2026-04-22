@@ -1,5 +1,6 @@
 // physics.js - Detección de colisiones y límites
 
+const GOAL_POST_SIZE = 8;
 // 1. Helper para obtener las 3 hitboxes matemáticas (Idéntico a tu dibujarHitboxJvB)
 function getPlayerHitboxes(p) {
     const bodyW = p.w - 28;
@@ -160,13 +161,7 @@ function applyBounce(ball, p, nx, ny) {
 }
 
 function checkGoalCollisions(ball, leftGoal, rightGoal) {
-    const postSize = 8;
-
-    // Hitboxes de los Largueros
-    const leftCrossbar = { x: leftGoal.x, y: leftGoal.y, w: leftGoal.w, h: postSize };
-    const rightCrossbar = { x: rightGoal.x, y: rightGoal.y, w: rightGoal.w, h: postSize };
-
-    const hitboxes = [leftCrossbar, rightCrossbar];
+    const hitboxes = getGoalCrossbarRects(leftGoal, rightGoal);
 
     for (let box of hitboxes) {
         collideBallStaticRect(ball, box);
@@ -303,6 +298,35 @@ function collideBallStaticRect(ball, rect) {
     }
 }
 
+function getGoalCrossbarRects(leftGoal, rightGoal) {
+    return [
+        { x: leftGoal.x, y: leftGoal.y, w: leftGoal.w, h: GOAL_POST_SIZE, allowStand: false },
+        { x: rightGoal.x, y: rightGoal.y, w: rightGoal.w, h: GOAL_POST_SIZE, allowStand: false }
+    ];
+}
+
+function getGoalPlayerCollisionRects(leftGoal, rightGoal) {
+    const crossbars = getGoalCrossbarRects(leftGoal, rightGoal);
+    const airBlockers = crossbars.map((crossbar) => ({
+        x: crossbar.x,
+        y: 0,
+        w: crossbar.w,
+        h: crossbar.y,
+        allowStand: false,
+        preferHorizontalExit: true
+    }));
+
+    return crossbars.concat(airBlockers);
+}
+
+function collidePlayerGoals(p, leftGoal, rightGoal) {
+    const hitboxes = getGoalPlayerCollisionRects(leftGoal, rightGoal);
+
+    for (const hitbox of hitboxes) {
+        collidePlayerStaticRect(p, hitbox);
+    }
+}
+
 // --- SISTEMA DE COLISIÓN: JUGADOR VS PORTERÍA (Largueros) ---
 
 function collidePlayerStaticRect(p, rect) {
@@ -339,19 +363,25 @@ function resolveRectStaticRectPlayer(p, bodyBox, rect) {
     const overlapRight = rRight - bLeft;
     const overlapTop = bBottom - rTop;
     const overlapBottom = rBottom - bTop;
+    const canStand = rect.allowStand !== false;
+    const preferHorizontalExit = rect.preferHorizontalExit === true;
+    const bodyCenterY = bodyBox.y + bodyBox.h / 2;
+    const rectCenterY = rect.y + rect.h / 2;
+
+    if (preferHorizontalExit || (!canStand && bodyCenterY <= rectCenterY)) {
+        pushPlayerRectHorizontally(p, bodyBox, rect, overlapLeft, overlapRight);
+        return;
+    }
 
     const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
 
     if (minOverlap === overlapTop) {
-        // Solo se puede subir al larguero si está cayendo
-        if (p.vy >= 0) {
+        if (canStand && p.vy >= 0) {
             p.y -= overlapTop;
             p.vy = 0;
             p.onGround = true;
         } else {
-            // Si está subiendo (saltando) y roza el borde del larguero, lo separamos de lado
-            if (overlapLeft < overlapRight) { p.x -= overlapLeft; p.vx = 0; }
-            else { p.x += overlapRight; p.vx = 0; }
+            pushPlayerRectHorizontally(p, bodyBox, rect, overlapLeft, overlapRight);
         }
     } else if (minOverlap === overlapBottom) {
         p.y += overlapBottom;
@@ -363,6 +393,19 @@ function resolveRectStaticRectPlayer(p, bodyBox, rect) {
     }
 }
 
+function pushPlayerRectHorizontally(p, bodyBox, rect, overlapLeft, overlapRight) {
+    const bodyCenterX = bodyBox.x + bodyBox.w / 2;
+    const rectCenterX = rect.x + rect.w / 2;
+
+    if (bodyCenterX <= rectCenterX) {
+        p.x -= overlapLeft;
+    } else {
+        p.x += overlapRight;
+    }
+
+    p.vx = 0;
+}
+
 // Helper: Círculo (Cabeza/Zapato) vs Rectángulo Estático (Portería)
 function resolveCircStaticRectPlayer(p, circ, rect) {
     const closestX = clamp(circ.x, rect.x, rect.x + rect.w);
@@ -370,8 +413,17 @@ function resolveCircStaticRectPlayer(p, circ, rect) {
     const dx = circ.x - closestX;
     const dy = circ.y - closestY;
     const dist2 = dx * dx + dy * dy;
+    const canStand = rect.allowStand !== false;
 
     if (dist2 < circ.r * circ.r) {
+        if (rect.preferHorizontalExit === true || (!canStand && circ.y <= rect.y + rect.h / 2)) {
+            const rectCenterX = rect.x + rect.w / 2;
+            const targetX = circ.x <= rectCenterX ? rect.x - circ.r : rect.x + rect.w + circ.r;
+            p.x += targetX - circ.x;
+            p.vx = 0;
+            return;
+        }
+
         const dist = Math.sqrt(dist2);
         if (dist < 0.001) return;
         const nx = dx / dist;
@@ -382,7 +434,7 @@ function resolveCircStaticRectPlayer(p, circ, rect) {
         p.y += ny * overlap;
 
         // CORRECCIÓN: ny < -0.7 (contacto muy vertical) y cayendo (vy >= 0)
-        if (ny < -0.7 && p.vy >= 0) {
+        if (canStand && ny < -0.7 && p.vy >= 0) {
             p.vy = 0;
             p.onGround = true;
         } else if (ny > 0.5) {
@@ -712,7 +764,7 @@ function playPlayerCollideSound(p1, p2) {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         getPlayerHitboxes, arePlayersBackToBack, isBackToBackBallSqueeze,
-        collidePlayerBall, checkGoalCollisions, collidePlayerStaticRect,
+        collidePlayerBall, checkGoalCollisions, collidePlayerStaticRect, collidePlayerGoals,
         collidePlayers, resolveBackToBackBallSqueeze, resolveBallSqueezeUp
     };
 }

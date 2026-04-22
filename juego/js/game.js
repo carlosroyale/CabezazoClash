@@ -264,14 +264,9 @@ function update(dt) {
     // 2.1 Colisiones entre jugadores
     collidePlayers(p1, p2);
 
-    // 2.2 Colisiones del jugador con los postes
-    const postSize = 8;
-    const leftCrossbar  = { x: leftGoal.x,  y: leftGoal.y,  w: leftGoal.w,  h: postSize };
-    const rightCrossbar = { x: rightGoal.x, y: rightGoal.y, w: rightGoal.w, h: postSize };
-    collidePlayerStaticRect(p1, leftCrossbar);
-    collidePlayerStaticRect(p1, rightCrossbar);
-    collidePlayerStaticRect(p2, leftCrossbar);
-    collidePlayerStaticRect(p2, rightCrossbar);
+    // 2.2 Colisiones del jugador con la portería
+    collidePlayerGoals(p1, leftGoal, rightGoal);
+    collidePlayerGoals(p2, leftGoal, rightGoal);
 
     // 3. Física pelota
     updateBall(ball, dt, W, FLOOR_Y);

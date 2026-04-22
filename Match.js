@@ -1,6 +1,6 @@
 // Match.js - Molde para partidas individuales
 const { makePlayer, updatePlayer, updateBall, controlPlayer } = require('./juego/js/entities.js');
-const { collidePlayers, collidePlayerBall, checkGoalCollisions, collidePlayerStaticRect, arePlayersBackToBack, resolveBackToBackBallSqueeze, resolveBallSqueezeUp } = require('./juego/js/physics.js');
+const { collidePlayers, collidePlayerBall, checkGoalCollisions, collidePlayerGoals, arePlayersBackToBack, resolveBackToBackBallSqueeze, resolveBallSqueezeUp } = require('./juego/js/physics.js');
 
 const W = 1845;
 const H = 1038;
@@ -166,13 +166,8 @@ class Match {
                 updatePlayer(this.gameState.p2, dt, W, FLOOR_Y);
                 collidePlayers(this.gameState.p1, this.gameState.p2);
 
-                const postSize = 8;
-                const leftCrossbar  = { x: this.leftGoal.x,  y: this.leftGoal.y,  w: this.leftGoal.w,  h: postSize };
-                const rightCrossbar = { x: this.rightGoal.x, y: this.rightGoal.y, w: this.rightGoal.w, h: postSize };
-                collidePlayerStaticRect(this.gameState.p1, leftCrossbar);
-                collidePlayerStaticRect(this.gameState.p1, rightCrossbar);
-                collidePlayerStaticRect(this.gameState.p2, leftCrossbar);
-                collidePlayerStaticRect(this.gameState.p2, rightCrossbar);
+                collidePlayerGoals(this.gameState.p1, this.leftGoal, this.rightGoal);
+                collidePlayerGoals(this.gameState.p2, this.leftGoal, this.rightGoal);
 
                 updateBall(this.gameState.ball, dt, W, FLOOR_Y);
 

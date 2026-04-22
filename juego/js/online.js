@@ -251,6 +251,9 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
             // Permitimos que nuestros cuerpos choquen entre sí
             collidePlayers(p1, p2);
 
+            collidePlayerGoals(myPlayer, leftGoal, rightGoal);
+            collidePlayerGoals(enemyPlayer, leftGoal, rightGoal);
+
             // 3. Físicas de la pelota
             updateBall(ball, dt, W, FLOOR_Y);
 
