@@ -126,75 +126,119 @@ class Match {
     }
 
     update() {
+        // 1. CÁLCULO DEL TIEMPO (Delta Time)
+        // Calculamos el tiempo transcurrido desde la última actualización (dt).
+        // Esto asegura que la velocidad del juego sea la misma independientemente del lag o los FPS.
         const now = Date.now();
         let dt = (now - this.lastTime) / 1000;
         this.lastTime = now;
-        dt = Math.min(dt, DT_MAX);
+        dt = Math.min(dt, DT_MAX); // Limitamos el dt máximo para evitar que los objetos atraviesen paredes si hay mucho lag.
 
+        // 2. ESTADO DE CUENTA REGRESIVA
+        // Si el juego está en la cuenta regresiva inicial (ej. 3, 2, 1...), solo descontamos el tiempo.
         if (this.gameState.countdown > 0) {
             this.gameState.countdown -= dt;
             if (this.gameState.countdown < 0) this.gameState.countdown = 0;
         }
+        // 3. BUCLE PRINCIPAL DEL JUEGO
+        // Solo ejecutamos las lógicas si el juego no está pausado ni ha terminado.
         else if (!this.gameState.isPaused && !this.gameState.isFinished) {
 
+            // --- Lógica del Saque ---
+            // Si estamos en estado de saque, lo desactivamos en cuanto la pelota se aleja del centro (W/2).
             if (this.gameState.serveState.active) {
                 if (Math.abs(this.gameState.ball.x - W / 2) > W * 0.08) this.gameState.serveState.active = false;
             }
 
+            // --- Lógica de Celebración y Fin de Tiempo ---
             if (this.gameState.isCelebrating) {
+                // Si alguien metió gol, descontamos el tiempo de celebración. Al terminar, iniciamos nueva ronda.
                 this.celebrationTimer -= dt;
                 if (this.celebrationTimer <= 0) this.startRound(this.nextScorer);
             } else {
+                // Si se está jugando normalmente, el reloj del partido avanza (hacia atrás).
                 this.gameState.gameTime -= dt;
+
+                // Si el tiempo del partido se acaba, finalizamos el juego.
                 if (this.gameState.gameTime <= 0) {
                     this.gameState.gameTime = 0;
                     this.gameState.isFinished = true;
+
+                    // Notificamos a los jugadores que el partido terminó y enviamos el estado final.
                     this.io.to(this.roomId).emit('matchEnd');
                     this.io.to(this.roomId).emit('gameState', this.gameState);
 
-                    // Esperamos 5 segundos antes de borrar la sala para que vean sus resultados
+                    // Esperamos 5 segundos antes de borrar la sala en el servidor para que vean sus resultados finales.
                     setTimeout(() => this.destroy(), 5000);
                 }
             }
 
+            // 4. FÍSICAS Y COLISIONES
+            // Solo se calculan si el partido sigue activo (incluso durante la celebración para que la pelota ruede).
             if (!this.gameState.isFinished) {
-                // Pasamos THIS.gameState a las físicas (no variables globales)
+
+                // --- Movimiento de Jugadores ---
+                // Leemos los inputs y calculamos el movimiento de los jugadores basándonos en el tiempo (dt).
                 controlPlayer(this.gameState.p1, dt, "KeyA", "KeyD", "KeyW", "Space", this.inputs.p1);
                 controlPlayer(this.gameState.p2, dt, "KeyA", "KeyD", "KeyW", "Space", this.inputs.p2);
 
+                // Actualizamos la posición en Y (gravedad, saltos) y X (fricción, límites).
                 updatePlayer(this.gameState.p1, dt, W, FLOOR_Y);
                 updatePlayer(this.gameState.p2, dt, W, FLOOR_Y);
+
+                // Resolvemos la colisión entre los dos jugadores.
                 collidePlayers(this.gameState.p1, this.gameState.p2);
 
+                // Evitamos que los jugadores atraviesen las porterías.
                 collidePlayerGoals(this.gameState.p1, this.leftGoal, this.rightGoal);
                 collidePlayerGoals(this.gameState.p2, this.leftGoal, this.rightGoal);
 
+                // --- Físicas de la Pelota ---
                 updateBall(this.gameState.ball, dt, W, FLOOR_Y);
 
+                // --- Lógica Especial de Colisiones ---
+                // Se usa global.window.currentPlayers probablemente para algún cálculo auxiliar externo.
                 global.window.currentPlayers = [this.gameState.p1, this.gameState.p2];
+
+                // Comprobamos si los jugadores están espalda con espalda para evitar que la pelota se quede bugeada entre ellos.
                 const playersBackToBack = arePlayersBackToBack(this.gameState.p1, this.gameState.p2);
                 if (playersBackToBack) resolveBackToBackBallSqueeze(this.gameState.ball, this.gameState.p1, this.gameState.p2);
+
+                // Resolvemos colisiones regulares entre jugadores y la pelota.
                 collidePlayerBall(this.gameState.p1, this.gameState.ball);
                 collidePlayerBall(this.gameState.p2, this.gameState.ball);
-                if (playersBackToBack) resolveBackToBackBallSqueeze(this.gameState.ball, this.gameState.p1, this.gameState.p2);
-                else resolveBallSqueezeUp(this.gameState.ball, this.gameState.p1, this.gameState.p2);
 
+                // Volvemos a chequear atascos de la pelota por si la colisión anterior la empujó hacia un mal lugar.
+                if (playersBackToBack) resolveBackToBackBallSqueeze(this.gameState.ball, this.gameState.p1, this.gameState.p2);
+                else resolveBallSqueezeUp(this.gameState.ball, this.gameState.p1, this.gameState.p2); // Empuja la pelota hacia arriba si es "aplastada" entre jugadores.
+
+                // Rebotes de la pelota contra las estructuras de las porterías.
                 checkGoalCollisions(this.gameState.ball, this.leftGoal, this.rightGoal);
 
+                // --- Anti-Aplastamiento en las Paredes ---
+                // Si la pelota choca contra la pared izquierda (< 0)...
                 const crushDist = 50;
                 if (this.gameState.ball.x - this.gameState.ball.r < 0) {
                     const exceso = this.gameState.ball.r - this.gameState.ball.x;
-                    this.gameState.ball.x = this.gameState.ball.r;
+                    this.gameState.ball.x = this.gameState.ball.r; // Forzamos la pelota dentro de la pantalla
+
+                    // Si algún jugador está presionando la pelota contra la pared izquierda, lo empujamos hacia atrás (derecha).
                     if (this.gameState.p2.x > this.gameState.ball.x && (this.gameState.p2.x - this.gameState.ball.x) < crushDist) this.gameState.p2.x += exceso;
                     if (this.gameState.p1.x > this.gameState.ball.x && (this.gameState.p1.x - this.gameState.ball.x) < crushDist) this.gameState.p1.x += exceso;
                 }
+                // Si la pelota choca contra la pared derecha (> W)...
                 if (this.gameState.ball.x + this.gameState.ball.r > W) {
                     const exceso = (this.gameState.ball.x + this.gameState.ball.r) - W;
-                    this.gameState.ball.x = W - this.gameState.ball.r;
+                    this.gameState.ball.x = W - this.gameState.ball.r; // Forzamos la pelota dentro de la pantalla
+
+                    // Si algún jugador presiona la pelota contra la pared derecha, lo empujamos hacia atrás (izquierda).
                     if (this.gameState.p1.x < this.gameState.ball.x && (this.gameState.ball.x - this.gameState.p1.x) < crushDist) this.gameState.p1.x -= exceso;
                     if (this.gameState.p2.x < this.gameState.ball.x && (this.gameState.ball.x - this.gameState.p2.x) < crushDist) this.gameState.p2.x -= exceso;
                 }
 
+                // --- Cálculo de Velocidades Reales ---
+                // Calculamos la velocidad "real" basándonos en dónde estaba la entidad el frame anterior y dónde está ahora.
+                // Esto es muy útil para la interpolación visual en el cliente o para cálculos de impactos.
                 this.gameState.p1.realVx = this.gameState.p1.lastX !== undefined ? (this.gameState.p1.x - this.gameState.p1.lastX) / dt : 0;
                 this.gameState.p1.realVy = this.gameState.p1.lastY !== undefined ? (this.gameState.p1.y - this.gameState.p1.lastY) / dt : 0;
                 this.gameState.p2.realVx = this.gameState.p2.lastX !== undefined ? (this.gameState.p2.x - this.gameState.p2.lastX) / dt : 0;
@@ -202,22 +246,27 @@ class Match {
                 this.gameState.ball.realVx = this.gameState.ball.lastX !== undefined ? (this.gameState.ball.x - this.gameState.ball.lastX) / dt : 0;
                 this.gameState.ball.realVy = this.gameState.ball.lastY !== undefined ? (this.gameState.ball.y - this.gameState.ball.lastY) / dt : 0;
 
+                // Guardamos las posiciones actuales para el cálculo de realVx/realVy del siguiente frame.
                 this.gameState.p1.lastX = this.gameState.p1.x; this.gameState.p1.lastY = this.gameState.p1.y;
                 this.gameState.p2.lastX = this.gameState.p2.x; this.gameState.p2.lastY = this.gameState.p2.y;
                 this.gameState.ball.lastX = this.gameState.ball.x; this.gameState.ball.lastY = this.gameState.ball.y;
 
+                // 5. SISTEMA DE PUNTUACIÓN (GOLES)
+                // Solo comprobamos goles si el juego está en curso y no se está ya celebrando un gol anterior.
                 if (!this.isGoalScored && !this.gameState.isCelebrating) {
                     const leftGoalLine = this.leftGoal.x + this.leftGoal.w;
                     const rightGoalLine = this.rightGoal.x;
 
+                    // Comprueba si cruzó la línea izquierda y está a la altura correcta de la portería
                     if (this.gameState.ball.x < leftGoalLine && this.gameState.ball.y > this.leftGoal.y) {
                         this.gameState.score.right++;
                         this.isGoalScored = true;
                         this.gameState.isCelebrating = true;
-                        this.celebrationTimer = 2.0;
-                        this.nextScorer = "right";
-                        this.io.to(this.roomId).emit('matchGoal');
+                        this.celebrationTimer = 2.0; // 2 segundos de celebración
+                        this.nextScorer = "right";  // El siguiente en sacar/servir (o indicar quién marcó)
+                        this.io.to(this.roomId).emit('matchGoal'); // Avisa al cliente para efectos, sonidos, etc.
                     }
+                    // Comprueba si cruzó la línea derecha
                     else if (this.gameState.ball.x > rightGoalLine && this.gameState.ball.y > this.rightGoal.y) {
                         this.gameState.score.left++;
                         this.isGoalScored = true;
@@ -230,7 +279,9 @@ class Match {
             }
         }
 
-        // Enviamos la actualización solo a los que están en esta partida
+        // 6. SINCRONIZACIÓN DE RED
+        // Emitimos el estado del juego completo a todos los clientes conectados a esta sala ("room").
+        // Esto asegura que la pantalla de los jugadores muestre exactamente lo mismo que el servidor.
         this.io.to(this.roomId).emit('gameState', this.gameState);
     }
 
