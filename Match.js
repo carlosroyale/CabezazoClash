@@ -45,6 +45,7 @@ class Match {
 
         this.loopInterval = null;
         this.lastTime = Date.now();
+        this.networkTickCounter = 0;
 
         // 3. Configurar listeners de red para ESTOS dos jugadores
         this.setupEvents();
@@ -290,34 +291,27 @@ class Match {
             }
         }
 
-        // 6. SINCRONIZACIÓN DE RED
-        // Emitimos el estado del juego completo a todos los clientes conectados a esta sala ("room").
-        // Esto asegura que la pantalla de los jugadores muestre exactamente lo mismo que el servidor.
-        // this.io.to(this.roomId).emit('gameState', this.gameState);
-
         // 6. SINCRONIZACIÓN DE RED (Formato Binario)
-        // Creamos un buffer de 11 números enteros de 16 bits (22 bytes en total)
-        const buffer = new Int16Array(11);
+        // Incrementamos el contador en cada frame (60 veces por segundo)
+        this.networkTickCounter++;
 
-        // Guardamos las coordenadas redondeadas para no enviar decimales infinitos
-        buffer[0] = Math.round(this.gameState.p1.x);
-        buffer[1] = Math.round(this.gameState.p1.y);
+        // 👇 MAGIA: Solo enviamos datos 1 de cada 3 frames (20 veces por segundo) 👇
+        if (this.networkTickCounter % 3 === 0) {
+            const buffer = new Int16Array(11);
+            buffer[0] = Math.round(this.gameState.p1.x);
+            buffer[1] = Math.round(this.gameState.p1.y);
+            buffer[2] = Math.round(this.gameState.p2.x);
+            buffer[3] = Math.round(this.gameState.p2.y);
+            buffer[4] = Math.round(this.gameState.ball.x);
+            buffer[5] = Math.round(this.gameState.ball.y);
+            buffer[6] = Math.round(this.gameState.ball.vx);
+            buffer[7] = Math.round(this.gameState.ball.vy);
+            buffer[8] = Math.round((this.gameState.p1.kickAngle || 0) * 100);
+            buffer[9] = Math.round((this.gameState.p2.kickAngle || 0) * 100);
+            buffer[10] = Math.round((this.gameState.ball.angle || 0) * 100);
 
-        buffer[2] = Math.round(this.gameState.p2.x);
-        buffer[3] = Math.round(this.gameState.p2.y);
-
-        buffer[4] = Math.round(this.gameState.ball.x);
-        buffer[5] = Math.round(this.gameState.ball.y);
-        buffer[6] = Math.round(this.gameState.ball.vx);
-        buffer[7] = Math.round(this.gameState.ball.vy);
-
-        // Multiplicamos los ángulos por 100 para enviarlos como enteros (ej: 1.57 -> 157)
-        buffer[8] = Math.round((this.gameState.p1.kickAngle || 0) * 100);
-        buffer[9] = Math.round((this.gameState.p2.kickAngle || 0) * 100);
-        buffer[10] = Math.round((this.gameState.ball.angle || 0) * 100);
-
-        // buffer.buffer extrae los bytes crudos del Array para que Socket.io use formato binario nativo
-        this.io.to(this.roomId).emit('gameSync', buffer.buffer);
+            this.io.to(this.roomId).emit('gameSync', buffer.buffer);
+        }
     }
 
     // 2. Crea la función que envía los datos lentos

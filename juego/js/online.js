@@ -5,6 +5,7 @@ let onlineState = null;
 let myRole = null; // Saber si somos P1 o P2
 let bytesReceivedThisSecond = 0;
 window.pingInterval = null;
+let localBallTimeout = 0; // Tiempo restante de "posesión local" de la pelota
 
 let stateBuffer = [];
 const RENDER_DELAY = 100; // Dibujaremos al enemigo y la pelota 100ms en el pasado
@@ -343,22 +344,33 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
                 p2.kickAngle = onlineState.p2.kickAngle;
                 ball.angle = onlineState.ball.angle;
                 isFirstStateReceived = true;
-            }
-            else {
-                // --- DENTRO DE TU onlineLoop ---
-
-// 1. PREDICCIÓN LOCAL (Tú)
+            } else {
+                // 1. PREDICCIÓN LOCAL (Tú)
                 const myLocalPlayer = myRole === 'p1' ? p1 : p2;
                 const myOnlineState = myRole === 'p1' ? onlineState.p1 : onlineState.p2;
 
-// Corrección de tu jugador (Dead Reckoning + Server Correction)
+                // Restamos tiempo a nuestro temporizador de posesión
+                if (localBallTimeout > 0) localBallTimeout -= dt;
+
+                // Comprobamos si ESTAMOS TOCANDO la pelota para robarle la posesión al servidor
+                const dx = myLocalPlayer.x - ball.x;
+                const dy = myLocalPlayer.y - ball.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const hitDistance = (myLocalPlayer.w / 2) + ball.r + 15; // Margen de colisión
+
+                if (dist < hitDistance) {
+                    // ¡La tocaste! Eres dueño de la pelota visualmente durante 250ms
+                    localBallTimeout = 0.25;
+                }
+
+                // Corrección de tu jugador (Reconciliation)
                 const desyncX = Math.abs(myLocalPlayer.x - myOnlineState.x);
                 const desyncY = Math.abs(myLocalPlayer.y - myOnlineState.y);
 
                 if (desyncX > 40) myLocalPlayer.x = lerp(myLocalPlayer.x, myOnlineState.x, 0.15);
                 if (desyncY > 40) myLocalPlayer.y = lerp(myLocalPlayer.y, myOnlineState.y, 0.15);
 
-// 2. INTERPOLACIÓN (El Enemigo Y la Pelota)
+                // 2. INTERPOLACIÓN (El Enemigo Y la Pelota)
                 const enemyPlayer = myRole === 'p1' ? p2 : p1;
 
                 if (stateBuffer.length >= 2) {
@@ -382,15 +394,24 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
                         const pastEnemy = myRole === 'p1' ? pastState.p2 : pastState.p1;
                         const futureEnemy = myRole === 'p1' ? futureState.p2 : futureState.p1;
 
-                        // Interpolamos al enemigo
+                        // Interpolamos al enemigo SIEMPRE
                         enemyPlayer.x = lerp(pastEnemy.x, futureEnemy.x, factor);
                         enemyPlayer.y = lerp(pastEnemy.y, futureEnemy.y, factor);
                         enemyPlayer.kickAngle = lerp(pastEnemy.kickAngle, futureEnemy.kickAngle, factor);
 
-                        // ¡Y TAMBIÉN LA PELOTA! Ambos deben estar en la misma línea temporal.
-                        ball.x = lerp(pastState.ball.x, futureState.ball.x, factor);
-                        ball.y = lerp(pastState.ball.y, futureState.ball.y, factor);
-                        ball.angle = lerp(pastState.ball.angle, futureState.ball.angle, factor);
+                        // 👇 LA MAGIA DE LA POSESIÓN 👇
+                        // Si NO tenemos la posesión (localBallTimeout <= 0), la pelota obedece al pasado (servidor)
+                        if (localBallTimeout <= 0) {
+                            ball.x = lerp(pastState.ball.x, futureState.ball.x, factor);
+                            ball.y = lerp(pastState.ball.y, futureState.ball.y, factor);
+                            ball.angle = lerp(pastState.ball.angle, futureState.ball.angle, factor);
+
+                            // Sincronizamos las inercias locales para que coincidan con las del servidor
+                            ball.vx = futureState.ball.vx;
+                            ball.vy = futureState.ball.vy;
+                        }
+                        // Si localBallTimeout > 0, ignoramos este lerp.
+                        // La pelota se moverá libremente en el "presente" gracias al updateBall de abajo.
                     }
                 }
             }
@@ -430,14 +451,26 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
     }
 }
 
-// Vinculamos startOnlineGame al objeto global para que main.js pueda llamarlo
+/* ==========================================================================
+   INTEGRACIÓN DEL MÓDULO ONLINE CON EL MOTOR PRINCIPAL (Monkey Patching)
+   ========================================================================== */
+
+// 1. Exponemos la función startOnlineGame al objeto global window.Game.
+// De esta manera, el menú principal (main.js) puede arrancar el partido online
+// simplemente llamando a Game.startOnlineGame() al pulsar el botón de jugar, sin
+// importarle cómo funciona este archivo internamente.
 window.Game.startOnlineGame = startOnlineGame;
 
-// Sobrescribimos limpiamente stopBasicGame
+// 2. Sobrescribimos limpiamente la función de parada (stopBasicGame).
+// Guardamos la función original que limpia el canvas y apaga los sonidos en una "caja fuerte".
 const originalStop = window.Game.stopBasicGame;
+
+// Redefinimos stopBasicGame para que ahora sea "más inteligente":
 window.Game.stopBasicGame = function() {
+    // Primero, ejecuta todo lo que ya sabía hacer antes (borrar pantalla, pausar bucle...)
     originalStop();
-    window.isOnlineMode = false;
-    stopNetworkDebugInterval();
-    if (window.Main && window.Main.updateOptionsUI) window.Main.updateOptionsUI();
+
+    // Y después, añade nuestras tareas exclusivas de limpieza del online:
+    window.isOnlineMode = false; // Le avisa al input.js que deje de mandar teclas por socket
+    stopNetworkDebugInterval();  // Destruye el intervalo del ping para que no consuma memoria en el fondo
 };
