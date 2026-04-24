@@ -54,9 +54,10 @@ class Match {
         this.p1Socket.emit('initRole', 'p1');
         this.p2Socket.emit('initRole', 'p2');
         this.io.to(this.roomId).emit('matchReady');
-
+        console.log("hola43");
         // 5. Arrancar el motor de físicas de ESTA partida
         this.startLoop();
+
     }
 
     setupEvents() {
@@ -85,7 +86,8 @@ class Match {
             if (!this.gameState.isPaused) this.gameState.countdown = 3.0;
 
             // Enviamos el estado solo a los que están en la sala
-            this.io.to(this.roomId).emit('gameState', this.gameState);
+            // this.io.to(this.roomId).emit('gameState', this.gameState);
+            this.sendHUD();
         }
     }
 
@@ -117,15 +119,24 @@ class Match {
         this.gameState.serveState.active = true;
 
         this.io.to(this.roomId).emit('matchReset');
+        // Enviamos el HUD instantáneamente al empezar la ronda
+        this.sendHUD();
     }
 
     startLoop() {
+        // Bucle físico ultra rápido (60Hz) - Aquí enviamos el gameSyncBinario
         this.loopInterval = setInterval(() => {
             this.update();
         }, 1000 / 60);
+
+        // Bucle de HUD muy relajado (2Hz - Dos veces por segundo)
+        this.hudInterval = setInterval(() => {
+            this.sendHUD();
+        }, 500);
     }
 
     update() {
+        console.log("hola44");
         // 1. CÁLCULO DEL TIEMPO (Delta Time)
         // Calculamos el tiempo transcurrido desde la última actualización (dt).
         // Esto asegura que la velocidad del juego sea la misma independientemente del lag o los FPS.
@@ -166,7 +177,8 @@ class Match {
 
                     // Notificamos a los jugadores que el partido terminó y enviamos el estado final.
                     this.io.to(this.roomId).emit('matchEnd');
-                    this.io.to(this.roomId).emit('gameState', this.gameState);
+                    // this.io.to(this.roomId).emit('gameState', this.gameState);
+                    this.sendHUD();
 
                     // Esperamos 5 segundos antes de borrar la sala en el servidor para que vean sus resultados finales.
                     setTimeout(() => this.destroy(), 5000);
@@ -282,12 +294,55 @@ class Match {
         // 6. SINCRONIZACIÓN DE RED
         // Emitimos el estado del juego completo a todos los clientes conectados a esta sala ("room").
         // Esto asegura que la pantalla de los jugadores muestre exactamente lo mismo que el servidor.
-        this.io.to(this.roomId).emit('gameState', this.gameState);
+        // this.io.to(this.roomId).emit('gameState', this.gameState);
+
+        // 6. SINCRONIZACIÓN DE RED (Formato Binario)
+        // Creamos un buffer de 11 números enteros de 16 bits (22 bytes en total)
+        const buffer = new Int16Array(11);
+
+        // Guardamos las coordenadas redondeadas para no enviar decimales infinitos
+        buffer[0] = Math.round(this.gameState.p1.x);
+        buffer[1] = Math.round(this.gameState.p1.y);
+
+        buffer[2] = Math.round(this.gameState.p2.x);
+        buffer[3] = Math.round(this.gameState.p2.y);
+
+        buffer[4] = Math.round(this.gameState.ball.x);
+        buffer[5] = Math.round(this.gameState.ball.y);
+        buffer[6] = Math.round(this.gameState.ball.vx);
+        buffer[7] = Math.round(this.gameState.ball.vy);
+
+        // Multiplicamos los ángulos por 100 para enviarlos como enteros (ej: 1.57 -> 157)
+        buffer[8] = Math.round((this.gameState.p1.kickAngle || 0) * 100);
+        buffer[9] = Math.round((this.gameState.p2.kickAngle || 0) * 100);
+        buffer[10] = Math.round((this.gameState.ball.angle || 0) * 100);
+
+        console.log("hola45");
+
+        // buffer.buffer extrae los bytes crudos del Array para que Socket.io use formato binario nativo
+        this.io.to(this.roomId).emit('gameSync', buffer.buffer);
+    }
+
+    // 2. Crea la función que envía los datos lentos
+    sendHUD() {
+        if (this.gameState.isFinished) return;
+
+        // Mandamos un JSON muy pequeñito solo con lo visual
+        const hudData = {
+            t: Math.ceil(this.gameState.gameTime), // Redondeado hacia arriba para que se vea limpio (60, 59...)
+            sl: this.gameState.score.left,
+            sr: this.gameState.score.right,
+            c: this.gameState.countdown > 0 ? Math.ceil(this.gameState.countdown) : 0,
+            p: this.gameState.isPaused
+        };
+
+        this.io.to(this.roomId).emit('hudSync', hudData);
     }
 
     destroy() {
         // Matamos el bucle
         clearInterval(this.loopInterval);
+        clearInterval(this.hudInterval);
 
         // Quitamos los escuchadores para que no consuman RAM
         this.p1Socket.removeAllListeners('playerInput');

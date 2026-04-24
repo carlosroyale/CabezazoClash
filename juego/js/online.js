@@ -4,11 +4,100 @@ window.isOnlineMode = false;
 let onlineState = null;
 let myRole = null; // Saber si somos P1 o P2
 
+let stateBuffer = [];
+const RENDER_DELAY = 100; // Dibujaremos al enemigo y la pelota 100ms en el pasado
+
 if (typeof socket !== 'undefined') {
     // Escuchamos el estado del juego
-    socket.on('gameState', (state) => {
+    // socket.on('gameState', (state) => {
+    //     if (matchFinishedExternally) return;
+    //     onlineState = state; // Lo mantenemos para el marcador y el tiempo general
+    //
+    //     // Le añadimos la marca de tiempo local de cuando llegó el paquete
+    //     state.timestamp = performance.now();
+    //     stateBuffer.push(state);
+    //
+    //     // Limpieza de memoria: Solo guardamos los paquetes del último segundo
+    //     const unSegundoAtras = performance.now() - 1000;
+    //     stateBuffer = stateBuffer.filter(s => s.timestamp >= unSegundoAtras);
+    // });
+
+    // Escuchamos el estado físico del juego en formato binario
+    socket.on('gameSync', (arrayBuffer) => {
+        console.log("gameSync");
         if (matchFinishedExternally) return;
-        onlineState = state;
+
+        // Convertimos los bytes crudos de vuelta a números legibles
+        const data = new Int16Array(arrayBuffer);
+
+        // Añadimos la estructura completa por defecto
+        if (!onlineState) {
+            onlineState = {
+                p1: {}, p2: {}, ball: {},
+                score: {left: 0, right: 0}, // ¡Vital para que no crashee!
+                countdown: 3.0,
+                gameTime: 60,
+                isPaused: false
+            };
+        }
+
+        // Reconstruimos el estado leyendo el Array en el mismo orden exacto
+        onlineState.p1.x = data[0];
+        onlineState.p1.y = data[1];
+
+        onlineState.p2.x = data[2];
+        onlineState.p2.y = data[3];
+
+        onlineState.ball.x = data[4];
+        onlineState.ball.y = data[5];
+        onlineState.ball.vx = data[6];
+        onlineState.ball.vy = data[7];
+
+        // Dividimos entre 100 para recuperar los decimales de los ángulos
+        onlineState.p1.kickAngle = data[8] / 100;
+        onlineState.p2.kickAngle = data[9] / 100;
+        onlineState.ball.angle = data[10] / 100;
+
+        onlineState.timestamp = performance.now();
+
+        // Clonamos solo las coordenadas físicas para el buffer de interpolación
+        stateBuffer.push({
+            p1: { x: onlineState.p1.x, y: onlineState.p1.y, kickAngle: onlineState.p1.kickAngle },
+            p2: { x: onlineState.p2.x, y: onlineState.p2.y, kickAngle: onlineState.p2.kickAngle },
+            ball: {
+                x: onlineState.ball.x, y: onlineState.ball.y,
+                vx: onlineState.ball.vx, vy: onlineState.ball.vy, angle: onlineState.ball.angle
+            },
+            timestamp: onlineState.timestamp
+        });
+
+        // Limpieza de memoria (1 segundo)
+        const unSegundoAtras = performance.now() - 1000;
+        stateBuffer = stateBuffer.filter(s => s.timestamp >= unSegundoAtras);
+    });
+
+    // Escuchamos el nuevo evento de interfaz
+    socket.on('hudSync', (hudData) => {
+        console.log("gameSync");
+        if (matchFinishedExternally) return;
+
+        // Añadimos la estructura completa por defecto
+        if (!onlineState) {
+            onlineState = {
+                p1: {}, p2: {}, ball: {},
+                score: {left: 0, right: 0}, // ¡Vital para que no crashee!
+                countdown: 3.0,
+                gameTime: 60,
+                isPaused: false
+            };
+        }
+
+        // Actualizamos los datos para que tu onlineLoop los pinte en pantalla
+        onlineState.gameTime = hudData.t;
+        onlineState.score.left = hudData.sl;
+        onlineState.score.right = hudData.sr;
+        onlineState.countdown = hudData.c;
+        onlineState.isPaused = hudData.p;
     });
 
     socket.on('initRole', (role) => {
@@ -131,7 +220,10 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
         lastTime = time;
         dt = Math.min(dt, DT_MAX);
 
+        console.log("hola1");
+
         if (onlineState) {
+            console.log("hola2");
             const pauseMenu = document.getElementById("pause-menu");
             const screenOptions = document.getElementById("screen-options");
             const screenHowToPlay = document.getElementById("screen-how-to-play");
@@ -164,7 +256,9 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
             }
 
             const contador = document.getElementById("contador-pausa");
+            console.log("hola"+ onlineState.countdown);
             if (onlineState.countdown > 0) {
+                console.log("hola2");
                 isOnlineCountdownActive = true;
                 contador.classList.remove("hidden");
                 let currentInt = Math.ceil(onlineState.countdown);
@@ -191,86 +285,102 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
             updateTimer();
 
             if (!isFirstStateReceived || isOnlineCountdownActive || gamePaused) {
-                p1.x = onlineState.p1.x; p1.y = onlineState.p1.y; p1.vx = onlineState.p1.vx; p1.vy = onlineState.p1.vy;
-                p2.x = onlineState.p2.x; p2.y = onlineState.p2.y; p2.vx = onlineState.p2.vx; p2.vy = onlineState.p2.vy;
-                ball.x = onlineState.ball.x; ball.y = onlineState.ball.y; ball.vx = onlineState.ball.vx; ball.vy = onlineState.ball.vy;
-                p1.kickAngle = onlineState.p1.kickAngle; p2.kickAngle = onlineState.p2.kickAngle; ball.angle = onlineState.ball.angle;
+                p1.x = onlineState.p1.x;
+                p1.y = onlineState.p1.y;
+                p1.vx = onlineState.p1.vx;
+                p1.vy = onlineState.p1.vy;
+                p2.x = onlineState.p2.x;
+                p2.y = onlineState.p2.y;
+                p2.vx = onlineState.p2.vx;
+                p2.vy = onlineState.p2.vy;
+                ball.x = onlineState.ball.x;
+                ball.y = onlineState.ball.y;
+                ball.vx = onlineState.ball.vx;
+                ball.vy = onlineState.ball.vy;
+                p1.kickAngle = onlineState.p1.kickAngle;
+                p2.kickAngle = onlineState.p2.kickAngle;
+                ball.angle = onlineState.ball.angle;
                 isFirstStateReceived = true;
             }
             else {
-                // --- NUEVO SISTEMA DE PREDICCIÓN SUAVIZADA ---
-                const ENEMY_CORRECTION = 0.25; // El enemigo obedece al servidor muy rápido
-                const LOCAL_CORRECTION = 0.03; // Tu jugador confía casi al 100% en tu teclado local
-                const BALL_CORRECTION = 0.15;  // La pelota es un punto intermedio
+                // --- DENTRO DE TU onlineLoop ---
 
-                // Asignamos la fuerza de corrección dependiendo de quién somos nosotros
-                const c1 = (myRole === 'p1') ? LOCAL_CORRECTION : ENEMY_CORRECTION;
-                const c2 = (myRole === 'p2') ? LOCAL_CORRECTION : ENEMY_CORRECTION;
+// 1. PREDICCIÓN LOCAL (Tú)
+                const myLocalPlayer = myRole === 'p1' ? p1 : p2;
+                const myOnlineState = myRole === 'p1' ? onlineState.p1 : onlineState.p2;
 
-                // Corregimos Jugador 1
-                p1.x = lerp(p1.x, onlineState.p1.x, c1);
-                p1.y = lerp(p1.y, onlineState.p1.y, c1);
-                p1.vx = lerp(p1.vx, onlineState.p1.vx, c1);
-                p1.vy = lerp(p1.vy, onlineState.p1.vy, c1);
-                p1.kickAngle = lerp(p1.kickAngle, onlineState.p1.kickAngle, c1);
+// Corrección de tu jugador (Dead Reckoning + Server Correction)
+                const desyncX = Math.abs(myLocalPlayer.x - myOnlineState.x);
+                const desyncY = Math.abs(myLocalPlayer.y - myOnlineState.y);
 
-                // Corregimos Jugador 2
-                p2.x = lerp(p2.x, onlineState.p2.x, c2);
-                p2.y = lerp(p2.y, onlineState.p2.y, c2);
-                p2.vx = lerp(p2.vx, onlineState.p2.vx, c2);
-                p2.vy = lerp(p2.vy, onlineState.p2.vy, c2);
-                p2.kickAngle = lerp(p2.kickAngle, onlineState.p2.kickAngle, c2);
+                if (desyncX > 40) myLocalPlayer.x = lerp(myLocalPlayer.x, myOnlineState.x, 0.15);
+                if (desyncY > 40) myLocalPlayer.y = lerp(myLocalPlayer.y, myOnlineState.y, 0.15);
 
-                // Corregimos la Pelota
-                ball.x = lerp(ball.x, onlineState.ball.x, BALL_CORRECTION);
-                ball.y = lerp(ball.y, onlineState.ball.y, BALL_CORRECTION);
-                ball.vx = lerp(ball.vx, onlineState.ball.vx, BALL_CORRECTION);
-                ball.vy = lerp(ball.vy, onlineState.ball.vy, BALL_CORRECTION);
-                ball.angle = lerp(ball.angle, onlineState.ball.angle, BALL_CORRECTION);
+// 2. INTERPOLACIÓN (El Enemigo Y la Pelota)
+                const enemyPlayer = myRole === 'p1' ? p2 : p1;
+
+                if (stateBuffer.length >= 2) {
+                    const renderTime = performance.now() - RENDER_DELAY;
+                    let pastState = stateBuffer[0];
+                    let futureState = stateBuffer[1];
+
+                    for (let i = 1; i < stateBuffer.length; i++) {
+                        if (stateBuffer[i].timestamp > renderTime) {
+                            futureState = stateBuffer[i];
+                            pastState = stateBuffer[i - 1];
+                            break;
+                        }
+                    }
+
+                    if (pastState.timestamp <= renderTime && futureState.timestamp >= renderTime) {
+                        const totalTimeSpan = futureState.timestamp - pastState.timestamp;
+                        const timePassed = renderTime - pastState.timestamp;
+                        const factor = totalTimeSpan > 0 ? timePassed / totalTimeSpan : 0;
+
+                        const pastEnemy = myRole === 'p1' ? pastState.p2 : pastState.p1;
+                        const futureEnemy = myRole === 'p1' ? futureState.p2 : futureState.p1;
+
+                        // Interpolamos al enemigo
+                        enemyPlayer.x = lerp(pastEnemy.x, futureEnemy.x, factor);
+                        enemyPlayer.y = lerp(pastEnemy.y, futureEnemy.y, factor);
+                        enemyPlayer.kickAngle = lerp(pastEnemy.kickAngle, futureEnemy.kickAngle, factor);
+
+                        // ¡Y TAMBIÉN LA PELOTA! Ambos deben estar en la misma línea temporal.
+                        ball.x = lerp(pastState.ball.x, futureState.ball.x, factor);
+                        ball.y = lerp(pastState.ball.y, futureState.ball.y, factor);
+                        ball.angle = lerp(pastState.ball.angle, futureState.ball.angle, factor);
+                    }
+                }
             }
-
-            p1.isRightFacing = onlineState.p1.isRightFacing;
-            p2.isRightFacing = onlineState.p2.isRightFacing;
         }
 
         // SIMULACIÓN LOCAL MEJORADA (Dead Reckoning)
         if (!isOnlineCountdownActive && !gamePaused && !matchFinishedExternally) {
             let myPlayer = myRole === 'p1' ? p1 : p2;
-            let enemyPlayer = myRole === 'p1' ? p2 : p1;
 
-            // 1. Control local (Solo nosotros)
+            // 1. CONTROL Y MOVIMIENTO LOCAL (Solo nosotros)
             controlPlayer(myPlayer, dt, "KeyA", "KeyD", "KeyW", "Space", keys);
-
-            // 2. FÍSICAS CONTINUAS PARA AMBOS
             updatePlayer(myPlayer, dt, W, FLOOR_Y);
-
-            // ¡Vuelve el update para el enemigo! Al no tener controlPlayer,
-            // se deslizará suavemente usando la última velocidad (vx/vy) que mandó el servidor.
-            updatePlayer(enemyPlayer, dt, W, FLOOR_Y);
-
-            // Permitimos que nuestros cuerpos choquen entre sí
-            collidePlayers(p1, p2);
-
             collidePlayerGoals(myPlayer, leftGoal, rightGoal);
-            collidePlayerGoals(enemyPlayer, leftGoal, rightGoal);
 
-            // 3. Físicas de la pelota
+            // ❌ ELIMINADO: updatePlayer(enemyPlayer) - Se mueve solo con el lerp() de arriba.
+            // ❌ ELIMINADO: collidePlayers(p1, p2) - Si el enemigo está en el pasado, chocar localmente rompe el juego.
+            // ❌ ELIMINADO: collidePlayerGoals(enemyPlayer) - El servidor ya se encarga de que no atraviese la red.
+
+            // 2. FÍSICAS DE LA PELOTA (Predicción local básica)
             updateBall(ball, dt, W, FLOOR_Y);
 
-            window.currentPlayers = [p1, p2];
-            const playersBackToBack = arePlayersBackToBack(p1, p2);
-            if (playersBackToBack) resolveBackToBackBallSqueeze(ball, p1, p2);
-
-            // 4. ANULACIÓN SENSORIAL
-            // Solo calculamos el choque entre NOSOTROS y la pelota.
-            // Borramos por completo el collidePlayerBall(enemyPlayer, ball).
-            // Si el enemigo la toca, será el Lerp Dinámico quien mueva la pelota visualmente.
+            // Solo permitimos que tú empujes o golpees la pelota localmente.
+            // El toque del enemigo lo recibiremos del servidor.
             collidePlayerBall(myPlayer, ball);
 
-            if (playersBackToBack) resolveBackToBackBallSqueeze(ball, p1, p2);
-            else resolveBallSqueezeUp(ball, p1, p2);
-
+            // Rebotes contra la portería
             checkGoalCollisions(ball, leftGoal, rightGoal);
+
+            // ❌ ELIMINADO: Funciones resolveBackToBackBallSqueeze y resolveBallSqueezeUp.
+            // Al no tener la posición exacta y en tiempo real del enemigo en este frame,
+            // intentar calcular si la pelota está aplastada entre ambos generará rebotes fantasma.
+            // Confiaremos en el cálculo 'autoritativo' del servidor para esos atascos complejos.
         }
 
         dibujar(gameCtx, W, H, p1, p2, ball, leftGoal, rightGoal);

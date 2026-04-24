@@ -7,6 +7,9 @@ const Match = require('./Match.js'); // Importamos la clase de la partida
 
 const app = express();
 const server = http.createServer(app);
+server.on('connection', (socket) => {
+    socket.setNoDelay(true); // Aniquilamos el Algoritmo de Nagle
+});
 const io = new Server(server, {
     cors: { origin: "*", methods: ["GET", "POST"], transports: ['websocket', 'polling'], credentials: true },
     allowEIO3: true
