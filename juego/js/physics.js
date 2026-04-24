@@ -499,16 +499,28 @@ function resolveBodyBody(p1, p2, b1, b2) {
         //  Sonido de choque de cuerpos (con cooldown y velocidad mínima)
         playPlayerCollideSound(p1,p2);
 
-        if (overlapX < overlapY) {
-            const dir = (b1.x + b1.w/2) < (b2.x + b2.w/2) ? -1 : 1;
+        const b1CenterY = b1.y + b1.h / 2;
+        const b2CenterY = b2.y + b2.h / 2;
+        const prevP1Y = p1.prevY !== undefined ? p1.prevY : p1.y;
+        const prevP2Y = p2.prevY !== undefined ? p2.prevY : p2.y;
+        const p1WasAbove = prevP1Y < prevP2Y;
+        const verticalGap = Math.abs(b1CenterY - b2CenterY);
+        const stackedEnough = verticalGap > Math.min(b1.h, b2.h) * 0.28;
+        const fallingOntoRival = p1WasAbove ? p1.vy >= 0 : p2.vy >= 0;
+        const preferVerticalResolution = overlapY <= overlapX && stackedEnough && fallingOntoRival;
+
+        if (!preferVerticalResolution) {
+            const prevP1X = p1.prevX !== undefined ? p1.prevX : p1.x;
+            const prevP2X = p2.prevX !== undefined ? p2.prevX : p2.x;
+            const p1WasLeft = prevP1X === prevP2X ? (b1.x + b1.w / 2) < (b2.x + b2.w / 2) : prevP1X < prevP2X;
+            const dir = p1WasLeft ? -1 : 1;
             p1.x += dir * overlapX / 2;
             p2.x -= dir * overlapX / 2;
             p1.vx = 0; p2.vx = 0;
         }
         else {
-            const dir = (b1.y + b1.h/2) < (b2.y + b2.h/2) ? -1 : 1;
             // Solo apoyarse si está cayendo
-            if (dir < 0) {
+            if (p1WasAbove) {
                 p1.y -= overlapY;
                 if (p1.vy >= 0) { p1.vy = 0; p1.onGround = true; }
             } else {

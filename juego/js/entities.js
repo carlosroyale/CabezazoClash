@@ -5,6 +5,8 @@ function makePlayer(x, y, label, isRightFacing) {
         label,
         x,
         y,
+        prevX: x,
+        prevY: y,
         w: 56,
         h: 90,
         vx: 0,
@@ -24,6 +26,9 @@ function makePlayer(x, y, label, isRightFacing) {
 }
 
 function updatePlayer(p, dt, W, FLOOR_Y) {
+    p.prevX = p.x;
+    p.prevY = p.y;
+
     p.vy += GRAV * dt;
     p.x += p.vx * dt;
     p.y += p.vy * dt;
