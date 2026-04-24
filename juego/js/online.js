@@ -7,9 +7,17 @@ let bytesReceivedThisSecond = 0;
 window.pingInterval = null;
 let localBallTimeout = 0; // Tiempo restante de "posesión local" de la pelota
 let lastMeasuredLatency = null;
+let ballAuthorityMode = 'remote';
+let ballReconcileTime = 0;
+let latestServerBallState = null;
 
 let stateBuffer = [];
 const RENDER_DELAY = 100; // Dibujaremos al enemigo y la pelota 100ms en el pasado
+const LOCAL_BALL_TIMEOUT = 0.12;
+const BALL_RECONCILE_DURATION = 0.12;
+const BALL_HARD_SNAP_DISTANCE = 120;
+const BALL_SOFT_CORRECTION = 0.12;
+const BALL_VELOCITY_CORRECTION = 0.08;
 
 function updatePingUI(latency) {
     const pingEl = document.getElementById('debug-ping');
@@ -32,6 +40,10 @@ function stopNetworkDebugInterval() {
     bytesReceivedThisSecond = 0;
 
     lastMeasuredLatency = null;
+    localBallTimeout = 0;
+    ballAuthorityMode = 'remote';
+    ballReconcileTime = 0;
+    latestServerBallState = null;
     updatePingUI(null);
 
     const bytesEl = document.getElementById('debug-bytes');
@@ -259,6 +271,9 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
     p1 = makePlayer(180, FLOOR_Y - 90, "P1", true);
     p2 = makePlayer(W - 180, FLOOR_Y - 90, "P2", false);
     ball = {r: 18, x: W / 2, y: FLOOR_Y - 200, vx: 0, vy: 0, angle: 0};
+    ballAuthorityMode = 'remote';
+    ballReconcileTime = 0;
+    latestServerBallState = null;
 
     let isFirstStateReceived = false;
     lastTime = performance.now();
@@ -347,6 +362,16 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
                 p1.kickAngle = onlineState.p1.kickAngle;
                 p2.kickAngle = onlineState.p2.kickAngle;
                 ball.angle = onlineState.ball.angle;
+                latestServerBallState = {
+                    x: onlineState.ball.x,
+                    y: onlineState.ball.y,
+                    vx: onlineState.ball.vx,
+                    vy: onlineState.ball.vy,
+                    angle: onlineState.ball.angle
+                };
+                ballAuthorityMode = 'remote';
+                ballReconcileTime = 0;
+                localBallTimeout = 0;
                 isFirstStateReceived = true;
             } else {
                 // 1. PREDICCIÓN LOCAL (Tú)
@@ -363,8 +388,10 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
                 const hitDistance = (myLocalPlayer.w / 2) + ball.r + 15; // Margen de colisión
 
                 if (dist < hitDistance) {
-                    // ¡La tocaste! Eres dueño de la pelota visualmente durante 250ms
-                    localBallTimeout = 0.25;
+                    // ¡La tocaste! Eres dueño de la pelota visualmente durante una ventana breve.
+                    localBallTimeout = LOCAL_BALL_TIMEOUT;
+                    ballAuthorityMode = 'local';
+                    ballReconcileTime = 0;
                 }
 
                 // Corrección de tu jugador (Reconciliation)
@@ -404,18 +431,26 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
                         enemyPlayer.kickAngle = lerp(pastEnemy.kickAngle, futureEnemy.kickAngle, factor);
 
                         // 👇 LA MAGIA DE LA POSESIÓN 👇
-                        // Si NO tenemos la posesión (localBallTimeout <= 0), la pelota obedece al pasado (servidor)
-                        if (localBallTimeout <= 0) {
-                            ball.x = lerp(pastState.ball.x, futureState.ball.x, factor);
-                            ball.y = lerp(pastState.ball.y, futureState.ball.y, factor);
-                            ball.angle = lerp(pastState.ball.angle, futureState.ball.angle, factor);
+                        latestServerBallState = {
+                            x: lerp(pastState.ball.x, futureState.ball.x, factor),
+                            y: lerp(pastState.ball.y, futureState.ball.y, factor),
+                            vx: lerp(pastState.ball.vx, futureState.ball.vx, factor),
+                            vy: lerp(pastState.ball.vy, futureState.ball.vy, factor),
+                            angle: lerp(pastState.ball.angle, futureState.ball.angle, factor)
+                        };
 
-                            // Sincronizamos las inercias locales para que coincidan con las del servidor
-                            ball.vx = futureState.ball.vx;
-                            ball.vy = futureState.ball.vy;
+                        if (localBallTimeout <= 0 && ballAuthorityMode === 'local') {
+                            ballAuthorityMode = 'reconciling';
+                            ballReconcileTime = BALL_RECONCILE_DURATION;
                         }
-                        // Si localBallTimeout > 0, ignoramos este lerp.
-                        // La pelota se moverá libremente en el "presente" gracias al updateBall de abajo.
+
+                        if (ballAuthorityMode === 'remote') {
+                            ball.x = latestServerBallState.x;
+                            ball.y = latestServerBallState.y;
+                            ball.angle = latestServerBallState.angle;
+                            ball.vx = latestServerBallState.vx;
+                            ball.vy = latestServerBallState.vy;
+                        }
                     }
                 }
             }
@@ -434,15 +469,53 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
             // ❌ ELIMINADO: collidePlayers(p1, p2) - Si el enemigo está en el pasado, chocar localmente rompe el juego.
             // ❌ ELIMINADO: collidePlayerGoals(enemyPlayer) - El servidor ya se encarga de que no atraviese la red.
 
-            // 2. FÍSICAS DE LA PELOTA (Predicción local básica)
-            updateBall(ball, dt, W, FLOOR_Y);
+            if (ballAuthorityMode !== 'remote') {
+                // 2. FÍSICAS DE LA PELOTA (Predicción local básica)
+                updateBall(ball, dt, W, FLOOR_Y);
 
-            // Solo permitimos que tú empujes o golpees la pelota localmente.
-            // El toque del enemigo lo recibiremos del servidor.
-            collidePlayerBall(myPlayer, ball);
+                // Solo permitimos que tú empujes o golpees la pelota localmente.
+                // El toque del enemigo lo recibiremos del servidor.
+                collidePlayerBall(myPlayer, ball);
 
-            // Rebotes contra la portería
-            checkGoalCollisions(ball, leftGoal, rightGoal);
+                // Rebotes contra la portería
+                checkGoalCollisions(ball, leftGoal, rightGoal);
+            }
+
+            if (ballAuthorityMode === 'reconciling' && latestServerBallState) {
+                const errorX = latestServerBallState.x - ball.x;
+                const errorY = latestServerBallState.y - ball.y;
+                const errorDist = Math.hypot(errorX, errorY);
+
+                if (errorDist > BALL_HARD_SNAP_DISTANCE) {
+                    ball.x = latestServerBallState.x;
+                    ball.y = latestServerBallState.y;
+                    ball.vx = latestServerBallState.vx;
+                    ball.vy = latestServerBallState.vy;
+                    ball.angle = latestServerBallState.angle;
+                    ballAuthorityMode = 'remote';
+                    ballReconcileTime = 0;
+                } else {
+                    ball.x += errorX * BALL_SOFT_CORRECTION;
+                    ball.y += errorY * BALL_SOFT_CORRECTION;
+                    ball.vx += (latestServerBallState.vx - ball.vx) * BALL_VELOCITY_CORRECTION;
+                    ball.vy += (latestServerBallState.vy - ball.vy) * BALL_VELOCITY_CORRECTION;
+                    ball.angle = lerp(ball.angle, latestServerBallState.angle, BALL_SOFT_CORRECTION);
+
+                    ballReconcileTime -= dt;
+                    if (ballReconcileTime <= 0) {
+                        ballAuthorityMode = 'remote';
+                    }
+                }
+            } else if (ballAuthorityMode === 'remote' && latestServerBallState) {
+                ball.x = latestServerBallState.x;
+                ball.y = latestServerBallState.y;
+                ball.vx = latestServerBallState.vx;
+                ball.vy = latestServerBallState.vy;
+                ball.angle = latestServerBallState.angle;
+            } else if (ballAuthorityMode === 'local' && localBallTimeout <= 0 && latestServerBallState) {
+                ballAuthorityMode = 'reconciling';
+                ballReconcileTime = BALL_RECONCILE_DURATION;
+            }
 
             // ❌ ELIMINADO: Funciones resolveBackToBackBallSqueeze y resolveBallSqueezeUp.
             // Al no tener la posición exacta y en tiempo real del enemigo en este frame,

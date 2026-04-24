@@ -45,7 +45,6 @@ class Match {
 
         this.loopInterval = null;
         this.lastTime = Date.now();
-        this.networkTickCounter = 0;
 
         // 3. Configurar listeners de red para ESTOS dos jugadores
         this.setupEvents();
@@ -296,26 +295,20 @@ class Match {
         }
 
         // 6. SINCRONIZACIÓN DE RED (Formato Binario)
-        // Incrementamos el contador en cada frame (60 veces por segundo)
-        this.networkTickCounter++;
+        const buffer = new Int16Array(11);
+        buffer[0] = Math.round(this.gameState.p1.x);
+        buffer[1] = Math.round(this.gameState.p1.y);
+        buffer[2] = Math.round(this.gameState.p2.x);
+        buffer[3] = Math.round(this.gameState.p2.y);
+        buffer[4] = Math.round(this.gameState.ball.x);
+        buffer[5] = Math.round(this.gameState.ball.y);
+        buffer[6] = Math.round(this.gameState.ball.vx);
+        buffer[7] = Math.round(this.gameState.ball.vy);
+        buffer[8] = Math.round((this.gameState.p1.kickAngle || 0) * 100);
+        buffer[9] = Math.round((this.gameState.p2.kickAngle || 0) * 100);
+        buffer[10] = Math.round((this.gameState.ball.angle || 0) * 100);
 
-        // 👇 MAGIA: Solo enviamos datos 1 de cada 2 frames (30 veces por segundo) 👇
-        if (this.networkTickCounter % 2 === 0) {
-            const buffer = new Int16Array(11);
-            buffer[0] = Math.round(this.gameState.p1.x);
-            buffer[1] = Math.round(this.gameState.p1.y);
-            buffer[2] = Math.round(this.gameState.p2.x);
-            buffer[3] = Math.round(this.gameState.p2.y);
-            buffer[4] = Math.round(this.gameState.ball.x);
-            buffer[5] = Math.round(this.gameState.ball.y);
-            buffer[6] = Math.round(this.gameState.ball.vx);
-            buffer[7] = Math.round(this.gameState.ball.vy);
-            buffer[8] = Math.round((this.gameState.p1.kickAngle || 0) * 100);
-            buffer[9] = Math.round((this.gameState.p2.kickAngle || 0) * 100);
-            buffer[10] = Math.round((this.gameState.ball.angle || 0) * 100);
-
-            this.io.to(this.roomId).emit('gameSync', buffer.buffer);
-        }
+        this.io.to(this.roomId).emit('gameSync', buffer.buffer);
     }
 
     // 2. Crea la función que envía los datos lentos
