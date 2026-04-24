@@ -6,9 +6,22 @@ let myRole = null; // Saber si somos P1 o P2
 let bytesReceivedThisSecond = 0;
 window.pingInterval = null;
 let localBallTimeout = 0; // Tiempo restante de "posesión local" de la pelota
+let lastMeasuredLatency = null;
 
 let stateBuffer = [];
 const RENDER_DELAY = 100; // Dibujaremos al enemigo y la pelota 100ms en el pasado
+
+function updatePingUI(latency) {
+    const pingEl = document.getElementById('debug-ping');
+    if (pingEl) pingEl.textContent = typeof latency === 'number' ? Math.round(latency) : '-';
+
+    const badWifiIcon = document.getElementById('bad-connection-warning');
+    if (typeof latency === 'number' && latency > 150) {
+        if (badWifiIcon) badWifiIcon.classList.remove('hidden');
+    } else {
+        if (badWifiIcon) badWifiIcon.classList.add('hidden');
+    }
+}
 
 function stopNetworkDebugInterval() {
     if (window.pingInterval) {
@@ -17,6 +30,9 @@ function stopNetworkDebugInterval() {
     }
 
     bytesReceivedThisSecond = 0;
+
+    lastMeasuredLatency = null;
+    updatePingUI(null);
 
     const bytesEl = document.getElementById('debug-bytes');
     if (bytesEl) bytesEl.textContent = '0';
@@ -31,7 +47,12 @@ function startNetworkDebugInterval() {
             return;
         }
 
-        socket.emit('pingLatency', Date.now());
+        const sentAt = performance.now();
+        socket.timeout(1000).emit('pingLatency', sentAt, (err, echoedAt) => {
+            if (err || typeof echoedAt !== 'number') return;
+            lastMeasuredLatency = performance.now() - echoedAt;
+            updatePingUI(lastMeasuredLatency);
+        });
 
         const bytesEl = document.getElementById('debug-bytes');
         if (bytesEl) bytesEl.textContent = bytesReceivedThisSecond;
@@ -162,23 +183,6 @@ if (typeof socket !== 'undefined') {
         window.playSound('sfx-whistle');
         if (gameTimerEl) gameTimerEl.textContent = "0";
         endGame();
-    });
-
-    // Actualizamos la lectura del ping que llega del servidor
-    socket.on('pongLatency', (clientTimestamp) => {
-        const latency = Date.now() - clientTimestamp;
-
-        // Pintamos el ping en el panel de debug
-        const pingEl = document.getElementById('debug-ping');
-        if (pingEl) pingEl.textContent = latency;
-
-        // Mantenemos tu lógica del icono wifi malo
-        const badWifiIcon = document.getElementById('bad-connection-warning');
-        if (latency > 200) {
-            if (badWifiIcon) badWifiIcon.classList.remove('hidden');
-        } else {
-            if (badWifiIcon) badWifiIcon.classList.add('hidden');
-        }
     });
 
     socket.on('playerLeft', () => {

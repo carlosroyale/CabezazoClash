@@ -68,7 +68,9 @@ class Match {
             else this.inputs.p1.delete(data.key);
         });
         this.p1Socket.on('requestTogglePause', () => this.togglePause());
-        this.p1Socket.on('pingLatency', (timestamp) => this.p1Socket.emit('pongLatency', timestamp));
+        this.p1Socket.on('pingLatency', (timestamp, ack) => {
+            if (typeof ack === 'function') ack(timestamp);
+        });
         this.p1Socket.on('disconnect', () => this.handleDisconnect('p1'));
 
         // --- JUGADOR 2 ---
@@ -77,7 +79,9 @@ class Match {
             else this.inputs.p2.delete(data.key);
         });
         this.p2Socket.on('requestTogglePause', () => this.togglePause());
-        this.p2Socket.on('pingLatency', (timestamp) => this.p2Socket.emit('pongLatency', timestamp));
+        this.p2Socket.on('pingLatency', (timestamp, ack) => {
+            if (typeof ack === 'function') ack(timestamp);
+        });
         this.p2Socket.on('disconnect', () => this.handleDisconnect('p2'));
     }
 
@@ -295,8 +299,8 @@ class Match {
         // Incrementamos el contador en cada frame (60 veces por segundo)
         this.networkTickCounter++;
 
-        // 👇 MAGIA: Solo enviamos datos 1 de cada 3 frames (20 veces por segundo) 👇
-        if (this.networkTickCounter % 3 === 0) {
+        // 👇 MAGIA: Solo enviamos datos 1 de cada 2 frames (30 veces por segundo) 👇
+        if (this.networkTickCounter % 2 === 0) {
             const buffer = new Int16Array(11);
             buffer[0] = Math.round(this.gameState.p1.x);
             buffer[1] = Math.round(this.gameState.p1.y);
