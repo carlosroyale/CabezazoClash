@@ -3,9 +3,41 @@
 window.isOnlineMode = false;
 let onlineState = null;
 let myRole = null; // Saber si somos P1 o P2
+let bytesReceivedThisSecond = 0;
+window.pingInterval = null;
 
 let stateBuffer = [];
 const RENDER_DELAY = 100; // Dibujaremos al enemigo y la pelota 100ms en el pasado
+
+function stopNetworkDebugInterval() {
+    if (window.pingInterval) {
+        clearInterval(window.pingInterval);
+        window.pingInterval = null;
+    }
+
+    bytesReceivedThisSecond = 0;
+
+    const bytesEl = document.getElementById('debug-bytes');
+    if (bytesEl) bytesEl.textContent = '0';
+}
+
+function startNetworkDebugInterval() {
+    stopNetworkDebugInterval();
+
+    window.pingInterval = setInterval(() => {
+        if (!window.isOnlineMode || typeof socket === 'undefined') {
+            stopNetworkDebugInterval();
+            return;
+        }
+
+        socket.emit('pingLatency', Date.now());
+
+        const bytesEl = document.getElementById('debug-bytes');
+        if (bytesEl) bytesEl.textContent = bytesReceivedThisSecond;
+
+        bytesReceivedThisSecond = 0;
+    }, 1000);
+}
 
 if (typeof socket !== 'undefined') {
     // Escuchamos el estado del juego
@@ -24,8 +56,10 @@ if (typeof socket !== 'undefined') {
 
     // Escuchamos el estado físico del juego en formato binario
     socket.on('gameSync', (arrayBuffer) => {
-        console.log("gameSync");
         if (matchFinishedExternally) return;
+
+        // Sumamos el peso real de los bytes que acaban de llegar
+        bytesReceivedThisSecond += arrayBuffer.byteLength;
 
         // Convertimos los bytes crudos de vuelta a números legibles
         const data = new Int16Array(arrayBuffer);
@@ -78,8 +112,11 @@ if (typeof socket !== 'undefined') {
 
     // Escuchamos el nuevo evento de interfaz
     socket.on('hudSync', (hudData) => {
-        console.log("gameSync");
         if (matchFinishedExternally) return;
+
+        // Calculamos cuánto pesa este JSON al enviarse por la red y lo sumamos
+        const pesoJSON = new TextEncoder().encode(JSON.stringify(hudData)).length;
+        bytesReceivedThisSecond += pesoJSON;
 
         // Añadimos la estructura completa por defecto
         if (!onlineState) {
@@ -126,8 +163,15 @@ if (typeof socket !== 'undefined') {
         endGame();
     });
 
+    // Actualizamos la lectura del ping que llega del servidor
     socket.on('pongLatency', (clientTimestamp) => {
         const latency = Date.now() - clientTimestamp;
+
+        // Pintamos el ping en el panel de debug
+        const pingEl = document.getElementById('debug-ping');
+        if (pingEl) pingEl.textContent = latency;
+
+        // Mantenemos tu lógica del icono wifi malo
         const badWifiIcon = document.getElementById('bad-connection-warning');
         if (latency > 200) {
             if (badWifiIcon) badWifiIcon.classList.remove('hidden');
@@ -160,6 +204,9 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
     window.isOnlineMode = true;
     gameRunning = true;
     matchFinishedExternally = false;
+    bytesReceivedThisSecond = 0;
+    startNetworkDebugInterval();
+    if (window.Main && window.Main.updateOptionsUI) window.Main.updateOptionsUI();
 
     gameCtx = ctxParam;
     gameScoreEl = scoreElParam;
@@ -220,10 +267,7 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
         lastTime = time;
         dt = Math.min(dt, DT_MAX);
 
-        console.log("hola1");
-
         if (onlineState) {
-            console.log("hola2");
             const pauseMenu = document.getElementById("pause-menu");
             const screenOptions = document.getElementById("screen-options");
             const screenHowToPlay = document.getElementById("screen-how-to-play");
@@ -256,9 +300,7 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
             }
 
             const contador = document.getElementById("contador-pausa");
-            console.log("hola"+ onlineState.countdown);
             if (onlineState.countdown > 0) {
-                console.log("hola2");
                 isOnlineCountdownActive = true;
                 contador.classList.remove("hidden");
                 let currentInt = Math.ceil(onlineState.countdown);
@@ -287,12 +329,12 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
             if (!isFirstStateReceived || isOnlineCountdownActive || gamePaused) {
                 p1.x = onlineState.p1.x;
                 p1.y = onlineState.p1.y;
-                p1.vx = onlineState.p1.vx;
-                p1.vy = onlineState.p1.vy;
+                p1.vx = onlineState.p1.vx || 0;
+                p1.vy = onlineState.p1.vy || 0;
                 p2.x = onlineState.p2.x;
                 p2.y = onlineState.p2.y;
-                p2.vx = onlineState.p2.vx;
-                p2.vy = onlineState.p2.vy;
+                p2.vx = onlineState.p2.vx || 0;
+                p2.vy = onlineState.p2.vy || 0;
                 ball.x = onlineState.ball.x;
                 ball.y = onlineState.ball.y;
                 ball.vx = onlineState.ball.vx;
@@ -386,11 +428,6 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
         dibujar(gameCtx, W, H, p1, p2, ball, leftGoal, rightGoal);
         animationId = requestAnimationFrame(onlineLoop);
     }
-
-    window.pingInterval = setInterval(() => {
-        if (window.isOnlineMode && typeof socket !== 'undefined') socket.emit('pingLatency', Date.now());
-        else clearInterval(window.pingInterval);
-    }, 1000);
 }
 
 // Vinculamos startOnlineGame al objeto global para que main.js pueda llamarlo
@@ -401,4 +438,6 @@ const originalStop = window.Game.stopBasicGame;
 window.Game.stopBasicGame = function() {
     originalStop();
     window.isOnlineMode = false;
+    stopNetworkDebugInterval();
+    if (window.Main && window.Main.updateOptionsUI) window.Main.updateOptionsUI();
 };

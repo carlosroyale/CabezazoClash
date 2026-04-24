@@ -137,6 +137,14 @@ $asset = static function (string $path) use ($basePath): string {
                             <span class="switch-state"></span>
                         </label>
                     </div>
+
+                    <div class="control-row inline">
+                        <span class="control-label">Mostrar Ping</span>
+                        <label class="rocker-switch">
+                            <input type="checkbox" id="switch-ping">
+                            <span class="switch-state"></span>
+                        </label>
+                    </div>
                 </div>
             </div>
             <div style="width: 100%; display: flex; flex-direction: column; align-items: center;">
@@ -154,6 +162,11 @@ $asset = static function (string $path) use ($basePath): string {
     </section>
 
     <div id="contador-fps" class="hidden">FPS: 0</div>
+
+    <div id="debug-panel" class="hidden" style="position: absolute; top: 50px; left: 10px; background: rgba(0,0,0,0.7); color: lime; padding: 10px; font-family: monospace; z-index: 9999; font-size: 14px;">
+        Ping: <span id="debug-ping">0</span> ms<br>
+        Descarga: <span id="debug-bytes">0</span> B/s
+    </div>
 
     <!-- Pantalla 4: Como jugar -->
     <section id="screen-how-to-play" class="screen">
@@ -290,7 +303,7 @@ $asset = static function (string $path) use ($basePath): string {
 <script src="<?= htmlspecialchars($asset('juego/js/renderer.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/input.js?v=5'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/game.js?v=8'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/online.js?v=6'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=24'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/online.js?v=7'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=25'), ENT_QUOTES, 'UTF-8') ?>"></script>
 </body>
 </html>

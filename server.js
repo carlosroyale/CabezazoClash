@@ -12,7 +12,8 @@ server.on('connection', (socket) => {
 });
 const io = new Server(server, {
     cors: { origin: "*", methods: ["GET", "POST"], transports: ['websocket', 'polling'], credentials: true },
-    allowEIO3: true
+    allowEIO3: true,
+    perMessageDeflate: false // Apagamos la compresión de Socket.io
 });
 
 // Servimos tu carpeta raíz

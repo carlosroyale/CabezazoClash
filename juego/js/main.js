@@ -45,6 +45,8 @@ const valorEfectosTx = document.getElementById("valor-efectos");
 
 const switchFps = document.getElementById('switch-fps');
 const contadorFpsDiv = document.getElementById('contador-fps');
+const switchPing = document.getElementById('switch-ping');
+const debugPanel = document.getElementById('debug-panel');
 const btnRestablecerConfig = document.getElementById("btn-restablecer-config");
 const btnEntendido = document.getElementById("btn-entendido");
 
@@ -73,10 +75,6 @@ let cuentaAtrasActiva = false; // Evita que se dispare varias veces a la vez
 // estado adicional
 let lastGameParams = null;      // para reiniciar con los mismos parámetros
 let pausedFromMenu = false;     // indicador de si volvemos desde ajustes mientras está en pausa
-
-// Lógica de carga de memoria
-let mostrarFPS = localStorage.getItem('mostrarFPSCabezazo') === 'true';
-if (switchFps) switchFps.checked = mostrarFPS;
 
 
 /* ==========================================================================
@@ -449,7 +447,8 @@ document.addEventListener('game-resumed', () => {
 const settings = {
   musicVolume: 0.5,
   sfxVolume: 1.0,
-  mostrarFPS: false
+  mostrarFPS: false,
+  mostrarPing: false
 };
 
 // Cargar ajustes al arrancar
@@ -461,6 +460,7 @@ function loadSettings() {
       if (typeof parsed.musicVolume === "number") settings.musicVolume = parsed.musicVolume;
       if (typeof parsed.sfxVolume === "number") settings.sfxVolume = parsed.sfxVolume;
       if (typeof parsed.mostrarFPS === "boolean") settings.mostrarFPS = parsed.mostrarFPS;
+      if (typeof parsed.mostrarPing === "boolean") settings.mostrarPing = parsed.mostrarPing;
     } catch (e) {
       console.warn("Error leyendo settings:", e);
     }
@@ -485,6 +485,12 @@ function updateOptionsUI() {
   if (contadorFpsDiv) {
     if (settings.mostrarFPS) contadorFpsDiv.classList.remove('hidden');
     else contadorFpsDiv.classList.add('hidden');
+  }
+
+  if (switchPing) switchPing.checked = settings.mostrarPing;
+  if (debugPanel) {
+    if (settings.mostrarPing && window.isOnlineMode) debugPanel.classList.remove('hidden');
+    else debugPanel.classList.add('hidden');
   }
 }
 
@@ -609,6 +615,7 @@ btnRestablecerConfig.addEventListener('click', () => {
   settings.musicVolume = 0.5;
   settings.sfxVolume = 1.0;
   settings.mostrarFPS = false;
+  settings.mostrarPing = false;
   window.mostrarFPS = false;
 
   // 2. Guardar y sincronizar
@@ -646,6 +653,14 @@ switchFps.addEventListener('change', (e) => {
   if (settings.mostrarFPS) contadorFpsDiv.classList.remove('hidden');
   else contadorFpsDiv.classList.add('hidden');
   switchFps.blur();
+});
+
+switchPing.addEventListener('change', (e) => {
+  settings.mostrarPing = e.target.checked;
+  saveSettings();
+  if (settings.mostrarPing && window.isOnlineMode) debugPanel.classList.remove('hidden');
+  else debugPanel.classList.add('hidden');
+  switchPing.blur();
 });
 
 // Desbloqueo inicial (Tap to Start)
@@ -917,7 +932,8 @@ window.Main = {
   playMatchAmbient,
   stopAllSounds,
   showScreen,
-  showEndScreen
+  showEndScreen,
+  updateOptionsUI
 };
 
 // ==========================================

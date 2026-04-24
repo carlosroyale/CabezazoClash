@@ -54,7 +54,7 @@ class Match {
         this.p1Socket.emit('initRole', 'p1');
         this.p2Socket.emit('initRole', 'p2');
         this.io.to(this.roomId).emit('matchReady');
-        console.log("hola43");
+
         // 5. Arrancar el motor de físicas de ESTA partida
         this.startLoop();
 
@@ -136,7 +136,6 @@ class Match {
     }
 
     update() {
-        console.log("hola44");
         // 1. CÁLCULO DEL TIEMPO (Delta Time)
         // Calculamos el tiempo transcurrido desde la última actualización (dt).
         // Esto asegura que la velocidad del juego sea la misma independientemente del lag o los FPS.
@@ -316,8 +315,6 @@ class Match {
         buffer[8] = Math.round((this.gameState.p1.kickAngle || 0) * 100);
         buffer[9] = Math.round((this.gameState.p2.kickAngle || 0) * 100);
         buffer[10] = Math.round((this.gameState.ball.angle || 0) * 100);
-
-        console.log("hola45");
 
         // buffer.buffer extrae los bytes crudos del Array para que Socket.io use formato binario nativo
         this.io.to(this.roomId).emit('gameSync', buffer.buffer);
