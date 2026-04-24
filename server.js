@@ -67,8 +67,8 @@ io.on('connection', (socket) => {
         // Si estaba jugando una partida, Match.js se encarga de gestionar su propia desconexión.
     });
 });
-
 const PORT = process.env.PORT || 8080;
+// const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`✅ Servidor de Matchmaking activo en el puerto ${PORT}`);
 });

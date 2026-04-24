@@ -45,6 +45,7 @@ class Match {
 
         this.loopInterval = null;
         this.lastTime = Date.now();
+        this.simulationTimeMs = 0;
 
         // 3. Configurar listeners de red para ESTOS dos jugadores
         this.setupEvents();
@@ -147,6 +148,7 @@ class Match {
         let dt = (now - this.lastTime) / 1000;
         this.lastTime = now;
         dt = Math.min(dt, DT_MAX); // Limitamos el dt máximo para evitar que los objetos atraviesen paredes si hay mucho lag.
+        this.simulationTimeMs += dt * 1000;
 
         // 2. ESTADO DE CUENTA REGRESIVA
         // Si el juego está en la cuenta regresiva inicial (ej. 3, 2, 1...), solo descontamos el tiempo.
@@ -295,20 +297,22 @@ class Match {
         }
 
         // 6. SINCRONIZACIÓN DE RED (Formato Binario)
-        const buffer = new Int16Array(11);
-        buffer[0] = Math.round(this.gameState.p1.x);
-        buffer[1] = Math.round(this.gameState.p1.y);
-        buffer[2] = Math.round(this.gameState.p2.x);
-        buffer[3] = Math.round(this.gameState.p2.y);
-        buffer[4] = Math.round(this.gameState.ball.x);
-        buffer[5] = Math.round(this.gameState.ball.y);
-        buffer[6] = Math.round(this.gameState.ball.vx);
-        buffer[7] = Math.round(this.gameState.ball.vy);
-        buffer[8] = Math.round((this.gameState.p1.kickAngle || 0) * 100);
-        buffer[9] = Math.round((this.gameState.p2.kickAngle || 0) * 100);
-        buffer[10] = Math.round((this.gameState.ball.angle || 0) * 100);
+        const buffer = new ArrayBuffer(26);
+        const view = new DataView(buffer);
+        view.setInt16(0, Math.round(this.gameState.p1.x), true);
+        view.setInt16(2, Math.round(this.gameState.p1.y), true);
+        view.setInt16(4, Math.round(this.gameState.p2.x), true);
+        view.setInt16(6, Math.round(this.gameState.p2.y), true);
+        view.setInt16(8, Math.round(this.gameState.ball.x), true);
+        view.setInt16(10, Math.round(this.gameState.ball.y), true);
+        view.setInt16(12, Math.round(this.gameState.ball.vx), true);
+        view.setInt16(14, Math.round(this.gameState.ball.vy), true);
+        view.setInt16(16, Math.round((this.gameState.p1.kickAngle || 0) * 100), true);
+        view.setInt16(18, Math.round((this.gameState.p2.kickAngle || 0) * 100), true);
+        view.setInt16(20, Math.round((this.gameState.ball.angle || 0) * 100), true);
+        view.setUint32(22, Math.round(this.simulationTimeMs), true);
 
-        this.io.to(this.roomId).emit('gameSync', buffer.buffer);
+        this.io.to(this.roomId).emit('gameSync', buffer);
     }
 
     // 2. Crea la función que envía los datos lentos
