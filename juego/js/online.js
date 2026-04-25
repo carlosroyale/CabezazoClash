@@ -19,6 +19,16 @@ function resetOnlineSessionState() {
     bytesReceivedThisSecond = 0;
 }
 
+function hasOnlinePhysicsState(state) {
+    return !!state &&
+        Number.isFinite(state.p1?.x) &&
+        Number.isFinite(state.p1?.y) &&
+        Number.isFinite(state.p2?.x) &&
+        Number.isFinite(state.p2?.y) &&
+        Number.isFinite(state.ball?.x) &&
+        Number.isFinite(state.ball?.y);
+}
+
 function updatePingUI(latency) {
     const pingEl = document.getElementById('debug-ping');
     if (pingEl) pingEl.textContent = typeof latency === 'number' ? Math.round(latency) : '-';
@@ -284,6 +294,7 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
             const pauseMenu = document.getElementById("pause-menu");
             const screenOptions = document.getElementById("screen-options");
             const screenHowToPlay = document.getElementById("screen-how-to-play");
+            const hasPhysicsState = hasOnlinePhysicsState(onlineState);
 
             const isSubMenuOpen = (screenOptions && screenOptions.classList.contains("active")) ||
                 (screenHowToPlay && screenHowToPlay.classList.contains("active"));
@@ -339,7 +350,7 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
             updateScore();
             updateTimer();
 
-            if (!isFirstStateReceived || isOnlineCountdownActive || gamePaused) {
+            if (hasPhysicsState && (!isFirstStateReceived || isOnlineCountdownActive || gamePaused)) {
                 p1.x = onlineState.p1.x;
                 p1.y = onlineState.p1.y;
                 p1.vx = onlineState.p1.vx || 0;
@@ -357,7 +368,7 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
                 ball.angle = onlineState.ball.angle;
                 isFirstStateReceived = true;
             }
-            else {
+            else if (hasPhysicsState) {
                 if (stateBuffer.length >= 2) {
                     const renderTime = latestServerSimTime - RENDER_DELAY;
                     let pastState = stateBuffer[0];
