@@ -783,8 +783,9 @@ function resizeCanvas() {
     window.Game.forceRedraw(ctx);
   }
 
-  // Si la pantalla es más alta que ancha y estamos en la pantalla de juego
-  if (window.innerHeight > window.innerWidth && screenGame.classList.contains("active")) {
+  // En online no forzamos jamás la pausa automática por orientación.
+  // El aviso visual puede mostrarse, pero la partida debe seguir viva.
+  if (!window.isOnlineMode && window.innerHeight > window.innerWidth && screenGame.classList.contains("active")) {
     // Evitamos pausar si ya hay una cuenta atrás para reanudar (previene bugs visuales)
     if (!cuentaAtrasActiva && window.Game && window.Game.pauseGame) {
       window.Game.pauseGame();
