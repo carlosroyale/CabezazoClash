@@ -71,20 +71,6 @@ function startNetworkDebugInterval() {
 }
 
 if (typeof socket !== 'undefined') {
-    // Escuchamos el estado del juego
-    // socket.on('gameState', (state) => {
-    //     if (matchFinishedExternally) return;
-    //     onlineState = state; // Lo mantenemos para el marcador y el tiempo general
-    //
-    //     // Le añadimos la marca de tiempo local de cuando llegó el paquete
-    //     state.timestamp = performance.now();
-    //     stateBuffer.push(state);
-    //
-    //     // Limpieza de memoria: Solo guardamos los paquetes del último segundo
-    //     const unSegundoAtras = performance.now() - 1000;
-    //     stateBuffer = stateBuffer.filter(s => s.timestamp >= unSegundoAtras);
-    // });
-
     // Escuchamos el estado físico del juego en formato binario
     socket.on('gameSync', (arrayBuffer) => {
         if (matchFinishedExternally) return;
@@ -166,6 +152,18 @@ if (typeof socket !== 'undefined') {
         onlineState.score.right = hudData.sr;
         onlineState.countdown = hudData.c;
         onlineState.isPaused = hudData.p;
+    });
+
+    socket.on('soundFx', (soundEvents) => {
+        if (!window.isOnlineMode || matchFinishedExternally || !Array.isArray(soundEvents)) return;
+
+        const payloadSize = new TextEncoder().encode(JSON.stringify(soundEvents)).length;
+        bytesReceivedThisSecond += payloadSize;
+
+        soundEvents.forEach((soundEvent) => {
+            if (!soundEvent || typeof soundEvent.id !== 'string') return;
+            window.playSound(soundEvent.id, typeof soundEvent.v === 'number' ? soundEvent.v : 1);
+        });
     });
 
     socket.on('initRole', (role) => {
@@ -358,7 +356,8 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
                 p2.kickAngle = onlineState.p2.kickAngle;
                 ball.angle = onlineState.ball.angle;
                 isFirstStateReceived = true;
-            } else {
+            }
+            else {
                 if (stateBuffer.length >= 2) {
                     const renderTime = latestServerSimTime - RENDER_DELAY;
                     let pastState = stateBuffer[0];
