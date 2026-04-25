@@ -11,6 +11,14 @@ let latestServerSimTime = 0;
 let stateBuffer = [];
 const RENDER_DELAY = 80; // Dibujaremos a ambos jugadores y la pelota 80ms en el pasado
 
+function resetOnlineSessionState() {
+    onlineState = null;
+    myRole = null;
+    stateBuffer = [];
+    latestServerSimTime = 0;
+    bytesReceivedThisSecond = 0;
+}
+
 function updatePingUI(latency) {
     const pingEl = document.getElementById('debug-ping');
     if (pingEl) pingEl.textContent = typeof latency === 'number' ? Math.round(latency) : '-';
@@ -210,7 +218,7 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
     window.isOnlineMode = true;
     gameRunning = true;
     matchFinishedExternally = false;
-    bytesReceivedThisSecond = 0;
+    resetOnlineSessionState();
     startNetworkDebugInterval();
     if (window.Main && window.Main.updateOptionsUI) window.Main.updateOptionsUI();
 
@@ -413,4 +421,6 @@ window.Game.stopBasicGame = function() {
     // Y después, añade nuestras tareas exclusivas de limpieza del online:
     window.isOnlineMode = false; // Le avisa al input.js que deje de mandar teclas por socket
     stopNetworkDebugInterval();  // Destruye el intervalo del ping para que no consuma memoria en el fondo
+    resetOnlineSessionState();
+    if (typeof keys !== 'undefined' && keys.clear) keys.clear();
 };
