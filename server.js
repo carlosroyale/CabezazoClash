@@ -29,6 +29,28 @@ let waitingPlayer = null;           // El jugador que está esperando rival
 const activeMatches = new Map();    // Diccionario de partidas activas (room_1, room_2...)
 let matchIdCounter = 0;             // Contador para crear IDs únicos
 
+// Registro global de usuarios conectados (userId -> socket.id)
+const connectedUsers = new Map();
+
+// Middleware de Socket.io. Se ejecuta ANTES de que el socket se conecte del todo
+io.use((socket, next) => {
+    // Extraemos el userId que el cliente nos enviará al intentar conectar
+    const userId = socket.handshake.auth.userId;
+
+    if (userId) {
+        if (connectedUsers.has(userId)) {
+            // Si el ID ya está en nuestro mapa, rechazamos la conexión con un error personalizado
+            return next(new Error("already_connected"));
+        }
+        // Si no está, lo registramos temporalmente en el socket para saber quién es
+        socket.userId = userId;
+        // Y lo añadimos a la lista de usuarios activos
+        connectedUsers.set(userId, socket.id);
+    }
+
+    next();
+});
+
 io.on('connection', (socket) => {
     console.log(`Nuevo usuario conectado al lobby: ${socket.id}`);
 
@@ -59,12 +81,16 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        // Solo nos preocupamos si el que se desconecta estaba en la sala de espera
+        // Liberamos su cuenta para que pueda volver a entrar si recarga la página
+        if (socket.userId) {
+            connectedUsers.delete(socket.userId);
+            console.log(`Usuario ${socket.userId} liberado.`);
+        }
+
         if (waitingPlayer === socket) {
             console.log(`🏃‍♂️ El jugador ${socket.id} se cansó de esperar y se fue.`);
             waitingPlayer = null;
         }
-        // Si estaba jugando una partida, Match.js se encarga de gestionar su propia desconexión.
     });
 });
 const PORT = process.env.PORT || 8080;

@@ -61,6 +61,15 @@ $asset = static function (string $path) use ($basePath): string {
         </div>
     </section>
 
+    <section id="screen-already-connected" class="screen">
+        <div class="card info-card" style="border: 3px solid #ff9800; box-shadow: 0 0 30px rgba(255, 152, 0, 0.4);">
+            <i class="bi bi-exclamation-triangle-fill" style="font-size: 6rem; color: #ff9800; margin-bottom: 1rem;"></i>
+            <h2 class="subtitle">¡CUENTA EN USO!</h2>
+            <p class="info-description">Esta cuenta ya está jugando o esperando partida en otro dispositivo o pestaña.</p>
+            <button id="btn-already-connected-ok" class="btn large-got-it-btn" style="margin-top: 1rem;">SALIR DEL JUEGO</button>
+        </div>
+    </section>
+
     <div id="touch-controls" class="hidden">
         <div class="touch-left">
             <button id="btn-touch-left" class="touch-btn"><i class="bi bi-arrow-left"></i></button>
@@ -279,23 +288,36 @@ $asset = static function (string $path) use ($basePath): string {
 <script>
     let socket;
 
+    // Leemos el ID directamente de la sesión de PHP de forma segura.
+    // Si no hay sesión, será null.
+    const miUsuarioId = <?= isset($_SESSION['id_usuario']) ? json_encode($_SESSION['id_usuario']) : 'null' ?>;
+
+
     if (typeof io !== 'undefined') {
-        // 1. Apuntamos a tu dominio principal
-        // 2. Le indicamos por qué 'ruta' debe meterse para encontrar el Node.js
-        socket = io('https://confident-energy-production-c6ea.up.railway.app', {
-        // socket = io('http://localhost:3000', {
-            transports: ['websocket'],
-            upgrade: false
-        });
+        if (!miUsuarioId) {
+            console.error("No estás logueado. No puedes conectar al online.");
+            // Aquí podrías redirigir al login
+        }
+        else {
+            // 1. Apuntamos a tu dominio principal
+            // 2. Le indicamos por qué 'ruta' debe meterse para encontrar el Node.js
+            socket = io('https://confident-energy-production-c6ea.up.railway.app', {
+            // socket = io('http://localhost:3000', {
+                transports: ['websocket'],
+                upgrade: false
+                auth: {
+                    userId: miUsuarioId // Aquí le pasamos el ID real al servidor
+                }
+            });
 
+            socket.on('connect', () => {
+                console.log('Conectado al servidor de WebSockets con el ID:', socket.id);
+            });
 
-        socket.on('connect', () => {
-            console.log('Conectado al servidor de WebSockets con el ID:', socket.id);
-        });
-
-        socket.on('connect_error', (err) => {
-            console.warn('Error de conexión WebSockets:', err.message);
-        });
+            socket.on('connect_error', (err) => {
+                console.warn('Error de conexión WebSockets:', err.message);
+            });
+        }
     }
     else console.error("No se pudo cargar la librería Socket.io desde la CDN");
 </script>
