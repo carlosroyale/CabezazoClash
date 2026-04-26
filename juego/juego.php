@@ -340,9 +340,17 @@ $asset = static function (string $path) use ($basePath): string {
             // Exponer el socket globalmente si lo usan otros scripts
             window.socket = socket;
 
-            if (typeof configurarEventosSocket === 'function') {
-                configurarEventosSocket();
-            }
+            // Le decimos al navegador que espere a que TODO
+            // el HTML y los archivos .js terminen de cargar.
+            window.addEventListener('DOMContentLoaded', () => {
+                // Ahora estamos 100% seguros de que online.js ya se leyó
+                if (typeof configurarEventosSocket === 'function') {
+                    configurarEventosSocket(); // Le ponemos las orejas al juego
+                    console.log("Orejas del socket activadas correctamente.");
+                } else {
+                    console.error("No se encontró configurarEventosSocket. Revisa que online.js cargue correctamente.");
+                }
+            });
         }
     }
     else console.error("No se pudo cargar la librería Socket.io desde la CDN");
