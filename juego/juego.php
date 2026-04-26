@@ -21,7 +21,7 @@ $asset = static function (string $path) use ($basePath): string {
     <link rel="manifest" href="<?= htmlspecialchars($asset('manifest.json'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="apple-touch-icon" href="<?= htmlspecialchars($asset('assets/img/logo192.png'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="icon" type="image/x-icon" href="<?= htmlspecialchars($asset('assets/icon/favicon.ico'), ENT_QUOTES, 'UTF-8') ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars($asset('juego/juego.css?v=8'), ENT_QUOTES, 'UTF-8') ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars($asset('juego/juego.css?v=9'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 </head>
@@ -66,7 +66,7 @@ $asset = static function (string $path) use ($basePath): string {
             <i class="bi bi-exclamation-triangle-fill" style="font-size: 6rem; color: #ff9800; margin-bottom: 1rem;"></i>
             <h2 class="subtitle">¡CUENTA EN USO!</h2>
             <p class="info-description">Esta cuenta ya está jugando o esperando partida en otro dispositivo o pestaña.</p>
-            <button id="btn-already-connected-ok" class="btn large-got-it-btn" style="margin-top: 1rem;">SALIR DEL JUEGO</button>
+            <button id="btn-already-connected-ok" class="btn large-got-it-btn" style="margin-top: 1rem;">RECARGA</button>
         </div>
     </section>
 
@@ -292,6 +292,7 @@ $asset = static function (string $path) use ($basePath): string {
     // Si no hay sesión, será null.
     const miUsuarioId = <?= isset($_SESSION['id_usuario']) ? json_encode($_SESSION['id_usuario']) : 'null' ?>;
 
+    console.log("Mi ID de usuario es:", miUsuarioId);
 
     if (typeof io !== 'undefined') {
         if (!miUsuarioId) {
@@ -304,7 +305,7 @@ $asset = static function (string $path) use ($basePath): string {
             socket = io('https://confident-energy-production-c6ea.up.railway.app', {
             // socket = io('http://localhost:3000', {
                 transports: ['websocket'],
-                upgrade: false
+                upgrade: false,
                 auth: {
                     userId: miUsuarioId // Aquí le pasamos el ID real al servidor
                 }
@@ -315,8 +316,28 @@ $asset = static function (string $path) use ($basePath): string {
             });
 
             socket.on('connect_error', (err) => {
-                console.warn('Error de conexión WebSockets:', err.message);
+                if (err.message === "already_connected") {
+                    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                    const tapScreen = document.getElementById('screen-tap-to-start');
+                    if (tapScreen) {
+                        tapScreen.classList.remove('active');
+                        tapScreen.classList.add('hidden');
+                        tapScreen.style.pointerEvents = 'none';
+                    }
+                    document.getElementById('screen-already-connected').classList.add('active');
+                }
             });
+
+            // Lógica del botón para salir si la cuenta está en uso
+            const btnAlreadyConnected = document.getElementById('btn-already-connected-ok');
+            if (btnAlreadyConnected) {
+                btnAlreadyConnected.addEventListener('click', () => {
+                    window.location.reload();
+                });
+            }
+
+            // Exponer el socket globalmente si lo usan otros scripts
+            window.socket = socket;
         }
     }
     else console.error("No se pudo cargar la librería Socket.io desde la CDN");

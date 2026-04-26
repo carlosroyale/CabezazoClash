@@ -88,6 +88,10 @@ body {
     display: flex;
 }
 
+#screen-already-connected {
+    z-index: 10001;
+}
+
 /* pantalla de inicio */
 .start-screen {
     text-align: center;
