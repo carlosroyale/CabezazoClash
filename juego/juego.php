@@ -305,6 +305,7 @@ $asset = static function (string $path) use ($basePath): string {
             // socket = io('http://localhost:3000', {
                 transports: ['websocket'],
                 upgrade: false,
+                autoConnect: false,
                 auth: {
                     userId: miUsuarioId,
                     username: miUsername,
@@ -349,6 +350,6 @@ $asset = static function (string $path) use ($basePath): string {
 <script src="<?= htmlspecialchars($asset('juego/js/input.js?v=5'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/game.js?v=8'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/online.js?v=13'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=26'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=27'), ENT_QUOTES, 'UTF-8') ?>"></script>
 </body>
 </html>

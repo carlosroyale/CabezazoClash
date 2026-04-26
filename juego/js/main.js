@@ -250,7 +250,7 @@ asignarBoton(btn1vBot, () => {
 asignarBoton(btn1v1Online, () => {
   btnRestart.classList.add("hidden");
   // Solo conectamos si estábamos desconectados, evitando arrastrar partidas
-  if (typeof socket !== 'undefined' && socket.disconnected) {
+  if (typeof socket !== 'undefined' && !socket.connected) {
     socket.connect();
   }
   showScreen(screenOnlineWaiting);
