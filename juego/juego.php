@@ -228,9 +228,9 @@ $asset = static function (string $path) use ($basePath): string {
 
             <div class="tv-scoreboard" id="scoreboard">
                 <div class="sb-time" id="timer">60</div>
-                <div class="sb-team">P1</div>
+                <div class="sb-team" id="team-left">P1</div>
                 <div class="sb-score" id="score">0 - 0</div>
-                <div class="sb-team">P2</div>
+                <div class="sb-team" id="team-right">P2</div>
 
                 <div class="sb-goal-overlay">¡GOOOOOOOL!</div>
             </div>
@@ -291,8 +291,7 @@ $asset = static function (string $path) use ($basePath): string {
     // Leemos el ID directamente de la sesión de PHP de forma segura.
     // Si no hay sesión, será null.
     const miUsuarioId = <?= isset($_SESSION['id_usuario']) ? json_encode($_SESSION['id_usuario']) : 'null' ?>;
-
-    console.log("Mi ID de usuario es:", miUsuarioId);
+    const miUsername = <?= isset($_SESSION['usuario']['username']) ? json_encode($_SESSION['usuario']['username']) : 'null' ?>;
 
     if (typeof io !== 'undefined') {
         if (!miUsuarioId) {
@@ -307,7 +306,8 @@ $asset = static function (string $path) use ($basePath): string {
                 transports: ['websocket'],
                 upgrade: false,
                 auth: {
-                    userId: miUsuarioId // Aquí le pasamos el ID real al servidor
+                    userId: miUsuarioId,
+                    username: miUsername,
                 }
             });
 
@@ -348,7 +348,7 @@ $asset = static function (string $path) use ($basePath): string {
 <script src="<?= htmlspecialchars($asset('juego/js/renderer.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/input.js?v=5'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/game.js?v=8'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/online.js?v=12'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/online.js?v=13'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/main.js?v=26'), ENT_QUOTES, 'UTF-8') ?>"></script>
 </body>
 </html>

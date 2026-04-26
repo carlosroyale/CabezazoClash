@@ -55,6 +55,10 @@ class Match {
             'sfx-rebound'
         ]);
         this.pendingSoundEvents = [];
+        this.playerLabels = {
+            left: this.getScoreboardLabel(this.p1Socket.username, 'P1'),
+            right: this.getScoreboardLabel(this.p2Socket.username, 'P2')
+        };
 
         // 3. Configurar listeners de red para ESTOS dos jugadores
         this.setupEvents();
@@ -63,7 +67,10 @@ class Match {
         // 4. Avisarles de quién es quién y que ya pueden jugar
         this.p1Socket.emit('initRole', 'p1');
         this.p2Socket.emit('initRole', 'p2');
-        this.io.to(this.roomId).emit('matchReady');
+        this.io.to(this.roomId).emit('matchReady', {
+            leftLabel: this.playerLabels.left,
+            rightLabel: this.playerLabels.right
+        });
 
         // 5. Arrancar el motor de físicas de ESTA partida
         this.startLoop();
@@ -92,6 +99,13 @@ class Match {
             if (typeof ack === 'function') ack(timestamp);
         });
         this.p2Socket.on('disconnect', () => this.handleDisconnect('p2'));
+    }
+
+    getScoreboardLabel(username, fallback) {
+        if (typeof username !== 'string') return fallback;
+        const limpio = username.trim();
+        if (!limpio) return fallback;
+        return limpio.slice(0, 3).toUpperCase();
     }
 
     togglePause() {

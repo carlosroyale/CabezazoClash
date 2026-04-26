@@ -7,6 +7,7 @@ let bytesReceivedThisSecond = 0;
 window.pingInterval = null;
 let lastMeasuredLatency = null;
 let latestServerSimTime = 0;
+const DEFAULT_SCOREBOARD_LABELS = { left: 'P1', right: 'P2' };
 
 let stateBuffer = [];
 const RENDER_DELAY = 80; // Dibujaremos a ambos jugadores y la pelota 80ms en el pasado
@@ -17,6 +18,14 @@ function resetOnlineSessionState() {
     stateBuffer = [];
     latestServerSimTime = 0;
     bytesReceivedThisSecond = 0;
+    updateScoreboardLabels();
+}
+
+function updateScoreboardLabels(labels = DEFAULT_SCOREBOARD_LABELS) {
+    const leftEl = document.getElementById('team-left');
+    const rightEl = document.getElementById('team-right');
+    if (leftEl) leftEl.textContent = labels.left || DEFAULT_SCOREBOARD_LABELS.left;
+    if (rightEl) rightEl.textContent = labels.right || DEFAULT_SCOREBOARD_LABELS.right;
 }
 
 function hasOnlinePhysicsState(state) {
@@ -80,7 +89,10 @@ function startNetworkDebugInterval() {
     }, 1000);
 }
 
-if (typeof socket !== 'undefined') {
+// Exponemos la función al entorno global (window) para que el HTML pueda llamarla
+window.configurarEventosSocket = function() {
+    if (typeof socket === 'undefined') return;
+
     // Escuchamos el estado físico del juego en formato binario
     socket.on('gameSync', (arrayBuffer) => {
         if (matchFinishedExternally) return;
@@ -216,7 +228,7 @@ if (typeof socket !== 'undefined') {
         document.getElementById("screen-opponent-left").classList.add("active");
         document.getElementById("pause-menu").classList.add("hidden");
     });
-}
+};
 
 function lerp(start, end, factor) {
     return start + (end - start) * factor;
@@ -255,9 +267,13 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
     };
 
     socket.off('matchReady');
-    socket.on('matchReady', () => {
+    socket.on('matchReady', (matchData = {}) => {
         waitingScreen.classList.remove("active");
         gameScreen.classList.add("active");
+        updateScoreboardLabels({
+            left: matchData.leftLabel || DEFAULT_SCOREBOARD_LABELS.left,
+            right: matchData.rightLabel || DEFAULT_SCOREBOARD_LABELS.right
+        });
 
         isOnlineCountdownActive = true;
         lastCountdownInt = 0;

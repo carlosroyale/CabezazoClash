@@ -36,6 +36,7 @@ const connectedUsers = new Map();
 io.use((socket, next) => {
     // Extraemos el userId que el cliente nos enviará al intentar conectar
     const userId = socket.handshake.auth.userId;
+    const username = socket.handshake.auth.username;
 
     if (userId) {
         if (connectedUsers.has(userId)) {
@@ -44,6 +45,7 @@ io.use((socket, next) => {
         }
         // Si no está, lo registramos temporalmente en el socket para saber quién es
         socket.userId = userId;
+        socket.username = typeof username === 'string' ? username : '';
         // Y lo añadimos a la lista de usuarios activos
         connectedUsers.set(userId, socket.id);
     }
