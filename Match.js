@@ -16,15 +16,39 @@ class Match {
         this.io = io;
         this.roomId = roomId;
         this.onMatchEndCallback = onMatchEndCallback;
+        this.isDestroyed = false;
 
-        // 1. Unimos a los dos jugadores a una "sala privada"
+        // Handlers propios de ESTA partida
+        this.onP1Input = (data) => {
+            if (data.isDown) this.inputs.p1.add(data.key);
+            else this.inputs.p1.delete(data.key);
+        };
+
+        this.onP2Input = (data) => {
+            if (data.isDown) this.inputs.p2.add(data.key);
+            else this.inputs.p2.delete(data.key);
+        };
+
+        this.onP1TogglePause = () => this.togglePause();
+        this.onP2TogglePause = () => this.togglePause();
+
+        this.onP1PingLatency = (timestamp, ack) => {
+            if (typeof ack === 'function') ack(timestamp);
+        };
+
+        this.onP2PingLatency = (timestamp, ack) => {
+            if (typeof ack === 'function') ack(timestamp);
+        };
+
+        this.onP1Disconnect = () => this.handleDisconnect('p1');
+        this.onP2Disconnect = () => this.handleDisconnect('p2');
+
         this.p1Socket.join(this.roomId);
         this.p2Socket.join(this.roomId);
 
         this.leftGoal = {x: 0, y: FLOOR_Y - GOAL_H, w: GOAL_W, h: GOAL_H};
         this.rightGoal = {x: W - GOAL_W, y: FLOOR_Y - GOAL_H, w: GOAL_W, h: GOAL_H};
 
-        // 2. Estado ÚNICO de esta partida
         this.gameState = {
             p1: makePlayer(180, FLOOR_Y - 90, "P1", true),
             p2: makePlayer(W - 180, FLOOR_Y - 90, "P2", false),
@@ -60,11 +84,9 @@ class Match {
             right: this.getScoreboardLabel(this.p2Socket.username, 'P2')
         };
 
-        // 3. Configurar listeners de red para ESTOS dos jugadores
         this.setupEvents();
         this.startRound();
 
-        // 4. Avisarles de quién es quién y que ya pueden jugar
         this.p1Socket.emit('initRole', 'p1');
         this.p2Socket.emit('initRole', 'p2');
         this.io.to(this.roomId).emit('matchReady', {
@@ -72,33 +94,19 @@ class Match {
             rightLabel: this.playerLabels.right
         });
 
-        // 5. Arrancar el motor de físicas de ESTA partida
         this.startLoop();
-
     }
 
     setupEvents() {
-        // --- JUGADOR 1 ---
-        this.p1Socket.on('playerInput', (data) => {
-            if (data.isDown) this.inputs.p1.add(data.key);
-            else this.inputs.p1.delete(data.key);
-        });
-        this.p1Socket.on('requestTogglePause', () => this.togglePause());
-        this.p1Socket.on('pingLatency', (timestamp, ack) => {
-            if (typeof ack === 'function') ack(timestamp);
-        });
-        this.p1Socket.on('disconnect', () => this.handleDisconnect('p1'));
+        this.p1Socket.on('playerInput', this.onP1Input);
+        this.p1Socket.on('requestTogglePause', this.onP1TogglePause);
+        this.p1Socket.on('pingLatency', this.onP1PingLatency);
+        this.p1Socket.on('disconnect', this.onP1Disconnect);
 
-        // --- JUGADOR 2 ---
-        this.p2Socket.on('playerInput', (data) => {
-            if (data.isDown) this.inputs.p2.add(data.key);
-            else this.inputs.p2.delete(data.key);
-        });
-        this.p2Socket.on('requestTogglePause', () => this.togglePause());
-        this.p2Socket.on('pingLatency', (timestamp, ack) => {
-            if (typeof ack === 'function') ack(timestamp);
-        });
-        this.p2Socket.on('disconnect', () => this.handleDisconnect('p2'));
+        this.p2Socket.on('playerInput', this.onP2Input);
+        this.p2Socket.on('requestTogglePause', this.onP2TogglePause);
+        this.p2Socket.on('pingLatency', this.onP2PingLatency);
+        this.p2Socket.on('disconnect', this.onP2Disconnect);
     }
 
     getScoreboardLabel(username, fallback) {
@@ -378,25 +386,26 @@ class Match {
     }
 
     destroy() {
-        // Matamos el bucle
+        if (this.isDestroyed) return;
+        this.isDestroyed = true;
+
         clearInterval(this.loopInterval);
         clearInterval(this.hudInterval);
 
-        // Quitamos los escuchadores para que no consuman RAM
-        this.p1Socket.removeAllListeners('playerInput');
-        this.p1Socket.removeAllListeners('requestTogglePause');
-        this.p1Socket.removeAllListeners('pingLatency');
-        this.p1Socket.removeAllListeners('disconnect');
-        this.p2Socket.removeAllListeners('playerInput');
-        this.p2Socket.removeAllListeners('requestTogglePause');
-        this.p2Socket.removeAllListeners('pingLatency');
-        this.p2Socket.removeAllListeners('disconnect');
+        // Quitamos SOLO los listeners de esta partida
+        this.p1Socket.off('playerInput', this.onP1Input);
+        this.p1Socket.off('requestTogglePause', this.onP1TogglePause);
+        this.p1Socket.off('pingLatency', this.onP1PingLatency);
+        this.p1Socket.off('disconnect', this.onP1Disconnect);
 
-        // Los echamos de la sala
+        this.p2Socket.off('playerInput', this.onP2Input);
+        this.p2Socket.off('requestTogglePause', this.onP2TogglePause);
+        this.p2Socket.off('pingLatency', this.onP2PingLatency);
+        this.p2Socket.off('disconnect', this.onP2Disconnect);
+
         this.p1Socket.leave(this.roomId);
         this.p2Socket.leave(this.roomId);
 
-        // Avisamos a server.js para que borre el registro de la partida
         if (this.onMatchEndCallback) this.onMatchEndCallback();
     }
 }
