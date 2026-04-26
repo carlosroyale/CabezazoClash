@@ -104,17 +104,11 @@ function controlPlayer(p, dt, leftKey, rightKey, jumpKey, kickKey, keys) {
 
     p.vx = dir * p.speed;
 
-    // Si la tecla no está presionada, recargamos la capacidad de saltar
-    if (!keys.has(jumpKey)) {
-        p.canJump = true;
-    }
-
-    // Solo salta si tiene la tecla, está en el suelo, Y tiene el salto recargado
-    if (keys.has(jumpKey) && p.onGround && !p.groundedByPlayer && p.canJump) {
+    // Permite saltar de nuevo nada más tocar el suelo aunque la tecla siga pulsada.
+    if (keys.has(jumpKey) && p.onGround && !p.groundedByPlayer) {
         p.vy = -p.jump;
         p.onGround = false;
         p.groundedByPlayer = false;
-        p.canJump = false;
         window.playSound('sfx-jump', 0.5);
     }
 
