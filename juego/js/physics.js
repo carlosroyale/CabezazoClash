@@ -458,6 +458,8 @@ function collidePlayers(p1, p2) {
 
     p1.isKickingRival = false;
     p2.isKickingRival = false;
+    p1.rivalLiftBudget = 12;
+    p2.rivalLiftBudget = 12;
 
     let h1 = getPlayerHitboxes(p1);
     let h2 = getPlayerHitboxes(p2);
@@ -490,6 +492,20 @@ function collidePlayers(p1, p2) {
 function markGroundedOnRival(player) {
     player.onGround = true;
     player.groundedByPlayer = true;
+}
+
+function movePlayerByRivalContact(player, dx, dy) {
+    player.x += dx;
+
+    if (dy < 0) {
+        const remainingLift = player.rivalLiftBudget !== undefined ? player.rivalLiftBudget : 12;
+        const appliedLift = Math.min(-dy, remainingLift);
+        player.y -= appliedLift;
+        player.rivalLiftBudget = Math.max(0, remainingLift - appliedLift);
+        return;
+    }
+
+    player.y += dy;
 }
 
 function resolveBodyBody(p1, p2, b1, b2) {
@@ -531,10 +547,10 @@ function resolveBodyBody(p1, p2, b1, b2) {
         else {
             // Solo apoyar si en el frame anterior uno estaba claramente encima del otro.
             if (p1WasClearlyAbove) {
-                p1.y -= overlapY;
+                movePlayerByRivalContact(p1, 0, -overlapY);
                 if (p1.vy >= 0) { p1.vy = 0; markGroundedOnRival(p1); }
             } else {
-                p2.y -= overlapY;
+                movePlayerByRivalContact(p2, 0, -overlapY);
                 if (p2.vy >= 0) { p2.vy = 0; markGroundedOnRival(p2); }
             }
         }
@@ -576,10 +592,8 @@ function resolveCircCircPlayer(p1, p2, c1, c2) {
             p2.x -= dir * overlap / 2;
         }
         else {
-            p1.x -= nx * overlap / 2;
-            p2.x += nx * overlap / 2;
-            p1.y -= ny * overlap / 2;
-            p2.y += ny * overlap / 2;
+            movePlayerByRivalContact(p1, -nx * overlap / 2, -ny * overlap / 2);
+            movePlayerByRivalContact(p2, nx * overlap / 2, ny * overlap / 2);
         }
 
         // Solo si el choque es vertical (>0.7) y el de arriba cae
@@ -620,8 +634,7 @@ function resolveCircRectPlayer(circ, pAttacker, pTarget, rect) {
         const ny = dy / dist;
         const overlap = circ.r - dist;
 
-        pTarget.x -= nx * overlap;
-        pTarget.y -= ny * overlap;
+        movePlayerByRivalContact(pTarget, -nx * overlap, -ny * overlap);
 
         // CORRECCIÓN: ny > 0.7 requiere que el zapato esté bien DEBAJO del objetivo
         if (ny > 0.7 && pTarget.vy >= 0) {
@@ -658,8 +671,7 @@ function resolveShoeHeadPlayer(shoe, pAttacker, pTarget, head) {
         const nx = dx / dist;
         const ny = dy / dist;
 
-        pTarget.x -= nx * overlap;
-        pTarget.y -= ny * overlap;
+        movePlayerByRivalContact(pTarget, -nx * overlap, -ny * overlap);
 
         // CORRECCIÓN: Zapato debajo de la cabeza Y jugador cayendo
         if (ny > 0.7 && pTarget.vy >= 0) {
