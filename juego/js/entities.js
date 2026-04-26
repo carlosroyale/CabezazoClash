@@ -14,6 +14,7 @@ function makePlayer(x, y, label, isRightFacing) {
         speed: 420,
         jump: 760,
         onGround: false,
+        groundedByPlayer: false,
         canJump: true,
 
         isRightFacing: isRightFacing, // true = mira a la derecha (P1), false = izquierda (P2)
@@ -44,8 +45,12 @@ function updatePlayer(p, dt, W, FLOOR_Y) {
         p.y = FLOOR_Y - p.h / 2;
         p.vy = 0;
         p.onGround = true;
+        p.groundedByPlayer = false;
     }
-    else p.onGround = false;
+    else {
+        p.onGround = false;
+        p.groundedByPlayer = false;
+    }
 }
 
 function updateBall(ball, dt, W, FLOOR_Y) {
@@ -105,9 +110,11 @@ function controlPlayer(p, dt, leftKey, rightKey, jumpKey, kickKey, keys) {
     }
 
     // Solo salta si tiene la tecla, está en el suelo, Y tiene el salto recargado
-    if (keys.has(jumpKey) && p.onGround && p.canJump) {
+    if (keys.has(jumpKey) && p.onGround && !p.groundedByPlayer && p.canJump) {
         p.vy = -p.jump;
         p.onGround = false;
+        p.groundedByPlayer = false;
+        p.canJump = false;
         window.playSound('sfx-jump', 0.5);
     }
 
@@ -210,16 +217,17 @@ class BotAIUtils {
             bot.ballEscaped = true;
         }
 
-        if (bot.onGround) {
+        if (bot.onGround && !bot.groundedByPlayer) {
             bot.canJump = true;
         }
     }
 
     static tryJump(bot) {
-        if (!bot.onGround || !bot.canJump) return false;
+        if (!bot.onGround || bot.groundedByPlayer || !bot.canJump) return false;
 
         bot.vy = -bot.jump;
         bot.onGround = false;
+        bot.groundedByPlayer = false;
         bot.canJump = false;
         window.playSound('sfx-jump');
         return true;

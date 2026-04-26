@@ -487,6 +487,11 @@ function collidePlayers(p1, p2) {
 
 // 3. Resoluciones físicas específicas para Jugador vs Jugador
 
+function markGroundedOnRival(player) {
+    player.onGround = true;
+    player.groundedByPlayer = true;
+}
+
 function resolveBodyBody(p1, p2, b1, b2) {
     const overlapX = Math.max(0, Math.min(b1.x + b1.w, b2.x + b2.w) - Math.max(b1.x, b2.x));
     const overlapY = Math.max(0, Math.min(b1.y + b1.h, b2.y + b2.h) - Math.max(b1.y, b2.y));
@@ -501,17 +506,22 @@ function resolveBodyBody(p1, p2, b1, b2) {
 
         const b1CenterY = b1.y + b1.h / 2;
         const b2CenterY = b2.y + b2.h / 2;
+        const prevP1X = p1.prevX !== undefined ? p1.prevX : p1.x;
+        const prevP2X = p2.prevX !== undefined ? p2.prevX : p2.x;
         const prevP1Y = p1.prevY !== undefined ? p1.prevY : p1.y;
         const prevP2Y = p2.prevY !== undefined ? p2.prevY : p2.y;
-        const p1WasAbove = prevP1Y < prevP2Y;
+        const prevB1Top = b1.y - (p1.y - prevP1Y);
+        const prevB2Top = b2.y - (p2.y - prevP2Y);
+        const prevB1Bottom = prevB1Top + b1.h;
+        const prevB2Bottom = prevB2Top + b2.h;
+        const p1WasClearlyAbove = prevB1Bottom <= prevB2Top + 2;
+        const p2WasClearlyAbove = prevB2Bottom <= prevB1Top + 2;
         const verticalGap = Math.abs(b1CenterY - b2CenterY);
         const stackedEnough = verticalGap > Math.min(b1.h, b2.h) * 0.28;
-        const fallingOntoRival = p1WasAbove ? p1.vy >= 0 : p2.vy >= 0;
-        const preferVerticalResolution = overlapY <= overlapX && stackedEnough && fallingOntoRival;
+        const fallingOntoRival = p1WasClearlyAbove ? p1.vy >= p2.vy : p2WasClearlyAbove ? p2.vy >= p1.vy : false;
+        const preferVerticalResolution = overlapY <= overlapX && stackedEnough && fallingOntoRival && (p1WasClearlyAbove || p2WasClearlyAbove);
 
         if (!preferVerticalResolution) {
-            const prevP1X = p1.prevX !== undefined ? p1.prevX : p1.x;
-            const prevP2X = p2.prevX !== undefined ? p2.prevX : p2.x;
             const p1WasLeft = prevP1X === prevP2X ? (b1.x + b1.w / 2) < (b2.x + b2.w / 2) : prevP1X < prevP2X;
             const dir = p1WasLeft ? -1 : 1;
             p1.x += dir * overlapX / 2;
@@ -519,13 +529,13 @@ function resolveBodyBody(p1, p2, b1, b2) {
             p1.vx = 0; p2.vx = 0;
         }
         else {
-            // Solo apoyarse si está cayendo
-            if (p1WasAbove) {
+            // Solo apoyar si en el frame anterior uno estaba claramente encima del otro.
+            if (p1WasClearlyAbove) {
                 p1.y -= overlapY;
-                if (p1.vy >= 0) { p1.vy = 0; p1.onGround = true; }
+                if (p1.vy >= 0) { p1.vy = 0; markGroundedOnRival(p1); }
             } else {
                 p2.y -= overlapY;
-                if (p2.vy >= 0) { p2.vy = 0; p2.onGround = true; }
+                if (p2.vy >= 0) { p2.vy = 0; markGroundedOnRival(p2); }
             }
         }
     }
@@ -549,18 +559,34 @@ function resolveCircCircPlayer(p1, p2, c1, c2) {
         const overlap = radSum - dist;
         const nx = dx / dist;
         const ny = dy / dist;
+        const prevP1X = p1.prevX !== undefined ? p1.prevX : p1.x;
+        const prevP2X = p2.prevX !== undefined ? p2.prevX : p2.x;
+        const prevP1Y = p1.prevY !== undefined ? p1.prevY : p1.y;
+        const prevP2Y = p2.prevY !== undefined ? p2.prevY : p2.y;
+        const prevP1Top = c1.y - c1.r - (p1.y - prevP1Y);
+        const prevP2Top = c2.y - c2.r - (p2.y - prevP2Y);
+        const prevP1Bottom = prevP1Top + c1.r * 2;
+        const prevP2Bottom = prevP2Top + c2.r * 2;
+        const hadVerticalStack = prevP1Bottom <= prevP2Top + 2 || prevP2Bottom <= prevP1Top + 2;
 
-        // Separamos en ambos ejes para evitar que se enganchen
-        p1.x -= nx * overlap / 2;
-        p2.x += nx * overlap / 2;
-        p1.y -= ny * overlap / 2;
-        p2.y += ny * overlap / 2;
+        if (Math.abs(nx) >= Math.abs(ny) && !hadVerticalStack) {
+            const p1WasLeft = prevP1X === prevP2X ? c1.x < c2.x : prevP1X < prevP2X;
+            const dir = p1WasLeft ? -1 : 1;
+            p1.x += dir * overlap / 2;
+            p2.x -= dir * overlap / 2;
+        }
+        else {
+            p1.x -= nx * overlap / 2;
+            p2.x += nx * overlap / 2;
+            p1.y -= ny * overlap / 2;
+            p2.y += ny * overlap / 2;
+        }
 
         // Solo si el choque es vertical (>0.7) y el de arriba cae
         if (ny > 0.7 && p1.vy >= 0) {
-            p1.vy = 0; p1.onGround = true;
+            p1.vy = 0; markGroundedOnRival(p1);
         } else if (ny < -0.7 && p2.vy >= 0) {
-            p2.vy = 0; p2.onGround = true;
+            p2.vy = 0; markGroundedOnRival(p2);
         }
     }
 }
@@ -600,7 +626,7 @@ function resolveCircRectPlayer(circ, pAttacker, pTarget, rect) {
         // CORRECCIÓN: ny > 0.7 requiere que el zapato esté bien DEBAJO del objetivo
         if (ny > 0.7 && pTarget.vy >= 0) {
             pTarget.vy = 0;
-            pTarget.onGround = true;
+            markGroundedOnRival(pTarget);
         }
         else if (ny < -0.7) pTarget.vy = Math.max(0, pTarget.vy);
     }
@@ -638,7 +664,7 @@ function resolveShoeHeadPlayer(shoe, pAttacker, pTarget, head) {
         // CORRECCIÓN: Zapato debajo de la cabeza Y jugador cayendo
         if (ny > 0.7 && pTarget.vy >= 0) {
             pTarget.vy = 0;
-            pTarget.onGround = true;
+            markGroundedOnRival(pTarget);
         }
     }
 }
