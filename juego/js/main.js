@@ -526,9 +526,10 @@ asignarBoton(btnRestart, () => {
 asignarBoton(btnExitPause, () => {
   hidePauseMenu();
 
-  // Si estamos en online, nos desconectamos limpiamente para romper la sala
+  // Si estamos en online, avisamos que es voluntario y nos desconectamos limpiamente
   if (window.isOnlineMode && typeof socket !== 'undefined') {
-    socket.disconnect(); // Cortamos conexión limpiamente
+    socket.emit('explicitAbandon'); // Avisar al servidor
+    socket.disconnect();
   }
 
   window.Game.stopBasicGame();

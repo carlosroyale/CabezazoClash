@@ -32,6 +32,9 @@ let matchIdCounter = 0;             // Contador para crear IDs únicos
 // Registro global de usuarios conectados (userId -> socket.id)
 const connectedUsers = new Map();
 
+// Mapa para saber en qué sala activa está cada jugador (userId -> roomId)
+const userMatchMap = new Map();
+
 // Middleware de Socket.io. Se ejecuta ANTES de que el socket se conecte del todo
 io.use((socket, next) => {
     // Extraemos el userId que el cliente nos enviará al intentar conectar
@@ -66,16 +69,36 @@ io.on('connection', (socket) => {
             socket.puntos = puntosFrescos;
         }
 
-        // Si hay alguien esperando y NO es el mismo jugador pulsando dos veces
+        // VERIFICAR SI ESTÁ RECONECTANDO A UNA PARTIDA CAÍDA
+        if (userMatchMap.has(socket.userId)) {
+            const roomId = userMatchMap.get(socket.userId);
+            const match = activeMatches.get(roomId);
+
+            if (match && !match.isDestroyed) {
+                console.log(`🔄 Reconectando al jugador ${socket.userId} a la partida [${roomId}]`);
+                match.reconnectPlayer(socket);
+                return; // Salimos de la función para no meterlo a buscar rival
+            } else {
+                // Si la partida caducó o fue borrada, limpiamos su registro
+                userMatchMap.delete(socket.userId);
+            }
+        }
+
+        // --- LÓGICA NORMAL DE BÚSQUEDA ---
         if (waitingPlayer && waitingPlayer.id !== socket.id) {
 
             const roomId = 'room_' + (++matchIdCounter);
             console.log(`⚔️ Creando partida [${roomId}] entre ${waitingPlayer.id} y ${socket.id}`);
 
-            // Creamos la nueva partida pasándole los dos jugadores
-            const match = new Match(waitingPlayer, socket, io, roomId, () => {
-                // Este callback se ejecuta cuando la partida termina (Match.js llama a destroy())
+            // Registramos que estos usuarios están ocupados en esta sala
+            userMatchMap.set(waitingPlayer.userId, roomId);
+            userMatchMap.set(socket.userId, roomId);
+
+            // Modificamos el callback para limpiar el registro al terminar
+            const match = new Match(waitingPlayer, socket, io, roomId, (p1Id, p2Id) => {
                 activeMatches.delete(roomId);
+                userMatchMap.delete(p1Id);
+                userMatchMap.delete(p2Id);
                 console.log(`🗑️ Partida [${roomId}] borrada de la memoria.`);
             });
 

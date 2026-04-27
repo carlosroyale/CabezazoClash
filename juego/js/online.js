@@ -3,6 +3,7 @@
 window.isOnlineMode = false;
 let onlineState = null;
 let myRole = null; // Saber si somos J1 o J2
+let customPauseMessage = null;
 let bytesReceivedThisSecond = 0;
 window.pingInterval = null;
 let lastMeasuredLatency = null;
@@ -23,6 +24,7 @@ function parseUserId(value) {
 function resetOnlineSessionState() {
     onlineState = null;
     myRole = null;
+    customPauseMessage = null;
     stateBuffer = [];
     latestServerSimTime = 0;
     bytesReceivedThisSecond = 0;
@@ -146,6 +148,16 @@ function startNetworkDebugInterval() {
 window.configurarEventosSocket = function() {
     if (typeof socket === 'undefined') return;
 
+    // Rival desconectado accidentalmente
+    socket.on('opponentDisconnected', () => {
+        customPauseMessage = 'Rival desconectado. Esperando reconexión...';
+    });
+
+    // Rival reconectado
+    socket.on('opponentReconnected', () => {
+        customPauseMessage = 'El rival ha vuelto. ¡Pulsa Reanudar!';
+    });
+
     // Escuchamos el estado físico del juego en formato binario
     socket.on('gameSync', (arrayBuffer) => {
         if (matchFinishedExternally) return;
@@ -236,6 +248,8 @@ window.configurarEventosSocket = function() {
         onlineState.pauseAvailability.left = hudData.pl !== false;
         onlineState.pauseAvailability.right = hudData.pr !== false;
         updatePauseAvailabilityUI(onlineState.pauseAvailability);
+
+        if (!hudData.p) customPauseMessage = null; // Si se quita la pausa, limpiamos mensaje
     });
 
     socket.on('soundFx', (soundEvents) => {
@@ -377,7 +391,13 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
         };
 
         const playOnlineVersus = () => {
-            if (window.Main && window.Main.playVersusIntro) {
+            // SI ES RECONEXIÓN: Cortamos la intro y nos tiramos al césped directo
+            if (matchData.isReconnection) {
+                if (window.Main && window.Main.hideVersusScreen) window.Main.hideVersusScreen();
+                startOnlineLoop();
+            }
+            // SI ES PARTIDA NUEVA: Ponemos la animación del versus
+            else if (window.Main && window.Main.playVersusIntro) {
                 window.Main.playVersusIntro({
                     leftName: matchData.leftName || DEFAULT_PRESENTATION_NAMES.left,
                     rightName: matchData.rightName || DEFAULT_PRESENTATION_NAMES.right,
@@ -438,14 +458,28 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
                 if (myRole === 'p2') iAmReady = onlineState.resumeRequests.p2;
 
                 if (iAmReady) {
-                    // Yo he pulsado reanudar: oculto los botones y pongo el spinner
+                    // Yo he pulsado reanudar
                     if (buttonsContainer) buttonsContainer.classList.add('hidden');
-                    if (waitingMsg) waitingMsg.classList.remove('hidden');
+                    if (waitingMsg) {
+                        waitingMsg.classList.remove('hidden');
+                        waitingMsg.querySelector('h3').textContent = customPauseMessage ? customPauseMessage : 'Esperando al rival...';
+                    }
                 }
                 else {
-                    // Todavía no he pulsado reanudar: veo los botones normales
-                    if (buttonsContainer) buttonsContainer.classList.remove('hidden');
-                    if (waitingMsg) waitingMsg.classList.add('hidden');
+                    // No he pulsado reanudar
+                    if (customPauseMessage) {
+                        // Si hay un fallo de red, forzamos a mostrar el cartel y quitamos botones
+                        if (buttonsContainer) buttonsContainer.classList.add('hidden');
+                        if (waitingMsg) {
+                            waitingMsg.classList.remove('hidden');
+                            waitingMsg.querySelector('h3').textContent = customPauseMessage;
+                        }
+                    }
+                    else {
+                        // Todo normal
+                        if (buttonsContainer) buttonsContainer.classList.remove('hidden');
+                        if (waitingMsg) waitingMsg.classList.add('hidden');
+                    }
                 }
 
                 // Mostrar el contador de pausa y actualizar el número

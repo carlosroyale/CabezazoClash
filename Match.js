@@ -17,6 +17,13 @@ class Match {
         this.roomId = roomId;
         this.onMatchEndCallback = onMatchEndCallback;
         this.isDestroyed = false;
+        this.isAbandoned = false;
+
+        // Guardamos los IDs y los puntos por si el socket muere y hay que reconectar
+        this.p1UserId = this.p1Socket.userId;
+        this.p2UserId = this.p2Socket.userId;
+        this.p1Points = this.p1Socket.puntos;
+        this.p2Points = this.p2Socket.puntos;
 
         // Handlers propios de ESTA partida
         this.onP1Input = (data) => {
@@ -42,6 +49,9 @@ class Match {
 
         this.onP1Disconnect = () => this.handleDisconnect('p1');
         this.onP2Disconnect = () => this.handleDisconnect('p2');
+
+        this.onP1Abandon = () => this.handleExplicitAbandon('p1');
+        this.onP2Abandon = () => this.handleExplicitAbandon('p2');
 
         this.p1Socket.join(this.roomId);
         this.p2Socket.join(this.roomId);
@@ -118,11 +128,13 @@ class Match {
         this.p1Socket.on('requestTogglePause', this.onP1TogglePause);
         this.p1Socket.on('pingLatency', this.onP1PingLatency);
         this.p1Socket.on('disconnect', this.onP1Disconnect);
+        this.p1Socket.on('explicitAbandon', this.onP1Abandon);
 
         this.p2Socket.on('playerInput', this.onP2Input);
         this.p2Socket.on('requestTogglePause', this.onP2TogglePause);
         this.p2Socket.on('pingLatency', this.onP2PingLatency);
         this.p2Socket.on('disconnect', this.onP2Disconnect);
+        this.p2Socket.on('explicitAbandon', this.onP2Abandon);
     }
 
     getScoreboardLabel(username, fallback) {
@@ -166,11 +178,87 @@ class Match {
         this.sendHUD();
     }
 
+    // cuando el jugador da al botón SALIR
+    handleExplicitAbandon(role) {
+        this.isAbandoned = true;
+        this.io.to(this.roomId).emit('playerLeft');
+        this.destroy();
+    }
+
+    // Si se corta el wifi, el servidor espera
     handleDisconnect(role) {
-        if (!this.gameState.isFinished) {
-            this.io.to(this.roomId).emit('playerLeft');
+        if (this.gameState.isFinished || this.isAbandoned || this.isDestroyed) return;
+
+        console.log(`📡 Jugador ${role} (${this[role + 'UserId']}) desconectado. La simulación continúa...`);
+        this.inputs[role].clear(); // Frenamos el muñeco
+
+        // Si estaba pausado, aceptamos la pausa por él para que el rival no se quede pillado
+        if (this.gameState.isPaused) {
+            this.gameState.resumeRequests[role] = true;
+            if (this.gameState.resumeRequests.p1 && this.gameState.resumeRequests.p2) {
+                this.gameState.isPaused = false;
+                this.gameState.resumeRequests = { p1: false, p2: false };
+                this.gameState.countdown = 3.0;
+            }
+            this.sendHUD();
         }
-        this.destroy(); // Destruimos la partida si alguien huye
+
+        // Avisamos a la interfaz del que sigue conectado
+        this.io.to(this.roomId).emit('opponentDisconnected');
+
+        // Borramos el rastro del socket roto
+        if (this[role + 'Socket']) {
+            this[role + 'Socket'].leave(this.roomId);
+            this[role + 'Socket'] = null;
+        }
+    }
+
+    // Reenchufa al jugador cuando recarga la página
+    reconnectPlayer(newSocket) {
+        let role = newSocket.userId === this.p1UserId ? 'p1' : (newSocket.userId === this.p2UserId ? 'p2' : null);
+        if (!role) return;
+
+        // Limpieza de seguridad por si había un cable suelto
+        if (this[role + 'Socket']) {
+            const R = role.toUpperCase();
+            this[role + 'Socket'].off('playerInput', this[`on${R}Input`]);
+            this[role + 'Socket'].off('requestTogglePause', this[`on${R}TogglePause`]);
+            this[role + 'Socket'].off('pingLatency', this[`on${R}PingLatency`]);
+            this[role + 'Socket'].off('disconnect', this[`on${R}Disconnect`]);
+            this[role + 'Socket'].off('explicitAbandon', this[`on${R}Abandon`]);
+            this[role + 'Socket'].leave(this.roomId);
+        }
+
+        // Enchufar el nuevo jugador
+        this[role + 'Socket'] = newSocket;
+        newSocket.join(this.roomId);
+
+        // Volvemos a escuchar sus eventos conectando este nuevo socket a los handlers antiguos
+        const R = role.toUpperCase();
+        newSocket.on('playerInput', this[`on${R}Input`]);
+        newSocket.on('requestTogglePause', this[`on${R}TogglePause`]);
+        newSocket.on('pingLatency', this[`on${R}PingLatency`]);
+        newSocket.on('disconnect', this[`on${R}Disconnect`]);
+        newSocket.on('explicitAbandon', this[`on${R}Abandon`]);
+
+        // Actualizarle la interfaz para que se salte la intro
+        newSocket.emit('initRole', role);
+        const formatPoints = (pts) => `${new Intl.NumberFormat('es-ES').format(pts || 0)} PTS`;
+        newSocket.emit('matchReady', {
+            leftPoints: formatPoints(this.p1Points),
+            rightPoints: formatPoints(this.p2Points),
+            leftPauseAvailable: this.pauseAvailability.p1,
+            rightPauseAvailable: this.pauseAvailability.p2,
+            leftLabel: this.playerLabels.left,
+            rightLabel: this.playerLabels.right,
+            leftName: this.playerNames.left,
+            rightName: this.playerNames.right,
+            isReconnection: true // <--- VITAL PARA SALTAR LA INTRO
+        });
+
+        // Quitar el cartel de "Esperando rival" al otro jugador
+        this.io.to(this.roomId).emit('opponentReconnected');
+        this.sendHUD();
     }
 
     startRound(lastScorer = null) {
@@ -456,16 +544,18 @@ class Match {
         this.p1Socket.off('requestTogglePause', this.onP1TogglePause);
         this.p1Socket.off('pingLatency', this.onP1PingLatency);
         this.p1Socket.off('disconnect', this.onP1Disconnect);
+        this.p1Socket.off('explicitAbandon', this.onP1Abandon);
 
         this.p2Socket.off('playerInput', this.onP2Input);
         this.p2Socket.off('requestTogglePause', this.onP2TogglePause);
         this.p2Socket.off('pingLatency', this.onP2PingLatency);
         this.p2Socket.off('disconnect', this.onP2Disconnect);
+        this.p2Socket.off('explicitAbandon', this.onP2Abandon);
 
         this.p1Socket.leave(this.roomId);
         this.p2Socket.leave(this.roomId);
 
-        if (this.onMatchEndCallback) this.onMatchEndCallback();
+        if (this.onMatchEndCallback) this.onMatchEndCallback(this.p1UserId, this.p2UserId);
     }
 }
 
