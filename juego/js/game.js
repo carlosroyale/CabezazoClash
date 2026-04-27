@@ -27,6 +27,7 @@ let isCelebrating = false;
 let celebrationTimer = 0;
 let nextScorer = null;
 let serveState = { server: null, active: false };
+let currentMatchNames = { left: "Jugador 1", right: "Jugador 2" };
 
 let frameCount = 0;
 let lastFpsTime = 0;
@@ -107,10 +108,13 @@ function stopIdle() {
 
 // iniciar juego básico
 // parámetros: { canvas, ctx, scoreEl, timerEl, onExit }
-function startBasicGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl: timerElParam, onExit, bot = false}) {
+function startBasicGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl: timerElParam, onExit, bot = false, playerNames}) {
     // Detener el modo menú antes de jugar
     stopIdle();
     stopBasicGame();
+
+    // Guardamos los nombres que nos envía main.js
+    currentMatchNames = playerNames || { left: "Jugador 1", right: "Jugador 2" };
 
     gameCtx = ctxParam;
     gameScoreEl = scoreElParam;
@@ -158,7 +162,7 @@ function stopBasicGame() {
     }
 }
 
-function endGame() {
+function endGame(leftName, rightName) {
     // En online NO paramos el bucle aquí para que el campo no desaparezca
     if (window.isOnlineMode) {
         gameRunning = true;
@@ -171,38 +175,9 @@ function endGame() {
     }
 
     if (window.Main.showEndScreen) {
-        window.Main.showEndScreen(score.left, score.right);
+        window.Main.showEndScreen(leftName, score.left, rightName, score.right);
     }
 }
-
-// En game.js, busca la función endGame y actualízala así:
-// function endGame() {
-//     matchFinishedExternally = true; // Marcamos que el partido ha terminado
-//
-//     // Desconectamos el socket en online para no recibir más "fantasmas"
-//     if (window.isOnlineMode && typeof socket !== 'undefined') {
-//         socket.disconnect();
-//     }
-//
-//     // 1. Detenemos el motor manualmente (sin llamar a stopBasicGame)
-//     // Esto congela la física, y como gameRunning = false, input.js bloquea las teclas
-//     gameRunning = false;
-//     if (animationId) {
-//         cancelAnimationFrame(animationId);
-//         animationId = null;
-//     }
-//
-//     // 2. FORZAMOS EL DIBUJADO DEL ÚLTIMO FRAME
-//     // Aseguramos que la pantalla se quede congelada viendo el gol o la jugada final
-//     if (gameCtx) {
-//         dibujar(gameCtx, W, H, p1, p2, ball, leftGoal, rightGoal);
-//     }
-//
-//     // 3. Mostramos la pantalla de resultados
-//     if (window.Main.showEndScreen) {
-//         window.Main.showEndScreen(score.left, score.right);
-//     }
-// }
 
 // pausa y reanuda sin perder el estado
 function pauseGame() {
@@ -338,7 +313,7 @@ function update(dt) {
         gameTime -= dt;
         if (gameTime <= 0) {
             window.playSound('sfx-whistle');
-            endGame();
+            endGame(currentMatchNames.left, currentMatchNames.right);
         }
         updateScore();
         updateTimer();

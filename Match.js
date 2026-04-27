@@ -50,14 +50,14 @@ class Match {
         this.rightGoal = {x: W - GOAL_W, y: FLOOR_Y - GOAL_H, w: GOAL_W, h: GOAL_H};
 
         this.gameState = {
-            p1: makePlayer(180, FLOOR_Y - 90, "P1", true),
-            p2: makePlayer(W - 180, FLOOR_Y - 90, "P2", false),
+            p1: makePlayer(180, FLOOR_Y - 90, "J1", true),
+            p2: makePlayer(W - 180, FLOOR_Y - 90, "J2", false),
             ball: { r: 18, x: W / 2, y: FLOOR_Y - 200, vx: 0, vy: 0, angle: 0 },
             score: { left: 0, right: 0 },
             gameTime: 60,
             isPaused: false,
             isFinished: false,
-            countdown: 3.0,
+            countdown: 5.0,
             serveState: { server: null, active: true },
             isCelebrating: false
         };
@@ -80,8 +80,12 @@ class Match {
         ]);
         this.pendingSoundEvents = [];
         this.playerLabels = {
-            left: this.getScoreboardLabel(this.p1Socket.username, 'P1'),
-            right: this.getScoreboardLabel(this.p2Socket.username, 'P2')
+            left: this.getScoreboardLabel(this.p1Socket.username, 'J1'),
+            right: this.getScoreboardLabel(this.p2Socket.username, 'J2')
+        };
+        this.playerNames = {
+            left: this.getPresentationName(this.p1Socket.username, 'Jugador 1'),
+            right: this.getPresentationName(this.p2Socket.username, 'Jugador 2')
         };
 
         this.setupEvents();
@@ -91,7 +95,9 @@ class Match {
         this.p2Socket.emit('initRole', 'p2');
         this.io.to(this.roomId).emit('matchReady', {
             leftLabel: this.playerLabels.left,
-            rightLabel: this.playerLabels.right
+            rightLabel: this.playerLabels.right,
+            leftName: this.playerNames.left,
+            rightName: this.playerNames.right
         });
 
         this.startLoop();
@@ -114,6 +120,13 @@ class Match {
         const limpio = username.trim();
         if (!limpio) return fallback;
         return limpio.slice(0, 3).toUpperCase();
+    }
+
+    getPresentationName(username, fallback) {
+        if (typeof username !== 'string') return fallback;
+        const limpio = username.trim();
+        if (!limpio) return fallback;
+        return limpio.slice(0, 18);
     }
 
     togglePause() {
@@ -228,8 +241,11 @@ class Match {
                         this.gameState.isFinished = true;
 
                         // Notificamos a los jugadores que el partido terminó y enviamos el estado final.
-                        this.io.to(this.roomId).emit('matchEnd');
-                        // this.io.to(this.roomId).emit('gameState', this.gameState);
+                        this.io.to(this.roomId).emit('matchEnd', {
+                            leftName: this.playerNames.left,
+                            rightName: this.playerNames.right
+                        });
+
                         this.sendHUD();
 
                         // Esperamos 5 segundos antes de borrar la sala en el servidor para que vean sus resultados finales.

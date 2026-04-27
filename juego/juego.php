@@ -21,7 +21,7 @@ $asset = static function (string $path) use ($basePath): string {
     <link rel="manifest" href="<?= htmlspecialchars($asset('manifest.json'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="apple-touch-icon" href="<?= htmlspecialchars($asset('assets/img/logo192.png'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="icon" type="image/x-icon" href="<?= htmlspecialchars($asset('assets/icon/favicon.ico'), ENT_QUOTES, 'UTF-8') ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars($asset('juego/juego.css?v=9'), ENT_QUOTES, 'UTF-8') ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars($asset('juego/juego.css?v=10'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 </head>
@@ -103,7 +103,7 @@ $asset = static function (string $path) use ($basePath): string {
 
             <div class="buttons-row">
                 <button id="btn-1v1" class="btn">1 VS 1 LOCAL</button>
-                <button id="btn-1vbot" class="btn">1 VS BOT LOCAL</button>
+                <button id="btn-1vbot" class="btn">1 VS BOT</button>
                 <button id="btn-1v1Online" class="btn">1 VS 1 ONLINE</button>
             </div>
             <button id="btn-mode-back" class="btn btn large-got-it-btn" style="margin-top: 1rem;">Volver</button>
@@ -221,6 +221,24 @@ $asset = static function (string $path) use ($basePath): string {
         </div>
     </section>
 
+    <section id="screen-versus" class="screen">
+        <div class="versus-overlay">
+            <div class="versus-player versus-player-left">
+                <span class="versus-side-label">IZQUIERDA</span>
+                <div id="versus-name-left" class="versus-name">JUGADOR 1</div>
+            </div>
+
+            <div class="versus-center">
+                <span class="versus-center-text">VS</span>
+            </div>
+
+            <div class="versus-player versus-player-right">
+                <span class="versus-side-label">DERECHA</span>
+                <div id="versus-name-right" class="versus-name">JUGADOR 2</div>
+            </div>
+        </div>
+    </section>
+
     <!-- Pantalla 6: Juego -->
     <section id="screen-game" class="screen">
         <div class="hud">
@@ -228,9 +246,9 @@ $asset = static function (string $path) use ($basePath): string {
 
             <div class="tv-scoreboard" id="scoreboard">
                 <div class="sb-time" id="timer">60</div>
-                <div class="sb-team" id="team-left">P1</div>
+                <div class="sb-team" id="team-left">J1</div>
                 <div class="sb-score" id="score">0 - 0</div>
-                <div class="sb-team" id="team-right">P2</div>
+                <div class="sb-team" id="team-right">J2</div>
 
                 <div class="sb-goal-overlay">¡GOOOOOOOL!</div>
             </div>
@@ -292,6 +310,7 @@ $asset = static function (string $path) use ($basePath): string {
     // Si no hay sesión, será null.
     const miUsuarioId = <?= isset($_SESSION['id_usuario']) ? json_encode($_SESSION['id_usuario']) : 'null' ?>;
     const miUsername = <?= isset($_SESSION['usuario']['username']) ? json_encode($_SESSION['usuario']['username']) : 'null' ?>;
+    window.currentUsername = miUsername;
 
     if (typeof io !== 'undefined') {
         if (!miUsuarioId) {
@@ -360,8 +379,8 @@ $asset = static function (string $path) use ($basePath): string {
 <script src="<?= htmlspecialchars($asset('juego/js/physics.js?v=7'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/renderer.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/input.js?v=5'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/game.js?v=8'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/online.js?v=13'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=27'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/game.js?v=9'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/online.js?v=14'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=28'), ENT_QUOTES, 'UTF-8') ?>"></script>
 </body>
 </html>

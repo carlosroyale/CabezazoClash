@@ -2,15 +2,16 @@
 
 window.isOnlineMode = false;
 let onlineState = null;
-let myRole = null; // Saber si somos P1 o P2
+let myRole = null; // Saber si somos J1 o J2
 let bytesReceivedThisSecond = 0;
 window.pingInterval = null;
 let lastMeasuredLatency = null;
 let latestServerSimTime = 0;
-const DEFAULT_SCOREBOARD_LABELS = { left: 'P1', right: 'P2' };
+const DEFAULT_SCOREBOARD_LABELS = { left: 'J1', right: 'J2' };
 
 let stateBuffer = [];
 const RENDER_DELAY = 80; // Dibujaremos a ambos jugadores y la pelota 80ms en el pasado
+const DEFAULT_PRESENTATION_NAMES = { left: 'Jugador 1', right: 'Jugador 2' };
 
 function resetOnlineSessionState() {
     onlineState = null;
@@ -18,6 +19,7 @@ function resetOnlineSessionState() {
     stateBuffer = [];
     latestServerSimTime = 0;
     bytesReceivedThisSecond = 0;
+    if (window.Main && window.Main.hideVersusScreen) window.Main.hideVersusScreen();
     updateScoreboardLabels();
 }
 
@@ -206,18 +208,21 @@ window.configurarEventosSocket = function() {
         if(scoreboardUI) scoreboardUI.classList.remove('goal-active');
     });
 
-    socket.on('matchEnd', () => {
+    socket.on('matchEnd', matchData => {
         if (!window.isOnlineMode) return;
         matchFinishedExternally = true;
+        if (window.Main && window.Main.hideVersusScreen) window.Main.hideVersusScreen();
         window.playSound('sfx-whistle');
         if (gameTimerEl) gameTimerEl.textContent = "0";
-        endGame();
+        endGame(matchData.leftName || DEFAULT_SCOREBOARD_LABELS.left,
+            matchData.rightName || DEFAULT_SCOREBOARD_LABELS.right);
     });
 
     socket.on('playerLeft', () => {
         if (!window.isOnlineMode) return;
         gameRunning = false;
         document.dispatchEvent(new Event('game-paused'));
+        if (window.Main && window.Main.hideVersusScreen) window.Main.hideVersusScreen();
 
         // Si el rival se va durante el 3,2,1, ocultamos el número
         const contador = document.getElementById("contador-pausa");
@@ -258,6 +263,7 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
 
         // 2. Apagamos el motor y reseteamos el estado online
         window.Game.stopBasicGame();
+        if (window.Main && window.Main.hideVersusScreen) window.Main.hideVersusScreen();
 
         // 3. Volvemos suavemente a la pantalla de modos sin recargar
         if (window.Main && window.Main.showScreen) {
@@ -267,7 +273,7 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
     };
 
     socket.off('matchReady');
-    socket.on('matchReady', (matchData = {}) => {
+    socket.on('matchReady', matchData => {
         waitingScreen.classList.remove("active");
         gameScreen.classList.add("active");
         updateScoreboardLabels({
@@ -283,14 +289,26 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
         }
 
         if (window.Main.stopAllSounds) window.Main.stopAllSounds();
-        if (window.Main.playMatchAmbient) window.Main.playMatchAmbient();
 
-        lastTime = performance.now();
-        requestAnimationFrame(onlineLoop);
+        const startOnlineLoop = () => {
+            if (window.Main && window.Main.playMatchAmbient) window.Main.playMatchAmbient();
+            lastTime = performance.now();
+            requestAnimationFrame(onlineLoop);
+        };
+
+        if (window.Main && window.Main.playVersusIntro) {
+            window.Main.playVersusIntro({
+                leftName: matchData.leftName || DEFAULT_PRESENTATION_NAMES.left,
+                rightName: matchData.rightName || DEFAULT_PRESENTATION_NAMES.right,
+                onComplete: startOnlineLoop
+            });
+        } else {
+            startOnlineLoop();
+        }
     });
 
-    p1 = makePlayer(180, FLOOR_Y - 90, "P1", true);
-    p2 = makePlayer(W - 180, FLOOR_Y - 90, "P2", false);
+    p1 = makePlayer(180, FLOOR_Y - 90, "J1", true);
+    p2 = makePlayer(W - 180, FLOOR_Y - 90, "J2", false);
     ball = {r: 18, x: W / 2, y: FLOOR_Y - 200, vx: 0, vy: 0, angle: 0};
     latestServerSimTime = 0;
 
@@ -343,7 +361,10 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
             if (onlineState.countdown > 0) {
                 isOnlineCountdownActive = true;
                 contador.classList.remove("hidden");
-                let currentInt = Math.ceil(onlineState.countdown);
+
+                // Redondeamos hacia arriba, pero limitamos el tope a 3
+                let currentInt = Math.min(Math.ceil(onlineState.countdown), 3);
+
                 contador.textContent = currentInt;
 
                 if (currentInt !== lastCountdownInt && currentInt > 0) {

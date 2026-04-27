@@ -14,8 +14,11 @@ const screenHowToPlay = document.getElementById("screen-how-to-play");
 const screenModeSelect = document.getElementById("screen-mode-select");
 const screenTouchWarning = document.getElementById("screen-touch-warning");
 const screenOnlineWaiting = document.getElementById("screen-online-waiting");
+const screenVersus = document.getElementById("screen-versus");
 const touchControls = document.getElementById("touch-controls");
 const badWifiIcon = document.getElementById('bad-connection-warning');
+const versusNameLeft = document.getElementById("versus-name-left");
+const versusNameRight = document.getElementById("versus-name-right");
 
 // Botones de navegación
 const btnPlay = document.getElementById("btn-play");
@@ -55,6 +58,8 @@ const canvas = document.getElementById("game-canvas");
 const ctx = canvas.getContext("2d");
 const scoreEl = document.getElementById("score");
 const timerEl = document.getElementById("timer");
+const teamLeftEl = document.getElementById("team-left");
+const teamRightEl = document.getElementById("team-right");
 
 // Elementos de la pantalla de fin
 const finalScoreEl = document.getElementById("final-score");
@@ -75,6 +80,8 @@ let cuentaAtrasActiva = false; // Evita que se dispare varias veces a la vez
 // estado adicional
 let lastGameParams = null;      // para reiniciar con los mismos parámetros
 let pausedFromMenu = false;     // indicador de si volvemos desde ajustes mientras está en pausa
+let versusTimeoutId = null;
+const DEFAULT_LOCAL_SCOREBOARD_LABELS = { left: "J1", right: "J2" };
 
 
 /* ==========================================================================
@@ -90,6 +97,7 @@ function showScreen(screenToShow) {
   if(screenModeSelect) screenModeSelect.classList.remove("active");
   if(screenOnlineWaiting) screenOnlineWaiting.classList.remove("active"); // NUEVO
   if(screenOpponentLeft) screenOpponentLeft.classList.remove("active");   // NUEVO
+  hideVersusScreen();
 
   screenToShow.classList.add("active");
   if (btnMiCuenta) {
@@ -113,6 +121,76 @@ function showPauseMenu() {
 
 function hidePauseMenu() {
   screenPause.classList.add("hidden");
+}
+
+function getVersusName(name, fallback) {
+  if (typeof name !== "string") return fallback;
+  const limpio = name.trim();
+  return limpio ? limpio : fallback;
+}
+
+function getScoreboardAbbreviation(name, fallback) {
+  if (typeof name !== "string") return fallback;
+  const limpio = name.trim().replace(/\s+/g, "");
+  if (!limpio) return fallback;
+  return limpio.slice(0, 3).toUpperCase();
+}
+
+function updateLocalScoreboardLabels(labels = DEFAULT_LOCAL_SCOREBOARD_LABELS) {
+  if (teamLeftEl) teamLeftEl.textContent = labels.left || DEFAULT_LOCAL_SCOREBOARD_LABELS.left;
+  if (teamRightEl) teamRightEl.textContent = labels.right || DEFAULT_LOCAL_SCOREBOARD_LABELS.right;
+}
+
+function hideVersusScreen() {
+  if (versusTimeoutId) {
+    clearTimeout(versusTimeoutId);
+    versusTimeoutId = null;
+  }
+  if (screenVersus) screenVersus.classList.remove("active");
+}
+
+function playVersusIntro({ leftName, rightName, duration = 2000, onComplete } = {}) {
+  hideVersusScreen();
+
+  if (versusNameLeft) versusNameLeft.textContent = getVersusName(leftName, "Jugador 1");
+  if (versusNameRight) versusNameRight.textContent = getVersusName(rightName, "Jugador 2");
+  if (screenVersus) screenVersus.classList.add("active");
+
+  versusTimeoutId = setTimeout(() => {
+    versusTimeoutId = null;
+    if (screenVersus) screenVersus.classList.remove("active");
+    if (typeof onComplete === "function") onComplete();
+  }, duration);
+}
+
+function iniciarCuentaAtrasInicio(callback) {
+  if (cuentaAtrasActiva) return;
+  cuentaAtrasActiva = true;
+
+  // 1. Ocultamos la interfaz de pausa al instante
+  hidePauseMenu();
+
+  // 2. Volvemos a encender el ambiente del estadio que la pausa había cortado
+  playMatchAmbient();
+
+  contadorPausa.classList.remove("hidden");
+  let cuenta = 3;
+  contadorPausa.textContent = cuenta;
+  window.playSound('sfx-jump', 0.3); // Sonido del número 3
+
+  const intervaloCuenta = setInterval(() => {
+    cuenta--;
+    if (cuenta > 0) {
+      contadorPausa.textContent = cuenta;
+      window.playSound('sfx-jump', 0.3); // Sonido del 2 y el 1
+    } else {
+      clearInterval(intervaloCuenta);
+      contadorPausa.classList.add("hidden");
+      cuentaAtrasActiva = false;
+      window.playSound('sfx-whistle'); // Pitido de inicio
+      if (typeof callback === "function") callback();
+    }
+  }, 1000);
 }
 
 // Función de cuenta atrás importada de tu otro juego
@@ -159,16 +237,35 @@ function beginBasicGame() {
     ctx,
     scoreEl,
     timerEl,
+    scoreboardLabels: { ...DEFAULT_LOCAL_SCOREBOARD_LABELS },
+    playerNames: { left: "Jugador 1", right: "Jugador 2" },
     onExit: () => {
+      updateLocalScoreboardLabels();
       showScreen(screenStart);
       window.Game.startIdle({ canvas, ctx });
       playMenuMusic();
     }
   };
-  playMatchAmbient();
-  window.playSound('sfx-whistle');
+  updateLocalScoreboardLabels(lastGameParams.scoreboardLabels);
   showScreen(screenGame);
-  window.Game.startBasicGame(lastGameParams);
+  playVersusIntro({
+    leftName: "Jugador 1",
+    rightName: "Jugador 2",
+    onComplete: () => {
+      playMatchAmbient();
+      // Arrancamos el motor para que dibuje el campo y los personajes
+      window.Game.startBasicGame(lastGameParams);
+      // Lo pausamos de inmediato para que no se puedan mover
+      window.Game.pauseGame();
+
+      if (window.Game.forceRedraw) window.Game.forceRedraw(ctx);
+
+      // Iniciamos la cuenta atrás, y al terminar, reanudamos
+      iniciarCuentaAtrasInicio(() => {
+        window.Game.resumeGame();
+      });
+    }
+  });
 }
 
 function beginBotGame() {
@@ -180,32 +277,54 @@ function beginBotGame() {
     scoreEl,
     timerEl,
     bot: true,
+    scoreboardLabels: {
+      left: getScoreboardAbbreviation(window.currentUsername, "J1"),
+      right: "BOT"
+    },
+    playerNames: {
+      left: getVersusName(window.currentUsername, "Jugador 1"),
+      right: "BOT"
+    },
     onExit: () => {
       touchControls.classList.add("hidden"); // Ocultar al salir
+      updateLocalScoreboardLabels();
       showScreen(screenStart);
       window.Game.startIdle({ canvas, ctx });
       playMenuMusic();
     }
   };
 
-  playMatchAmbient();
-  window.playSound('sfx-whistle');
-
   // Mostrar controles si es móvil
   if (isTouchDevice()) {
     touchControls.classList.remove("hidden");
   }
 
+  updateLocalScoreboardLabels(lastGameParams.scoreboardLabels);
   showScreen(screenGame);
-  window.Game.startBasicGame(lastGameParams);
+  playVersusIntro({
+    leftName: getVersusName(window.currentUsername, "Jugador 1"),
+    rightName: "BOT",
+    onComplete: () => {
+      playMatchAmbient();
+      window.Game.startBasicGame(lastGameParams);
+      window.Game.pauseGame();
+
+      if (window.Game.forceRedraw) window.Game.forceRedraw(ctx);
+
+      iniciarCuentaAtrasInicio(() => {
+        window.Game.resumeGame();
+      });
+    }
+  });
 }
 
 // REEMPLAZAR FUNCIÓN DE FIN DE PARTIDA
-function showEndScreen(leftScore, rightScore) {
+function showEndScreen(leftName, leftScore, rightName, rightScore) {
+  hideVersusScreen();
   finalScoreEl.textContent = `${leftScore} - ${rightScore}`;
   let winnerMessage = "";
-  if (leftScore > rightScore) winnerMessage = "¡Gana el Jugador 1!";
-  else if (rightScore > leftScore) winnerMessage = "¡Gana el Jugador 2!";
+  if (leftScore > rightScore) winnerMessage = `¡Gana ${leftName}!`;
+  else if (rightScore > leftScore) winnerMessage = `¡Gana ${rightName}!`;
   else winnerMessage = "¡Empate!";
   winnerMessageEl.textContent = winnerMessage;
 
@@ -290,6 +409,7 @@ asignarBoton(btnOpponentLeftOk, () => {
   // Paramos todo usando tus propias funciones
   window.Game.stopBasicGame();
   stopAllSounds();
+  hideVersusScreen();
   if (isTouchDevice()) {
     touchControls.classList.add("hidden");
   }
@@ -306,6 +426,7 @@ asignarBoton(btnContinue, () => {
   screenEnd.classList.remove("active"); // Quitamos el modal de victoria
   window.Game.stopBasicGame();
   stopAllSounds();
+  hideVersusScreen();
   touchControls.classList.add("hidden");
 
   // Ocultamos el icono de mala conexión por si se quedó encendido
@@ -357,15 +478,25 @@ asignarBoton(btnResume, () => {
 asignarBoton(btnRestart, () => {
   hidePauseMenu();
   if (lastGameParams) {
-    // 1. Volver a encender el sonido ambiente del público y el silbato
-    playMatchAmbient();
-    window.playSound('sfx-whistle');
-
-    // 2. Quitar el estado de pausa del HTML para que las animaciones no se queden congeladas
     document.getElementById('game-wrap').classList.remove('is-paused');
+    updateLocalScoreboardLabels(lastGameParams.scoreboardLabels);
 
-    // 3. Arrancar la partida limpia
-    window.Game.startBasicGame(lastGameParams);
+    playVersusIntro({
+      leftName: lastGameParams.bot ? getVersusName(window.currentUsername, "Jugador 1") : "Jugador 1",
+      rightName: lastGameParams.bot ? "BOT" : "Jugador 2",
+      onComplete: () => {
+        playMatchAmbient();
+        window.Game.startBasicGame(lastGameParams);
+        window.Game.pauseGame();
+
+        // Forzamos a repintar el frame congelado
+        if (window.Game.forceRedraw) window.Game.forceRedraw(ctx);
+
+        iniciarCuentaAtrasInicio(() => {
+          window.Game.resumeGame();
+        });
+      }
+    });
   }
 });
 // El botón de salir en el menú de pausa
@@ -379,7 +510,9 @@ asignarBoton(btnExitPause, () => {
 
   window.Game.stopBasicGame();
   stopAllSounds();
+  hideVersusScreen();
   touchControls.classList.add("hidden");
+  updateLocalScoreboardLabels();
   showScreen(screenStart);
   window.Game.startIdle({ canvas, ctx });
   if (audioCtx.state === 'suspended') { audioCtx.resume(); }
@@ -930,6 +1063,8 @@ inicializarJuego();
 // API pública del motor para game.js
 window.Main = {
   isTouchDevice,
+  playVersusIntro,
+  hideVersusScreen,
   playMatchAmbient,
   stopAllSounds,
   showScreen,
