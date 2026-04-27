@@ -56,6 +56,7 @@ class Match {
             score: { left: 0, right: 0 },
             gameTime: 60,
             isPaused: false,
+            pauseTimeRemaining: 0,
             isFinished: false,
             countdown: 5.0,
             serveState: { server: null, active: true },
@@ -151,6 +152,7 @@ class Match {
 
         this.pauseAvailability[role] = false;
         this.gameState.isPaused = true;
+        this.gameState.pauseTimeRemaining = 30.0;
         this.sendHUD();
     }
 
@@ -229,6 +231,17 @@ class Match {
             if (this.gameState.countdown > 0) {
                 this.gameState.countdown -= dt;
                 if (this.gameState.countdown < 0) this.gameState.countdown = 0;
+            }
+            else if (this.gameState.isPaused && !this.gameState.isFinished) {
+                this.gameState.pauseTimeRemaining -= dt;
+
+                // Si el tiempo llega a cero, forzamos la reanudación automática
+                if (this.gameState.pauseTimeRemaining <= 0) {
+                    this.gameState.pauseTimeRemaining = 0;
+                    this.gameState.isPaused = false;
+                    this.gameState.countdown = 3.0; // Inicia el 3, 2, 1
+                    this.sendHUD();
+                }
             }
                 // 3. BUCLE PRINCIPAL DEL JUEGO
             // Solo ejecutamos las lógicas si el juego no está pausado ni ha terminado.
@@ -410,6 +423,7 @@ class Match {
             sr: this.gameState.score.right,
             c: this.gameState.countdown > 0 ? Math.ceil(this.gameState.countdown) : 0,
             p: this.gameState.isPaused,
+            pt: Math.ceil(this.gameState.pauseTimeRemaining || 0),
             pl: this.pauseAvailability.p1,
             pr: this.pauseAvailability.p2
         };

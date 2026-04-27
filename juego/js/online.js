@@ -219,12 +219,14 @@ window.configurarEventosSocket = function() {
                 countdown: 3.0,
                 gameTime: 60,
                 isPaused: false,
+                pauseTimeRemaining: 0,
                 pauseAvailability: { ...DEFAULT_ONLINE_PAUSE_AVAILABILITY }
             };
         }
 
         // Actualizamos los datos para que tu onlineLoop los pinte en pantalla
         onlineState.gameTime = hudData.t;
+        onlineState.pauseTimeRemaining = hudData.pt;
         onlineState.score.left = hudData.sl;
         onlineState.score.right = hudData.sr;
         onlineState.countdown = hudData.c;
@@ -424,6 +426,14 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
                     document.getElementById('game-wrap').classList.add('is-paused');
                     if (window.Main && window.Main.stopAllSounds) window.Main.stopAllSounds();
                 }
+
+                // Mostrar el contador de pausa y actualizar el número
+                const pauseTimerEl = document.getElementById("online-pause-timer");
+                const optValueEl = document.getElementById("opt-value");
+                if (pauseTimerEl) {
+                    pauseTimerEl.classList.remove("hidden");
+                    if (optValueEl) optValueEl.textContent = onlineState.pauseTimeRemaining;
+                }
             } else {
                 if (gamePaused || (pauseMenu && !pauseMenu.classList.contains("hidden")) || isSubMenuOpen) {
                     gamePaused = false;
@@ -439,6 +449,10 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
                     document.getElementById('game-wrap').classList.remove('is-paused');
                     if (window.Main && window.Main.playMatchAmbient) window.Main.playMatchAmbient();
                 }
+
+                // Ocultar el contador de pausa si el juego no está pausado
+                const pauseTimerEl = document.getElementById("online-pause-timer");
+                if (pauseTimerEl) pauseTimerEl.classList.add("hidden");
             }
 
             const contador = document.getElementById("contador-pausa");

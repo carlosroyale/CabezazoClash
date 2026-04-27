@@ -463,6 +463,25 @@ body {
     font-size: 1.6rem;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
+
+#online-pause-timer {
+    margin-top: 2.5rem;
+    font-size: 2rem;
+    font-weight: 800;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 10px 25px;
+    border-radius: 12px;
+    border: 2px solid rgba(225, 29, 72, 0.6);
+    display: inline-block;
+    box-shadow: 0 0 15px rgba(225, 29, 72, 0.3);
+}
+
+#opt-value {
+    color: #ffce00;
+    font-size: 2.4rem;
+}
+
 /* =========================================
    ANIMACIÓN DE GOL (TV STYLE)
    ========================================= */
