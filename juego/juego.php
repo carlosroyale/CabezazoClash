@@ -310,6 +310,7 @@ $asset = static function (string $path) use ($basePath): string {
     // Si no hay sesión, será null.
     const miUsuarioId = <?= isset($_SESSION['id_usuario']) ? json_encode($_SESSION['id_usuario']) : 'null' ?>;
     const miUsername = <?= isset($_SESSION['usuario']['username']) ? json_encode($_SESSION['usuario']['username']) : 'null' ?>;
+    window.misPuntos = <?= (new MetodosDML())->obtenerPuntosUsuario($_SESSION['id_usuario']); ?>;
     window.currentUserId = miUsuarioId;
     window.currentUsername = miUsername;
 
@@ -321,8 +322,8 @@ $asset = static function (string $path) use ($basePath): string {
         else {
             // 1. Apuntamos a tu dominio principal
             // 2. Le indicamos por qué 'ruta' debe meterse para encontrar el Node.js
-            socket = io('https://confident-energy-production-c6ea.up.railway.app', {
-            // socket = io('http://localhost:3000', {
+            // socket = io('https://confident-energy-production-c6ea.up.railway.app', {
+            socket = io('http://localhost:3000', {
                 transports: ['websocket'],
                 upgrade: false,
                 autoConnect: false,
@@ -381,7 +382,7 @@ $asset = static function (string $path) use ($basePath): string {
 <script src="<?= htmlspecialchars($asset('juego/js/renderer.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/input.js?v=5'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/game.js?v=9'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/online.js?v=15'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/online.js?v=16'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/main.js?v=29'), ENT_QUOTES, 'UTF-8') ?>"></script>
 </body>
 </html>

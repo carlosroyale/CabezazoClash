@@ -19,42 +19,6 @@ function parseUserId(value) {
     return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
 }
 
-function formatAbsolutePointsLabel(points) {
-    const safePoints = Number.isFinite(points) ? Math.max(0, Math.trunc(points)) : 0;
-    return `${pointsFormatter.format(safePoints)} PTS`;
-}
-
-async function fetchAbsolutePointsLabels(matchData) {
-    const leftUserId = parseUserId(matchData?.leftUserId);
-    const rightUserId = parseUserId(matchData?.rightUserId);
-
-    if (!leftUserId && !rightUserId) {
-        return { left: '', right: '' };
-    }
-
-    const params = new URLSearchParams({
-        accion: 'obtener_puntos_absolutos_usuarios',
-        left_user_id: String(leftUserId),
-        right_user_id: String(rightUserId)
-    });
-
-    const response = await fetch(`funciones_backend.php?${params.toString()}`, {
-        credentials: 'same-origin'
-    });
-
-    if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    const pointsByUser = data?.puntos ?? {};
-
-    return {
-        left: formatAbsolutePointsLabel(pointsByUser[leftUserId] ?? 0),
-        right: formatAbsolutePointsLabel(pointsByUser[rightUserId] ?? 0)
-    };
-}
-
 function resetOnlineSessionState() {
     onlineState = null;
     myRole = null;
@@ -258,6 +222,17 @@ window.configurarEventosSocket = function() {
         if (gameTimerEl) gameTimerEl.textContent = "0";
         endGame(matchData.leftName || DEFAULT_SCOREBOARD_LABELS.left,
             matchData.rightName || DEFAULT_SCOREBOARD_LABELS.right);
+
+        // Mientras el jugador mira la pantalla de resultados,
+        // recargamos sus puntos en segundo plano.
+        fetch('../funciones_backend.php?accion=obtener_puntos')
+            .then(res => res.json())
+            .then(datos => {
+                if (datos.puntos !== undefined) {
+                    window.misPuntos = datos.puntos; // Lista y fresca para el siguiente partido
+                }
+            })
+            .catch(err => console.warn("Error recargando puntos al final del partido:", err));
     });
 
     socket.on('playerLeft', () => {
@@ -338,21 +313,14 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
             requestAnimationFrame(onlineLoop);
         };
 
-        const playOnlineVersus = async () => {
-            let labels = { left: '', right: '' };
-
-            try {
-                labels = await fetchAbsolutePointsLabels(matchData);
-            } catch (error) {
-                console.warn('No se pudieron cargar los puntos absolutos del versus online.', error);
-            }
-
+        const playOnlineVersus = () => {
             if (window.Main && window.Main.playVersusIntro) {
                 window.Main.playVersusIntro({
                     leftName: matchData.leftName || DEFAULT_PRESENTATION_NAMES.left,
                     rightName: matchData.rightName || DEFAULT_PRESENTATION_NAMES.right,
-                    leftLabel: labels.left,
-                    rightLabel: labels.right,
+                    leftLabel: matchData.leftPoints,
+                    rightLabel: matchData.rightPoints,
+                    duration: 2000,
                     onComplete: startOnlineLoop
                 });
             } else {
@@ -371,7 +339,8 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
     let isFirstStateReceived = false;
     lastTime = performance.now();
 
-    socket.emit('joinMatch');
+    // Entramos a la sala instantáneamente enviando nuestros puntos actuales
+    socket.emit('joinMatch', window.misPuntos);
 
     function onlineLoop(time) {
         if (!gameRunning || !window.isOnlineMode) return;

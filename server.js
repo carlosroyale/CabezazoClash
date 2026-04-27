@@ -46,6 +46,10 @@ io.use((socket, next) => {
         // Si no está, lo registramos temporalmente en el socket para saber quién es
         socket.userId = userId;
         socket.username = typeof username === 'string' ? username : '';
+
+        // Inicializamos los puntos a 0. ¡Se actualizarán con los reales al hacer joinMatch!
+        socket.puntos = 0;
+
         // Y lo añadimos a la lista de usuarios activos
         connectedUsers.set(userId, socket.id);
     }
@@ -56,7 +60,12 @@ io.use((socket, next) => {
 io.on('connection', (socket) => {
     console.log(`Nuevo usuario conectado al lobby: ${socket.id}`);
 
-    socket.on('joinMatch', () => {
+    socket.on('joinMatch', puntosFrescos => {
+        // Actualizamos la memoria del servidor con el dato más reciente
+        if (typeof puntosFrescos === 'number') {
+            socket.puntos = puntosFrescos;
+        }
+
         // Si hay alguien esperando y NO es el mismo jugador pulsando dos veces
         if (waitingPlayer && waitingPlayer.id !== socket.id) {
 
@@ -95,8 +104,8 @@ io.on('connection', (socket) => {
         }
     });
 });
-const PORT = process.env.PORT || 8080;
-// const PORT = process.env.PORT || 3000;
+// const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`✅ Servidor de Matchmaking activo en el puerto ${PORT}`);
 });

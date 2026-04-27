@@ -3,21 +3,23 @@ require_once 'config_sesion.php';
 
 header('Content-Type: application/json');
 
+// 1. Instanciar clase de acceso a datos
+$metodos = new MetodosDML();
+
 if (!isset($_SESSION['usuario'])) {
     http_response_code(401);
     echo json_encode(['exito' => false, 'error' => 'No autorizado']);
     exit;
 }
 
+$idUsuario = $_SESSION['usuario']['id_usuario'];
+
+
 $accion = $_GET['accion'] ?? $_POST['accion'] ?? '';
 
 switch ($accion) {
-    case 'obtener_puntos_absolutos_usuarios':
-        $leftUserId = intval($_GET['left_user_id'] ?? $_POST['left_user_id'] ?? 0);
-        $rightUserId = intval($_GET['right_user_id'] ?? $_POST['right_user_id'] ?? 0);
-
-        $metodosDML = new MetodosDML();
-        $puntos = $metodosDML->obtenerPuntosUsuarios($leftUserId, $rightUserId);
+    case 'obtener_puntos':
+        $puntos = $metodos->obtenerPuntosUsuario($idUsuario);
 
         echo json_encode([
             'exito' => true,

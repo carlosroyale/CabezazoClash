@@ -93,7 +93,10 @@ class Match {
 
         this.p1Socket.emit('initRole', 'p1');
         this.p2Socket.emit('initRole', 'p2');
+        const formatPoints = (pts) => `${new Intl.NumberFormat('es-ES').format(pts)} PTS`;
         this.io.to(this.roomId).emit('matchReady', {
+            leftPoints: formatPoints(this.p1Socket.puntos),
+            rightPoints: formatPoints(this.p2Socket.puntos),
             leftLabel: this.playerLabels.left,
             rightLabel: this.playerLabels.right,
             leftName: this.playerNames.left,
