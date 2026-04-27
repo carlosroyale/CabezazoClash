@@ -57,6 +57,7 @@ class Match {
             gameTime: 60,
             isPaused: false,
             pauseTimeRemaining: 0,
+            resumeRequests: { p1: false, p2: false },
             isFinished: false,
             countdown: 5.0,
             serveState: { server: null, active: true },
@@ -142,8 +143,16 @@ class Match {
         if (this.gameState.isFinished || this.gameState.countdown > 0) return;
 
         if (this.gameState.isPaused) {
-            this.gameState.isPaused = false;
-            this.gameState.countdown = 3.0;
+            // Marcar que este jugador ya quiere reanudar
+            if (role) this.gameState.resumeRequests[role] = true;
+
+            // Comprobar si AMBOS han confirmado
+            if (this.gameState.resumeRequests.p1 && this.gameState.resumeRequests.p2) {
+                this.gameState.isPaused = false;
+                this.gameState.resumeRequests = { p1: false, p2: false }; // Reseteamos para el futuro
+                this.gameState.countdown = 3.0;
+            }
+            // Enviamos el HUD de todas formas para que el cliente actualice su estado visual
             this.sendHUD();
             return;
         }
@@ -153,6 +162,7 @@ class Match {
         this.pauseAvailability[role] = false;
         this.gameState.isPaused = true;
         this.gameState.pauseTimeRemaining = 30.0;
+        this.gameState.resumeRequests = { p1: false, p2: false }; // Limpiamos por si acaso
         this.sendHUD();
     }
 
@@ -239,6 +249,7 @@ class Match {
                 if (this.gameState.pauseTimeRemaining <= 0) {
                     this.gameState.pauseTimeRemaining = 0;
                     this.gameState.isPaused = false;
+                    this.gameState.resumeRequests = { p1: false, p2: false };
                     this.gameState.countdown = 3.0; // Inicia el 3, 2, 1
                     this.sendHUD();
                 }
@@ -425,7 +436,9 @@ class Match {
             p: this.gameState.isPaused,
             pt: Math.ceil(this.gameState.pauseTimeRemaining || 0),
             pl: this.pauseAvailability.p1,
-            pr: this.pauseAvailability.p2
+            pr: this.pauseAvailability.p2,
+            r1: this.gameState.resumeRequests.p1,
+            r2: this.gameState.resumeRequests.p2
         };
 
         this.io.to(this.roomId).emit('hudSync', hudData);

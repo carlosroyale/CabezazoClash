@@ -305,6 +305,12 @@ $asset = static function (string $path) use ($basePath): string {
                 <button id="btn-pause-how-to-play" class="btn btn-secondary">Cómo Jugar</button>
                 <button id="btn-exit" class="btn btn-secondary">Salir</button>
             </div>
+
+            <div id="pause-waiting-msg" class="hidden" style="margin-top: 2rem;">
+                <div class="spinner" style="margin: 0 auto 15px auto; width: 40px; height: 40px;"></div>
+                <h3 style="color: #ffce00; font-size: 1.6rem; font-weight: bold; text-transform: uppercase;">Esperando al rival...</h3>
+            </div>
+
             <div id="online-pause-timer" class="hidden">
                 <span id="opt-value">30</span>s
             </div>
@@ -342,8 +348,8 @@ $asset = static function (string $path) use ($basePath): string {
         else {
             // 1. Apuntamos a tu dominio principal
             // 2. Le indicamos por qué 'ruta' debe meterse para encontrar el Node.js
-            // socket = io('https://confident-energy-production-c6ea.up.railway.app', {
-            socket = io('http://localhost:3000', {
+            socket = io('https://confident-energy-production-c6ea.up.railway.app', {
+            // socket = io('http://localhost:3000', {
                 transports: ['websocket'],
                 upgrade: false,
                 autoConnect: false,

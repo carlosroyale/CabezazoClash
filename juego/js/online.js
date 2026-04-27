@@ -220,6 +220,7 @@ window.configurarEventosSocket = function() {
                 gameTime: 60,
                 isPaused: false,
                 pauseTimeRemaining: 0,
+                resumeRequests: { p1: false, p2: false },
                 pauseAvailability: { ...DEFAULT_ONLINE_PAUSE_AVAILABILITY }
             };
         }
@@ -231,6 +232,7 @@ window.configurarEventosSocket = function() {
         onlineState.score.right = hudData.sr;
         onlineState.countdown = hudData.c;
         onlineState.isPaused = hudData.p;
+        onlineState.resumeRequests = { p1: hudData.r1, p2: hudData.r2 };
         onlineState.pauseAvailability.left = hudData.pl !== false;
         onlineState.pauseAvailability.right = hudData.pr !== false;
         updatePauseAvailabilityUI(onlineState.pauseAvailability);
@@ -427,6 +429,25 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
                     if (window.Main && window.Main.stopAllSounds) window.Main.stopAllSounds();
                 }
 
+                // Gestionar el mensaje de "Esperando al rival"
+                const buttonsContainer = pauseMenu ? pauseMenu.querySelector('.buttons') : null;
+                const waitingMsg = document.getElementById('pause-waiting-msg');
+
+                let iAmReady = false;
+                if (myRole === 'p1') iAmReady = onlineState.resumeRequests.p1;
+                if (myRole === 'p2') iAmReady = onlineState.resumeRequests.p2;
+
+                if (iAmReady) {
+                    // Yo he pulsado reanudar: oculto los botones y pongo el spinner
+                    if (buttonsContainer) buttonsContainer.classList.add('hidden');
+                    if (waitingMsg) waitingMsg.classList.remove('hidden');
+                }
+                else {
+                    // Todavía no he pulsado reanudar: veo los botones normales
+                    if (buttonsContainer) buttonsContainer.classList.remove('hidden');
+                    if (waitingMsg) waitingMsg.classList.add('hidden');
+                }
+
                 // Mostrar el contador de pausa y actualizar el número
                 const pauseTimerEl = document.getElementById("online-pause-timer");
                 const optValueEl = document.getElementById("opt-value");
@@ -450,7 +471,13 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
                     if (window.Main && window.Main.playMatchAmbient) window.Main.playMatchAmbient();
                 }
 
-                // Ocultar el contador de pausa si el juego no está pausado
+                // Resetear los botones y ocultar el mensaje de espera al salir de la pausa
+                const buttonsContainer = pauseMenu ? pauseMenu.querySelector('.buttons') : null;
+                const waitingMsg = document.getElementById('pause-waiting-msg');
+                if (buttonsContainer) buttonsContainer.classList.remove('hidden');
+                if (waitingMsg) waitingMsg.classList.add('hidden');
+
+                // Ocultar el contador de pausa
                 const pauseTimerEl = document.getElementById("online-pause-timer");
                 if (pauseTimerEl) pauseTimerEl.classList.add("hidden");
             }
