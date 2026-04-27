@@ -532,6 +532,18 @@ body {
     to { transform: scale(1.08); }
 }
 
+/* Añadimos una transición a los bloques laterales para que el cambio sea suave */
+.sb-side-block {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Magia CSS: Si el marcador central tiene la clase de gol, ocultamos los laterales */
+.tv-scoreboard-wrap:has(.goal-active) .sb-side-block {
+    opacity: 0;
+    transform: scale(0.8); /* Efecto extra de hundimiento */
+    pointer-events: none; /* Evita clics fantasma en la pausa mientras no se ve */
+}
+
 /* botón de pausa dentro de la HUD */
 .pause-btn {
     position: absolute;
