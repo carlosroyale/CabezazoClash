@@ -8,6 +8,7 @@ window.pingInterval = null;
 let lastMeasuredLatency = null;
 let latestServerSimTime = 0;
 const DEFAULT_SCOREBOARD_LABELS = { left: 'J1', right: 'J2' };
+const DEFAULT_ONLINE_PAUSE_AVAILABILITY = { left: true, right: true };
 const pointsFormatter = new Intl.NumberFormat('es-ES');
 
 let stateBuffer = [];
@@ -27,13 +28,57 @@ function resetOnlineSessionState() {
     bytesReceivedThisSecond = 0;
     if (window.Main && window.Main.hideVersusScreen) window.Main.hideVersusScreen();
     updateScoreboardLabels();
+    updateScoreboardPoints();
+    updatePauseAvailabilityUI();
 }
 
 function updateScoreboardLabels(labels = DEFAULT_SCOREBOARD_LABELS) {
-    const leftEl = document.getElementById('team-left');
-    const rightEl = document.getElementById('team-right');
+    const leftEl = document.getElementById('team-left-name');
+    const rightEl = document.getElementById('team-right-name');
     if (leftEl) leftEl.textContent = labels.left || DEFAULT_SCOREBOARD_LABELS.left;
     if (rightEl) rightEl.textContent = labels.right || DEFAULT_SCOREBOARD_LABELS.right;
+}
+
+function normalizePointsLabel(value) {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return pointsFormatter.format(value);
+    }
+    if (typeof value !== 'string') return '';
+    return value.replace(/\s*PTS$/i, '').trim();
+}
+
+function updateScoreboardPoints(points = {}) {
+    const scoreboardEl = document.getElementById('scoreboard');
+    const scoreboardWrapEl = scoreboardEl ? scoreboardEl.parentElement : null;
+    const leftEl = document.getElementById('team-left-points-value');
+    const rightEl = document.getElementById('team-right-points-value');
+    const leftText = normalizePointsLabel(points.left);
+    const rightText = normalizePointsLabel(points.right);
+    const hasAnyPoints = Boolean(leftText || rightText);
+
+    if (leftEl) leftEl.textContent = leftText || '0';
+    if (rightEl) rightEl.textContent = rightText || '0';
+    if (scoreboardEl) scoreboardEl.classList.toggle('is-online', hasAnyPoints);
+    if (scoreboardWrapEl) scoreboardWrapEl.classList.toggle('is-online', hasAnyPoints);
+}
+
+function updatePauseAvailabilityUI(pauseAvailability = DEFAULT_ONLINE_PAUSE_AVAILABILITY) {
+    const leftPointsEl = document.getElementById('team-left-points');
+    const rightPointsEl = document.getElementById('team-right-points');
+
+    const leftAvailable = pauseAvailability.left !== false;
+    const rightAvailable = pauseAvailability.right !== false;
+
+    // Buscamos la CAJA entera de la pausa (.sb-pause-icon) y la ocultamos si hace falta
+    if (leftPointsEl) {
+        const iconBoxLeft = leftPointsEl.querySelector('.sb-pause-icon');
+        if (iconBoxLeft) iconBoxLeft.classList.toggle('hidden', !leftAvailable);
+    }
+
+    if (rightPointsEl) {
+        const iconBoxRight = rightPointsEl.querySelector('.sb-pause-icon');
+        if (iconBoxRight) iconBoxRight.classList.toggle('hidden', !rightAvailable);
+    }
 }
 
 function hasOnlinePhysicsState(state) {
@@ -118,7 +163,8 @@ window.configurarEventosSocket = function() {
                 score: {left: 0, right: 0}, // ¡Vital para que no crashee!
                 countdown: 3.0,
                 gameTime: 60,
-                isPaused: false
+                isPaused: false,
+                pauseAvailability: { ...DEFAULT_ONLINE_PAUSE_AVAILABILITY }
             };
         }
 
@@ -172,7 +218,8 @@ window.configurarEventosSocket = function() {
                 score: {left: 0, right: 0}, // ¡Vital para que no crashee!
                 countdown: 3.0,
                 gameTime: 60,
-                isPaused: false
+                isPaused: false,
+                pauseAvailability: { ...DEFAULT_ONLINE_PAUSE_AVAILABILITY }
             };
         }
 
@@ -182,6 +229,9 @@ window.configurarEventosSocket = function() {
         onlineState.score.right = hudData.sr;
         onlineState.countdown = hudData.c;
         onlineState.isPaused = hudData.p;
+        onlineState.pauseAvailability.left = hudData.pl !== false;
+        onlineState.pauseAvailability.right = hudData.pr !== false;
+        updatePauseAvailabilityUI(onlineState.pauseAvailability);
     });
 
     socket.on('soundFx', (soundEvents) => {
@@ -198,6 +248,7 @@ window.configurarEventosSocket = function() {
 
     socket.on('initRole', (role) => {
         myRole = role;
+        updatePauseAvailabilityUI(onlineState?.pauseAvailability || DEFAULT_ONLINE_PAUSE_AVAILABILITY);
         console.log("El servidor me ha asignado el rol:", myRole);
     });
 
@@ -296,6 +347,14 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
         updateScoreboardLabels({
             left: matchData.leftLabel || DEFAULT_SCOREBOARD_LABELS.left,
             right: matchData.rightLabel || DEFAULT_SCOREBOARD_LABELS.right
+        });
+        updateScoreboardPoints({
+            left: matchData.leftPoints,
+            right: matchData.rightPoints
+        });
+        updatePauseAvailabilityUI({
+            left: matchData.leftPauseAvailable !== false,
+            right: matchData.rightPauseAvailable !== false
         });
 
         isOnlineCountdownActive = true;

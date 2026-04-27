@@ -60,8 +60,11 @@ const canvas = document.getElementById("game-canvas");
 const ctx = canvas.getContext("2d");
 const scoreEl = document.getElementById("score");
 const timerEl = document.getElementById("timer");
-const teamLeftEl = document.getElementById("team-left");
-const teamRightEl = document.getElementById("team-right");
+const scoreboardEl = document.getElementById("scoreboard");
+const teamLeftNameEl = document.getElementById("team-left-name");
+const teamRightNameEl = document.getElementById("team-right-name");
+const teamLeftPointsValueEl = document.getElementById("team-left-points-value");
+const teamRightPointsValueEl = document.getElementById("team-right-points-value");
 
 // Elementos de la pantalla de fin
 const finalScoreEl = document.getElementById("final-score");
@@ -146,8 +149,17 @@ function setVersusLabel(element, text) {
 }
 
 function updateLocalScoreboardLabels(labels = DEFAULT_LOCAL_SCOREBOARD_LABELS) {
-  if (teamLeftEl) teamLeftEl.textContent = labels.left || DEFAULT_LOCAL_SCOREBOARD_LABELS.left;
-  if (teamRightEl) teamRightEl.textContent = labels.right || DEFAULT_LOCAL_SCOREBOARD_LABELS.right;
+  if (teamLeftNameEl) teamLeftNameEl.textContent = labels.left || DEFAULT_LOCAL_SCOREBOARD_LABELS.left;
+  if (teamRightNameEl) teamRightNameEl.textContent = labels.right || DEFAULT_LOCAL_SCOREBOARD_LABELS.right;
+  if (teamLeftPointsValueEl) teamLeftPointsValueEl.textContent = "0";
+  if (teamRightPointsValueEl) teamRightPointsValueEl.textContent = "0";
+  if (scoreboardEl) scoreboardEl.classList.remove("is-online");
+  if (scoreboardEl && scoreboardEl.parentElement) scoreboardEl.parentElement.classList.remove("is-online");
+  const leftPointsEl = document.getElementById("team-left-points");
+  const rightPointsEl = document.getElementById("team-right-points");
+  if (leftPointsEl) leftPointsEl.classList.remove("pause-unavailable");
+  if (rightPointsEl) rightPointsEl.classList.remove("pause-unavailable");
+  if (btnPause) btnPause.classList.remove("hidden");
 }
 
 function hideVersusScreen() {

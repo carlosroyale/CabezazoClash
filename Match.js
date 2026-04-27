@@ -29,8 +29,8 @@ class Match {
             else this.inputs.p2.delete(data.key);
         };
 
-        this.onP1TogglePause = () => this.togglePause();
-        this.onP2TogglePause = () => this.togglePause();
+        this.onP1TogglePause = () => this.togglePause('p1');
+        this.onP2TogglePause = () => this.togglePause('p2');
 
         this.onP1PingLatency = (timestamp, ack) => {
             if (typeof ack === 'function') ack(timestamp);
@@ -66,6 +66,7 @@ class Match {
         this.celebrationTimer = 0;
         this.nextScorer = null;
         this.inputs = { p1: new Set(), p2: new Set() };
+        this.pauseAvailability = { p1: true, p2: true };
 
         this.loopInterval = null;
         this.lastTime = Date.now();
@@ -97,6 +98,8 @@ class Match {
         this.io.to(this.roomId).emit('matchReady', {
             leftPoints: formatPoints(this.p1Socket.puntos),
             rightPoints: formatPoints(this.p2Socket.puntos),
+            leftPauseAvailable: this.pauseAvailability.p1,
+            rightPauseAvailable: this.pauseAvailability.p2,
             leftLabel: this.playerLabels.left,
             rightLabel: this.playerLabels.right,
             leftName: this.playerNames.left,
@@ -134,15 +137,21 @@ class Match {
         return limpio.slice(0, 18);
     }
 
-    togglePause() {
-        if (!this.gameState.isFinished && this.gameState.countdown <= 0) {
-            this.gameState.isPaused = !this.gameState.isPaused;
-            if (!this.gameState.isPaused) this.gameState.countdown = 3.0;
+    togglePause(role) {
+        if (this.gameState.isFinished || this.gameState.countdown > 0) return;
 
-            // Enviamos el estado solo a los que están en la sala
-            // this.io.to(this.roomId).emit('gameState', this.gameState);
+        if (this.gameState.isPaused) {
+            this.gameState.isPaused = false;
+            this.gameState.countdown = 3.0;
             this.sendHUD();
+            return;
         }
+
+        if (!role || !this.pauseAvailability[role]) return;
+
+        this.pauseAvailability[role] = false;
+        this.gameState.isPaused = true;
+        this.sendHUD();
     }
 
     handleDisconnect(role) {
@@ -400,7 +409,9 @@ class Match {
             sl: this.gameState.score.left,
             sr: this.gameState.score.right,
             c: this.gameState.countdown > 0 ? Math.ceil(this.gameState.countdown) : 0,
-            p: this.gameState.isPaused
+            p: this.gameState.isPaused,
+            pl: this.pauseAvailability.p1,
+            pr: this.pauseAvailability.p2
         };
 
         this.io.to(this.roomId).emit('hudSync', hudData);

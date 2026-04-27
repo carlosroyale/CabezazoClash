@@ -21,7 +21,7 @@ $asset = static function (string $path) use ($basePath): string {
     <link rel="manifest" href="<?= htmlspecialchars($asset('manifest.json'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="apple-touch-icon" href="<?= htmlspecialchars($asset('assets/img/logo192.png'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="icon" type="image/x-icon" href="<?= htmlspecialchars($asset('assets/icon/favicon.ico'), ENT_QUOTES, 'UTF-8') ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars($asset('juego/juego.css?v=11'), ENT_QUOTES, 'UTF-8') ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars($asset('juego/juego.css?v=12'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 </head>
@@ -244,13 +244,30 @@ $asset = static function (string $path) use ($basePath): string {
         <div class="hud">
             <button id="btn-pause" class="pause-btn"><i class="bi bi-pause-fill"></i></button>
 
-            <div class="tv-scoreboard" id="scoreboard">
-                <div class="sb-time" id="timer">60</div>
-                <div class="sb-team" id="team-left">J1</div>
-                <div class="sb-score" id="score">0 - 0</div>
-                <div class="sb-team" id="team-right">J2</div>
+            <div class="tv-scoreboard-wrap">
 
-                <div class="sb-goal-overlay">¡GOOOOOOOL!</div>
+                <div class="sb-side-block" id="team-left-points">
+                    <div class="sb-pause-icon"><i class="bi bi-pause-fill"></i></div>
+                    <div class="sb-points-box"><span id="team-left-points-value">0</span> pts</div>
+                </div>
+
+                <div class="tv-scoreboard" id="scoreboard">
+                    <div class="sb-time" id="timer">60</div>
+                    <div class="sb-team" id="team-left">
+                        <span class="sb-team-name" id="team-left-name">J1</span>
+                    </div>
+                    <div class="sb-score" id="score">0 - 0</div>
+                    <div class="sb-team" id="team-right">
+                        <span class="sb-team-name" id="team-right-name">J2</span>
+                    </div>
+                    <div class="sb-goal-overlay">¡GOOOOOOOL!</div>
+                </div>
+
+                <div class="sb-side-block" id="team-right-points">
+                    <div class="sb-points-box"><span id="team-right-points-value">0</span> pts</div>
+                    <div class="sb-pause-icon"><i class="bi bi-pause-fill"></i></div>
+                </div>
+
             </div>
         </div>
     </section>
@@ -382,7 +399,7 @@ $asset = static function (string $path) use ($basePath): string {
 <script src="<?= htmlspecialchars($asset('juego/js/renderer.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/input.js?v=5'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/game.js?v=9'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/online.js?v=16'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=29'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/online.js?v=17'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=30'), ENT_QUOTES, 'UTF-8') ?>"></script>
 </body>
 </html>
