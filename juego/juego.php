@@ -322,8 +322,8 @@ $asset = static function (string $path) use ($basePath): string {
         else {
             // 1. Apuntamos a tu dominio principal
             // 2. Le indicamos por qué 'ruta' debe meterse para encontrar el Node.js
-            // socket = io('https://confident-energy-production-c6ea.up.railway.app', {
-            socket = io('http://localhost:3000', {
+            socket = io('https://confident-energy-production-c6ea.up.railway.app', {
+            // socket = io('http://localhost:3000', {
                 transports: ['websocket'],
                 upgrade: false,
                 autoConnect: false,
