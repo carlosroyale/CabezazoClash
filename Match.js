@@ -97,7 +97,9 @@ class Match {
             leftLabel: this.playerLabels.left,
             rightLabel: this.playerLabels.right,
             leftName: this.playerNames.left,
-            rightName: this.playerNames.right
+            rightName: this.playerNames.right,
+            leftUserId: Number.parseInt(this.p1Socket.userId, 10) || 0,
+            rightUserId: Number.parseInt(this.p2Socket.userId, 10) || 0
         });
 
         this.startLoop();

@@ -19,6 +19,8 @@ const touchControls = document.getElementById("touch-controls");
 const badWifiIcon = document.getElementById('bad-connection-warning');
 const versusNameLeft = document.getElementById("versus-name-left");
 const versusNameRight = document.getElementById("versus-name-right");
+const versusLabelLeft = document.getElementById("versus-label-left");
+const versusLabelRight = document.getElementById("versus-label-right");
 
 // Botones de navegación
 const btnPlay = document.getElementById("btn-play");
@@ -136,6 +138,13 @@ function getScoreboardAbbreviation(name, fallback) {
   return limpio.slice(0, 3).toUpperCase();
 }
 
+function setVersusLabel(element, text) {
+  if (!element) return;
+  const contenido = typeof text === "string" ? text.trim() : "";
+  element.textContent = contenido;
+  element.hidden = !contenido;
+}
+
 function updateLocalScoreboardLabels(labels = DEFAULT_LOCAL_SCOREBOARD_LABELS) {
   if (teamLeftEl) teamLeftEl.textContent = labels.left || DEFAULT_LOCAL_SCOREBOARD_LABELS.left;
   if (teamRightEl) teamRightEl.textContent = labels.right || DEFAULT_LOCAL_SCOREBOARD_LABELS.right;
@@ -149,11 +158,13 @@ function hideVersusScreen() {
   if (screenVersus) screenVersus.classList.remove("active");
 }
 
-function playVersusIntro({ leftName, rightName, duration = 2000, onComplete } = {}) {
+function playVersusIntro({ leftName, rightName, leftLabel = "", rightLabel = "", duration = 2000, onComplete } = {}) {
   hideVersusScreen();
 
   if (versusNameLeft) versusNameLeft.textContent = getVersusName(leftName, "Jugador 1");
   if (versusNameRight) versusNameRight.textContent = getVersusName(rightName, "Jugador 2");
+  setVersusLabel(versusLabelLeft, leftLabel);
+  setVersusLabel(versusLabelRight, rightLabel);
   if (screenVersus) screenVersus.classList.add("active");
 
   versusTimeoutId = setTimeout(() => {

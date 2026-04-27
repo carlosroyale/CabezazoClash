@@ -21,7 +21,7 @@ $asset = static function (string $path) use ($basePath): string {
     <link rel="manifest" href="<?= htmlspecialchars($asset('manifest.json'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="apple-touch-icon" href="<?= htmlspecialchars($asset('assets/img/logo192.png'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="icon" type="image/x-icon" href="<?= htmlspecialchars($asset('assets/icon/favicon.ico'), ENT_QUOTES, 'UTF-8') ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars($asset('juego/juego.css?v=10'), ENT_QUOTES, 'UTF-8') ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars($asset('juego/juego.css?v=11'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 </head>
@@ -224,8 +224,8 @@ $asset = static function (string $path) use ($basePath): string {
     <section id="screen-versus" class="screen">
         <div class="versus-overlay">
             <div class="versus-player versus-player-left">
-                <span class="versus-side-label">IZQUIERDA</span>
                 <div id="versus-name-left" class="versus-name">JUGADOR 1</div>
+                <span id="versus-label-left" class="versus-side-label" hidden></span>
             </div>
 
             <div class="versus-center">
@@ -233,8 +233,8 @@ $asset = static function (string $path) use ($basePath): string {
             </div>
 
             <div class="versus-player versus-player-right">
-                <span class="versus-side-label">DERECHA</span>
                 <div id="versus-name-right" class="versus-name">JUGADOR 2</div>
+                <span id="versus-label-right" class="versus-side-label" hidden></span>
             </div>
         </div>
     </section>
@@ -310,6 +310,7 @@ $asset = static function (string $path) use ($basePath): string {
     // Si no hay sesión, será null.
     const miUsuarioId = <?= isset($_SESSION['id_usuario']) ? json_encode($_SESSION['id_usuario']) : 'null' ?>;
     const miUsername = <?= isset($_SESSION['usuario']['username']) ? json_encode($_SESSION['usuario']['username']) : 'null' ?>;
+    window.currentUserId = miUsuarioId;
     window.currentUsername = miUsername;
 
     if (typeof io !== 'undefined') {
@@ -320,8 +321,8 @@ $asset = static function (string $path) use ($basePath): string {
         else {
             // 1. Apuntamos a tu dominio principal
             // 2. Le indicamos por qué 'ruta' debe meterse para encontrar el Node.js
-            socket = io('https://confident-energy-production-c6ea.up.railway.app', {
-            // socket = io('http://localhost:3000', {
+            // socket = io('https://confident-energy-production-c6ea.up.railway.app', {
+            socket = io('http://localhost:3000', {
                 transports: ['websocket'],
                 upgrade: false,
                 autoConnect: false,
@@ -380,7 +381,7 @@ $asset = static function (string $path) use ($basePath): string {
 <script src="<?= htmlspecialchars($asset('juego/js/renderer.js?v=3'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/input.js?v=5'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/game.js?v=9'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/online.js?v=14'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=28'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/online.js?v=15'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=29'), ENT_QUOTES, 'UTF-8') ?>"></script>
 </body>
 </html>

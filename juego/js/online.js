@@ -8,10 +8,52 @@ window.pingInterval = null;
 let lastMeasuredLatency = null;
 let latestServerSimTime = 0;
 const DEFAULT_SCOREBOARD_LABELS = { left: 'J1', right: 'J2' };
+const pointsFormatter = new Intl.NumberFormat('es-ES');
 
 let stateBuffer = [];
 const RENDER_DELAY = 80; // Dibujaremos a ambos jugadores y la pelota 80ms en el pasado
 const DEFAULT_PRESENTATION_NAMES = { left: 'Jugador 1', right: 'Jugador 2' };
+
+function parseUserId(value) {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
+}
+
+function formatAbsolutePointsLabel(points) {
+    const safePoints = Number.isFinite(points) ? Math.max(0, Math.trunc(points)) : 0;
+    return `${pointsFormatter.format(safePoints)} PTS`;
+}
+
+async function fetchAbsolutePointsLabels(matchData) {
+    const leftUserId = parseUserId(matchData?.leftUserId);
+    const rightUserId = parseUserId(matchData?.rightUserId);
+
+    if (!leftUserId && !rightUserId) {
+        return { left: '', right: '' };
+    }
+
+    const params = new URLSearchParams({
+        accion: 'obtener_puntos_absolutos_usuarios',
+        left_user_id: String(leftUserId),
+        right_user_id: String(rightUserId)
+    });
+
+    const response = await fetch(`funciones_backend.php?${params.toString()}`, {
+        credentials: 'same-origin'
+    });
+
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    const pointsByUser = data?.puntos ?? {};
+
+    return {
+        left: formatAbsolutePointsLabel(pointsByUser[leftUserId] ?? 0),
+        right: formatAbsolutePointsLabel(pointsByUser[rightUserId] ?? 0)
+    };
+}
 
 function resetOnlineSessionState() {
     onlineState = null;
@@ -296,15 +338,29 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
             requestAnimationFrame(onlineLoop);
         };
 
-        if (window.Main && window.Main.playVersusIntro) {
-            window.Main.playVersusIntro({
-                leftName: matchData.leftName || DEFAULT_PRESENTATION_NAMES.left,
-                rightName: matchData.rightName || DEFAULT_PRESENTATION_NAMES.right,
-                onComplete: startOnlineLoop
-            });
-        } else {
-            startOnlineLoop();
-        }
+        const playOnlineVersus = async () => {
+            let labels = { left: '', right: '' };
+
+            try {
+                labels = await fetchAbsolutePointsLabels(matchData);
+            } catch (error) {
+                console.warn('No se pudieron cargar los puntos absolutos del versus online.', error);
+            }
+
+            if (window.Main && window.Main.playVersusIntro) {
+                window.Main.playVersusIntro({
+                    leftName: matchData.leftName || DEFAULT_PRESENTATION_NAMES.left,
+                    rightName: matchData.rightName || DEFAULT_PRESENTATION_NAMES.right,
+                    leftLabel: labels.left,
+                    rightLabel: labels.right,
+                    onComplete: startOnlineLoop
+                });
+            } else {
+                startOnlineLoop();
+            }
+        };
+
+        playOnlineVersus();
     });
 
     p1 = makePlayer(180, FLOOR_Y - 90, "J1", true);

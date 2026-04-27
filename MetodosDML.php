@@ -307,4 +307,31 @@ class MetodosDML {
         }
         return $ranking;
     }
+
+    public function obtenerPuntosUsuarios(int $leftUserId, int $rightUserId = 0): array {
+        $resultados = [];
+        $idsUsuario = array_unique([$leftUserId, $rightUserId]);
+
+        foreach ($idsUsuario as $idUsuario) {
+            $idUsuario = intval($idUsuario);
+            if ($idUsuario <= 0) continue;
+
+            $resultados[$idUsuario] = 0;
+
+            $sql = "SELECT puntos_globales FROM usuario WHERE id_usuario = ? LIMIT 1";
+            if ($stmt = $this->conexion->prepare($sql)) {
+                $stmt->bind_param("i", $idUsuario);
+                $stmt->execute();
+                $res = $stmt->get_result();
+
+                if ($fila = $res->fetch_assoc()) {
+                    $resultados[$idUsuario] = intval($fila['puntos_globales']);
+                }
+
+                $stmt->close();
+            }
+        }
+
+        return $resultados;
+    }
 }
