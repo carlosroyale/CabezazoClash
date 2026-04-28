@@ -200,7 +200,9 @@ class Match {
         // simulamos que el partido ha terminado de forma natural.
         this.io.to(this.roomId).emit('matchEnd', {
             leftName: this.playerNames.left,
-            rightName: this.playerNames.right
+            rightName: this.playerNames.right,
+            leftScore: this.gameState.score.left,
+            rightScore: this.gameState.score.right
         });
 
         // Destruimos la sala en la memoria del servidor
@@ -369,7 +371,7 @@ class Match {
                     this.sendHUD();
                 }
             }
-                // 3. BUCLE PRINCIPAL DEL JUEGO
+            // 3. BUCLE PRINCIPAL DEL JUEGO
             // Solo ejecutamos las lógicas si el juego no está pausado ni ha terminado.
             else if (!this.gameState.isPaused && !this.gameState.isFinished) {
 
@@ -396,7 +398,9 @@ class Match {
                         // Notificamos a los jugadores que el partido terminó y enviamos el estado final.
                         this.io.to(this.roomId).emit('matchEnd', {
                             leftName: this.playerNames.left,
-                            rightName: this.playerNames.right
+                            rightName: this.playerNames.right,
+                            leftScore: this.gameState.score.left,
+                            rightScore: this.gameState.score.right
                         });
 
                         this.sendHUD();

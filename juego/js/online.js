@@ -277,6 +277,12 @@ window.configurarEventosSocket = function() {
         if (!window.isOnlineMode) return;
         matchFinishedExternally = true;
 
+        // Apagamos la pausa en la memoria local para que el onlineLoop no vuelva a abrir el menú rebelde
+        if (onlineState) {
+            onlineState.isPaused = false;
+        }
+        gamePaused = false;
+
         // Limpiamos el menú de pausa y el filtro oscuro
         const pauseMenu = document.getElementById("pause-menu");
         if (pauseMenu) pauseMenu.classList.add("hidden");
@@ -285,8 +291,13 @@ window.configurarEventosSocket = function() {
         if (window.Main && window.Main.hideVersusScreen) window.Main.hideVersusScreen();
         window.playSound('sfx-whistle');
         if (gameTimerEl) gameTimerEl.textContent = "0";
+
+        // Si por alguna razón no vinieran, usamos los de onlineState como respaldo
         endGame(matchData.leftName || DEFAULT_SCOREBOARD_LABELS.left,
-            matchData.rightName || DEFAULT_SCOREBOARD_LABELS.right);
+            matchData.rightName || DEFAULT_SCOREBOARD_LABELS.right,
+            matchData.leftScore,
+            matchData.rightScore
+        );
 
         // Mientras el jugador mira la pantalla de resultados,
         // recargamos sus puntos en segundo plano.
