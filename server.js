@@ -25,7 +25,7 @@ const constants = require('./juego/js/constants.js');
 Object.assign(global, constants);
 
 // --- SISTEMA DE MATCHMAKING ---
-let waitingPlayer = null;           // El jugador que está esperando rival
+let waitingPlayers = [];            // Array de jugadores esperando rival
 const activeMatches = new Map();    // Diccionario de partidas activas (room_1, room_2...)
 let matchIdCounter = 0;             // Contador para crear IDs únicos
 
@@ -85,32 +85,52 @@ io.on('connection', (socket) => {
         }
 
         // --- LÓGICA NORMAL DE BÚSQUEDA ---
-        if (waitingPlayer && waitingPlayer.id !== socket.id) {
+        let matchedOpponentIndex = -1;
+
+        // Recorremos la sala de espera buscando a alguien en nuestro rango
+        for (let i = 0; i < waitingPlayers.length; i++) {
+            const p = waitingPlayers[i];
+
+            // No nos emparejamos a nosotros mismos (por si recarga o spamea el botón)
+            if (p.id === socket.id) continue;
+
+            // Calculamos la diferencia absoluta de puntos
+            const diferencia = Math.abs((p.puntos || 0) - (socket.puntos || 0));
+
+            // Si la diferencia es 100 o menos, ¡tenemos rival!
+            if (diferencia <= 200) {
+                matchedOpponentIndex = i;
+                break; // Paramos de buscar
+            }
+        }
+
+        if (matchedOpponentIndex !== -1) {
+            // Sacamos al rival de la lista de espera
+            const opponent = waitingPlayers.splice(matchedOpponentIndex, 1)[0];
 
             const roomId = 'room_' + (++matchIdCounter);
-            console.log(`⚔️ Creando partida [${roomId}] entre ${waitingPlayer.id} y ${socket.id}`);
+            console.log(`⚔️ Partida [${roomId}] | ${opponent.id} (${opponent.puntos} pts) VS ${socket.id} (${socket.puntos} pts)`);
 
             // Registramos que estos usuarios están ocupados en esta sala
-            userMatchMap.set(waitingPlayer.userId, roomId);
+            userMatchMap.set(opponent.userId, roomId);
             userMatchMap.set(socket.userId, roomId);
 
-            // Modificamos el callback para limpiar el registro al terminar
-            const match = new Match(waitingPlayer, socket, io, roomId, (p1Id, p2Id) => {
+            const match = new Match(opponent, socket, io, roomId, (p1Id, p2Id) => {
                 activeMatches.delete(roomId);
-                userMatchMap.delete(p1Id);
-                userMatchMap.delete(p2Id);
+                if (userMatchMap.get(p1Id) === roomId) userMatchMap.delete(p1Id);
+                if (userMatchMap.get(p2Id) === roomId) userMatchMap.delete(p2Id);
                 console.log(`🗑️ Partida [${roomId}] borrada de la memoria.`);
             });
 
-            // Guardamos la partida en el registro activo
             activeMatches.set(roomId, match);
-
-            // Vaciamos la silla de espera para los próximos que lleguen
-            waitingPlayer = null;
-        } else {
-            // Si la silla está vacía, el jugador se sienta a esperar
-            waitingPlayer = socket;
-            console.log(`⏳ Jugador ${socket.id} esperando un rival digno...`);
+        }
+        else {
+            // Si no hay nadie en su rango, lo metemos en la lista de espera
+            // (Comprobamos antes que no esté ya dentro para evitar duplicados)
+            if (!waitingPlayers.find(p => p.id === socket.id)) {
+                waitingPlayers.push(socket);
+                console.log(`⏳ Jugador ${socket.id} (${socket.puntos} pts) esperando rival (+/- 200 pts)...`);
+            }
         }
     });
 
@@ -121,9 +141,11 @@ io.on('connection', (socket) => {
             console.log(`Usuario ${socket.userId} liberado.`);
         }
 
-        if (waitingPlayer === socket) {
-            console.log(`🏃‍♂️ El jugador ${socket.id} se cansó de esperar y se fue.`);
-            waitingPlayer = null;
+        // Buscamos si el jugador estaba en la cola y lo eliminamos
+        const index = waitingPlayers.findIndex(p => p.id === socket.id);
+        if (index !== -1) {
+            waitingPlayers.splice(index, 1);
+            console.log(`🏃‍♂️ El jugador ${socket.id} salió de la cola de búsqueda.`);
         }
     });
 });

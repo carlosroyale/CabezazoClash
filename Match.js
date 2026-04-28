@@ -374,8 +374,9 @@ class Match {
 
                         this.sendHUD();
 
-                        // Esperamos 5 segundos antes de borrar la sala en el servidor para que vean sus resultados finales.
-                        setTimeout(() => this.destroy(), 5000);
+                        // Destruimos la sala en el servidor al instante.
+                        // El frontend ya tiene los datos y no nos necesita para mostrar el menú final.
+                        this.destroy();
                     }
                 }
 
