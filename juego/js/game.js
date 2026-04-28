@@ -162,7 +162,7 @@ function stopBasicGame() {
     }
 }
 
-function endGame(leftName, rightName, leftScore, rightScore) {
+function endGame(leftName, rightName, leftScore, rightScore, pointsDelta) {
     // En online NO paramos el bucle aquí para que el campo no desaparezca
     if (window.isOnlineMode) {
         gameRunning = true;
@@ -175,11 +175,11 @@ function endGame(leftName, rightName, leftScore, rightScore) {
     }
 
     if (window.Main.showEndScreen) {
-        // Determinamos qué puntos mostrar: los forzados por parámetro o los locales
         const finalLeft = (leftScore !== undefined) ? leftScore : score.left;
         const finalRight = (rightScore !== undefined) ? rightScore : score.right;
 
-        window.Main.showEndScreen(leftName, finalLeft, rightName, finalRight);
+        // Pasamos el pointsDelta a la interfaz final
+        window.Main.showEndScreen(leftName, finalLeft, rightName, finalRight, pointsDelta);
     }
 }
 

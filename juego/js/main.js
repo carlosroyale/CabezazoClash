@@ -341,21 +341,40 @@ function beginBotGame() {
   });
 }
 
-// REEMPLAZAR FUNCIÓN DE FIN DE PARTIDA
-function showEndScreen(leftName, leftScore, rightName, rightScore) {
+function showEndScreen(leftName, leftScore, rightName, rightScore, pointsDelta) {
   hideVersusScreen();
   finalScoreEl.textContent = `${leftScore} - ${rightScore}`;
+
   let winnerMessage = "";
   if (leftScore > rightScore) winnerMessage = `¡Gana ${leftName}!`;
   else if (rightScore > leftScore) winnerMessage = `¡Gana ${rightName}!`;
   else winnerMessage = "¡Empate!";
-  winnerMessageEl.textContent = winnerMessage;
 
-  // En lugar de showScreen, la superponemos oscureciendo el fondo
+  // Verificamos si hay variación de puntos (online)
+  if (pointsDelta !== undefined && pointsDelta !== null) {
+    const sign = pointsDelta >= 0 ? "+" : ""; // Ahora incluimos el 0 aquí
+
+    // Elegimos color: Verde si gana, Rojo si pierde, Amarillo si es 0
+    let color = "#FFE138"; // Amarillo para empate (+0)
+    if (pointsDelta > 0) color = "#0DFF72";      // Verde neón
+    else if (pointsDelta < 0) color = "#FF0D72"; // Rojo neón
+
+    winnerMessageEl.innerHTML = `
+        ${winnerMessage}
+        <br>
+        <span style="color: ${color}; font-size: 1.4rem; font-weight: bold; margin-top: 10px; display: inline-block;">
+            ${sign}${pointsDelta} Puntos
+        </span>
+      `;
+  }
+  else {
+    // Caso offline o contra Bot sin sistema de puntos
+    winnerMessageEl.textContent = winnerMessage;
+  }
+
+  // Mostramos la pantalla final
   screenEnd.classList.add("active");
 }
-
-
 
 asignarBoton(btnPlay, () => showScreen(screenModeSelect));
 asignarBoton(btnSalir, () => {

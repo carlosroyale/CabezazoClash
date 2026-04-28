@@ -292,11 +292,14 @@ window.configurarEventosSocket = function() {
         window.playSound('sfx-whistle');
         if (gameTimerEl) gameTimerEl.textContent = "0";
 
-        // Si por alguna razón no vinieran, usamos los de onlineState como respaldo
+        // Averiguamos cuál es nuestra variación de puntos
+        const myDelta = (myRole === 'p1') ? matchData.leftPointsDelta : matchData.rightPointsDelta;
+
         endGame(matchData.leftName || DEFAULT_SCOREBOARD_LABELS.left,
             matchData.rightName || DEFAULT_SCOREBOARD_LABELS.right,
             matchData.leftScore,
-            matchData.rightScore
+            matchData.rightScore,
+            myDelta
         );
 
         // Mientras el jugador mira la pantalla de resultados,

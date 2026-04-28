@@ -193,6 +193,9 @@ class Match {
             this.gameState.score.right = 0;
         }
 
+        // Calculamos puntos
+        const pts = this.calculatePointsDelta(this.gameState.score.left, this.gameState.score.right);
+
         // 2. Enviamos el estado del HUD actualizado para que el rival vea el 3-0 en su pantalla
         this.sendHUD();
 
@@ -202,7 +205,9 @@ class Match {
             leftName: this.playerNames.left,
             rightName: this.playerNames.right,
             leftScore: this.gameState.score.left,
-            rightScore: this.gameState.score.right
+            rightScore: this.gameState.score.right,
+            leftPointsDelta: pts.left,
+            rightPointsDelta: pts.right
         });
 
         // Destruimos la sala en la memoria del servidor
@@ -371,7 +376,7 @@ class Match {
                     this.sendHUD();
                 }
             }
-            // 3. BUCLE PRINCIPAL DEL JUEGO
+                // 3. BUCLE PRINCIPAL DEL JUEGO
             // Solo ejecutamos las lógicas si el juego no está pausado ni ha terminado.
             else if (!this.gameState.isPaused && !this.gameState.isFinished) {
 
@@ -395,12 +400,17 @@ class Match {
                         this.gameState.gameTime = 0;
                         this.gameState.isFinished = true;
 
+                        // Calculamos puntos
+                        const pts = this.calculatePointsDelta(this.gameState.score.left, this.gameState.score.right);
+
                         // Notificamos a los jugadores que el partido terminó y enviamos el estado final.
                         this.io.to(this.roomId).emit('matchEnd', {
                             leftName: this.playerNames.left,
                             rightName: this.playerNames.right,
                             leftScore: this.gameState.score.left,
-                            rightScore: this.gameState.score.right
+                            rightScore: this.gameState.score.right,
+                            leftPointsDelta: pts.left,
+                            rightPointsDelta: pts.right
                         });
 
                         this.sendHUD();
@@ -562,6 +572,34 @@ class Match {
         };
 
         this.io.to(this.roomId).emit('hudSync', hudData);
+    }
+
+    // Cálculo de puntos dinámico tipo ELO
+    calculatePointsDelta(leftScore, rightScore) {
+        // En caso de empate, nadie pierde ni gana puntos
+        if (leftScore === rightScore) return { left: 0, right: 0 };
+
+        const maxDiff = 200; // Máxima diferencia permitida por el matchmaking
+        const isP1Winner = leftScore > rightScore;
+
+        // Descubrimos quién es el ganador y el perdedor para saber sus puntos actuales
+        const winnerPts = isP1Winner ? this.p1Points : this.p2Points;
+        const loserPts = isP1Winner ? this.p2Points : this.p1Points;
+
+        // Diferencia: Positiva si gana el favorito (grande), negativa si gana el underdog (pequeño)
+        const diff = winnerPts - loserPts;
+
+        // Fórmula: 30 base. Restamos/Sumamos en función de la diferencia
+        let delta = Math.round(30 - (diff / maxDiff) * 20);
+
+        // Limitamos por seguridad (Clamp) entre 10 y 50
+        if (delta > 50) delta = 50;
+        if (delta < 10) delta = 10;
+
+        return {
+            left: leftScore > rightScore ? delta : -delta,
+            right: rightScore > leftScore ? delta : -delta
+        };
     }
 
     destroy() {
