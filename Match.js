@@ -1,6 +1,7 @@
 // Match.js - Molde para partidas individuales
 const { makePlayer, updatePlayer, updateBall, controlPlayer } = require('./juego/js/entities.js');
 const { collidePlayers, collidePlayerBall, checkGoalCollisions, collidePlayerGoals, arePlayersBackToBack, resolveBackToBackBallSqueeze, resolveBallSqueezeUp } = require('./juego/js/physics.js');
+const { registrarPartidaOnline } = require('./db.js');
 
 const W = 1845;
 const H = 1038;
@@ -18,6 +19,7 @@ class Match {
         this.onMatchEndCallback = onMatchEndCallback;
         this.isDestroyed = false;
         this.isAbandoned = false;
+        this.matchEndSent = false;
 
         // Guardamos los IDs y los puntos por si el socket muere y hay que reconectar
         this.p1UserId = this.p1Socket.userId;
@@ -193,30 +195,17 @@ class Match {
             this.gameState.score.right = 0;
         }
 
-        // Calculamos puntos
-        const pts = this.calculatePointsDelta(this.gameState.score.left, this.gameState.score.right);
-
         // 2. Enviamos el estado del HUD actualizado para que el rival vea el 3-0 en su pantalla
         this.sendHUD();
 
         // 3. En lugar de mandar 'playerLeft' (que lanza la pantalla de error),
         // simulamos que el partido ha terminado de forma natural.
-        this.io.to(this.roomId).emit('matchEnd', {
-            leftName: this.playerNames.left,
-            rightName: this.playerNames.right,
-            leftScore: this.gameState.score.left,
-            rightScore: this.gameState.score.right,
-            leftPointsDelta: pts.left,
-            rightPointsDelta: pts.right
+        this.finishMatch().finally(() => {
+            // Ejecutamos el callback para avisar al cliente que abandonó que ya puede desconectarse
+            if (typeof ack === 'function') {
+                ack();
+            }
         });
-
-        // Destruimos la sala en la memoria del servidor
-        this.destroy();
-
-        // Ejecutamos el callback para avisar al cliente que abandonó que ya puede desconectarse
-        if (typeof ack === 'function') {
-            ack();
-        }
     }
 
     // Si se corta el wifi, el servidor espera
@@ -400,24 +389,8 @@ class Match {
                         this.gameState.gameTime = 0;
                         this.gameState.isFinished = true;
 
-                        // Calculamos puntos
-                        const pts = this.calculatePointsDelta(this.gameState.score.left, this.gameState.score.right);
-
                         // Notificamos a los jugadores que el partido terminó y enviamos el estado final.
-                        this.io.to(this.roomId).emit('matchEnd', {
-                            leftName: this.playerNames.left,
-                            rightName: this.playerNames.right,
-                            leftScore: this.gameState.score.left,
-                            rightScore: this.gameState.score.right,
-                            leftPointsDelta: pts.left,
-                            rightPointsDelta: pts.right
-                        });
-
-                        this.sendHUD();
-
-                        // Destruimos la sala en el servidor al instante.
-                        // El frontend ya tiene los datos y no nos necesita para mostrar el menú final.
-                        this.destroy();
+                        this.finishMatch();
                     }
                 }
 
@@ -551,6 +524,49 @@ class Match {
         finally {
             global.window.playSound = previousPlaySound;
         }
+    }
+
+    async finishMatch() {
+        if (this.matchEndSent) return;
+        this.matchEndSent = true;
+
+        const pts = this.calculatePointsDelta(this.gameState.score.left, this.gameState.score.right);
+
+        await this.registrarPartidaFinalizada(pts);
+
+        this.io.to(this.roomId).emit('matchEnd', {
+            leftName: this.playerNames.left,
+            rightName: this.playerNames.right,
+            leftScore: this.gameState.score.left,
+            rightScore: this.gameState.score.right,
+            leftPointsDelta: pts.left,
+            rightPointsDelta: pts.right
+        });
+
+        this.destroy();
+    }
+
+    registrarPartidaFinalizada(pts) {
+        const idUsuarioIzquierda = Number.parseInt(this.p1UserId, 10);
+        const idUsuarioDerecha = Number.parseInt(this.p2UserId, 10);
+
+        if (!Number.isInteger(idUsuarioIzquierda) || !Number.isInteger(idUsuarioDerecha)) {
+            console.error(`No se pudo registrar la partida [${this.roomId}]: IDs de usuario inválidos.`);
+            return;
+        }
+
+        return registrarPartidaOnline({
+            golesIzquierda: this.gameState.score.left,
+            golesDerecha: this.gameState.score.right,
+            puntosIzquierda: Number.parseInt(this.p1Points, 10) || 0,
+            puntosDerecha: Number.parseInt(this.p2Points, 10) || 0,
+            puntosDeltaIzquierda: pts.left,
+            puntosDeltaDerecha: pts.right,
+            idUsuarioIzquierda,
+            idUsuarioDerecha
+        }).catch(error => {
+            console.error(`Error registrando la partida [${this.roomId}] en BD:`, error);
+        });
     }
 
     // 2. Crea la función que envía los datos lentos

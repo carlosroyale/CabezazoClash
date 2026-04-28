@@ -67,13 +67,17 @@ CREATE TABLE global_foto_ranking (
 
 CREATE TABLE partida (
     id_partida INT AUTO_INCREMENT PRIMARY KEY,
-    golesLocal INT NOT NULL,
-    golesVisitante INT NOT NULL,
+    golesIzquierda INT NOT NULL,
+    golesDerecha INT NOT NULL,
+    puntosIzquierda INT NOT NULL,
+    puntosDerecha INT NOT NULL,
+    puntosDeltaIzquierda INT NOT NULL,
+    puntosDeltaDerecha INT NOT NULL,
     fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
-    id_usuario_local INT NOT NULL,
-    id_usuario_visitante INT NOT NULL,
-    CONSTRAINT partida_usuario_local_fk FOREIGN KEY (id_usuario_local) REFERENCES usuario (id_usuario),
-    CONSTRAINT partida_usuario_visitante_fk FOREIGN KEY (id_usuario_visitante) REFERENCES usuario (id_usuario)
+    id_usuario_izquierda INT NOT NULL,
+    id_usuario_derecha INT NOT NULL,
+    CONSTRAINT partida_usuario_izquierda_fk FOREIGN KEY (id_usuario_izquierda) REFERENCES usuario (id_usuario),
+    CONSTRAINT partida_usuario_derecha_fk FOREIGN KEY (id_usuario_derecha) REFERENCES usuario (id_usuario)
 );
 
 -- Creamos índice para que las consultas sean rápidas
