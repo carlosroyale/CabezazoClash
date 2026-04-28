@@ -148,16 +148,6 @@ function startNetworkDebugInterval() {
 window.configurarEventosSocket = function() {
     if (typeof socket === 'undefined') return;
 
-    // Rival desconectado accidentalmente
-    socket.on('opponentDisconnected', () => {
-        customPauseMessage = 'Rival desconectado. Esperando reconexión...';
-    });
-
-    // Rival reconectado
-    socket.on('opponentReconnected', () => {
-        customPauseMessage = 'El rival ha vuelto. ¡Pulsa Reanudar!';
-    });
-
     // Escuchamos el estado físico del juego en formato binario
     socket.on('gameSync', (arrayBuffer) => {
         if (matchFinishedExternally) return;

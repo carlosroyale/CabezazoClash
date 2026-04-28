@@ -528,8 +528,11 @@ asignarBoton(btnExitPause, () => {
 
   // Si estamos en online, avisamos que es voluntario y nos desconectamos limpiamente
   if (window.isOnlineMode && typeof socket !== 'undefined') {
-    socket.emit('explicitAbandon'); // Avisar al servidor
-    socket.disconnect();
+    // Pedimos al servidor que confirme, pero si en 1 segundo no hay respuesta
+    // (porque no hay internet), nos desconectamos de todos modos.
+    socket.timeout(1000).emit('explicitAbandon', (err) => {
+      if (socket.connected) socket.disconnect();
+    });
   }
 
   window.Game.stopBasicGame();

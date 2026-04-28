@@ -50,8 +50,8 @@ class Match {
         this.onP1Disconnect = () => this.handleDisconnect('p1');
         this.onP2Disconnect = () => this.handleDisconnect('p2');
 
-        this.onP1Abandon = () => this.handleExplicitAbandon('p1');
-        this.onP2Abandon = () => this.handleExplicitAbandon('p2');
+        this.onP1Abandon = (ack) => this.handleExplicitAbandon('p1', ack);
+        this.onP2Abandon = (ack) => this.handleExplicitAbandon('p2', ack);
 
         this.p1Socket.join(this.roomId);
         this.p2Socket.join(this.roomId);
@@ -179,10 +179,15 @@ class Match {
     }
 
     // cuando el jugador da al botón SALIR
-    handleExplicitAbandon(role) {
+    handleExplicitAbandon(role, ack) {
         this.isAbandoned = true;
         this.io.to(this.roomId).emit('playerLeft');
         this.destroy();
+
+        // Ejecutamos el callback para avisar al cliente de que ya puede desconectarse
+        if (typeof ack === 'function') {
+            ack();
+        }
     }
 
     // Si se corta el wifi, el servidor espera
