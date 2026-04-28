@@ -10,9 +10,6 @@ CREATE TABLE tipo_usuario (
     CONSTRAINT tipo_usuario_pk PRIMARY KEY (id_tipo_usuario)
 );
 
-INSERT INTO tipo_usuario (nombre)
-VALUES ('jugador'), ('admin');
-
 CREATE TABLE usuario (
     id_usuario INT NOT NULL AUTO_INCREMENT,
     username VARCHAR(32) NOT NULL,
@@ -23,6 +20,7 @@ CREATE TABLE usuario (
     puntos_globales INT NOT NULL DEFAULT 0,
     fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
     ultima_conexion DATETIME NULL,
+    victorias_bot INT NOT NULL DEFAULT 0,
     id_tipo_usuario INT NOT NULL,
     CONSTRAINT usuario_pk PRIMARY KEY (id_usuario),
     CONSTRAINT usuario_tipo_usuario_fk

@@ -221,6 +221,15 @@ $asset = static function (string $path) use ($basePath): string {
         </div>
     </section>
 
+    <section id="screen-online-locked" class="pause-menu hidden">
+        <div class="card info-card">
+            <h2 id="online-locked-title" class="subtitle">Modo Online Bloqueado</h2>
+            <div id="online-locked-loading" class="spinner"></div>
+            <p id="online-locked-message" class="info-description"></p>
+            <button id="btn-online-locked-ok" class="btn">ACEPTAR</button>
+        </div>
+    </section>
+
     <section id="screen-versus" class="screen">
         <div class="versus-overlay">
             <div class="versus-player versus-player-left">
@@ -409,6 +418,6 @@ $asset = static function (string $path) use ($basePath): string {
 <script src="<?= htmlspecialchars($asset('juego/js/input.js?v=5'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/game.js?v=11'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/online.js?v=22'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=33'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=36'), ENT_QUOTES, 'UTF-8') ?>"></script>
 </body>
 </html>

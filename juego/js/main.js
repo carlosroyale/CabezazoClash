@@ -13,6 +13,7 @@ const screenEnd = document.getElementById("screen-end");
 const screenHowToPlay = document.getElementById("screen-how-to-play");
 const screenModeSelect = document.getElementById("screen-mode-select");
 const screenTouchWarning = document.getElementById("screen-touch-warning");
+const screenOnlineLocked = document.getElementById("screen-online-locked");
 const screenOnlineWaiting = document.getElementById("screen-online-waiting");
 const screenVersus = document.getElementById("screen-versus");
 const touchControls = document.getElementById("touch-controls");
@@ -39,6 +40,10 @@ const btn1vBot = document.getElementById("btn-1vbot");
 const btn1v1Online = document.getElementById("btn-1v1Online");
 const btnModeBack = document.getElementById("btn-mode-back");
 const btnTouchWarningOk = document.getElementById("btn-touch-warning-ok");
+const btnOnlineLockedOk = document.getElementById("btn-online-locked-ok");
+const onlineLockedTitle = document.getElementById("online-locked-title");
+const onlineLockedMessage = document.getElementById("online-locked-message");
+const onlineLockedLoading = document.getElementById("online-locked-loading");
 const screenOpponentLeft = document.getElementById("screen-opponent-left");
 const btnOpponentLeftOk = document.getElementById("btn-opponent-left-ok");
 
@@ -86,6 +91,7 @@ let cuentaAtrasActiva = false; // Evita que se dispare varias veces a la vez
 let lastGameParams = null;      // para reiniciar con los mismos parámetros
 let pausedFromMenu = false;     // indicador de si volvemos desde ajustes mientras está en pausa
 let versusTimeoutId = null;
+let onlineAccessCheckInProgress = false;
 const DEFAULT_LOCAL_SCOREBOARD_LABELS = { left: "J1", right: "J2" };
 
 
@@ -101,6 +107,7 @@ function showScreen(screenToShow) {
   screenHowToPlay.classList.remove("active");
   if(screenModeSelect) screenModeSelect.classList.remove("active");
   if(screenOnlineWaiting) screenOnlineWaiting.classList.remove("active"); // NUEVO
+  if(screenOnlineLocked) screenOnlineLocked.classList.add("hidden");
   if(screenOpponentLeft) screenOpponentLeft.classList.remove("active");   // NUEVO
   hideVersusScreen();
 
@@ -252,6 +259,86 @@ function asignarBoton(elemento, callback) {
   });
 }
 
+async function obtenerProgresoOnline() {
+  const response = await fetch('../funciones_backend.php?accion=progreso_online', {
+    credentials: 'same-origin'
+  });
+  const datos = await response.json();
+
+  if (!response.ok || !datos.exito) {
+    throw new Error(datos.error || "No se pudo comprobar el acceso online.");
+  }
+
+  return datos.progreso;
+}
+
+function mostrarMensajeOnlineBloqueado(victoriasRestantes) {
+  const restantes = Math.max(0, Number.parseInt(victoriasRestantes, 10) || 0);
+  const textoRestantes = restantes === 1
+      ? "Te queda 1 victoria contra el bot."
+      : `Te quedan ${restantes} victorias contra el bot.`;
+
+  if (onlineLockedLoading) onlineLockedLoading.classList.add("hidden");
+  if (onlineLockedTitle) onlineLockedTitle.classList.remove("hidden");
+  if (btnOnlineLockedOk) btnOnlineLockedOk.classList.remove("hidden");
+  if (onlineLockedMessage) {
+    onlineLockedMessage.classList.remove("hidden");
+    onlineLockedMessage.innerHTML = `
+      Necesitas ganar 10 partidas contra el bot para desbloquear el modo online.<br><br>
+      ${textoRestantes}
+    `;
+  }
+
+  if (screenOnlineLocked) screenOnlineLocked.classList.remove("hidden");
+}
+
+function mostrarMensajeOnlineNoVerificado() {
+  if (onlineLockedLoading) onlineLockedLoading.classList.add("hidden");
+  if (onlineLockedTitle) onlineLockedTitle.classList.remove("hidden");
+  if (btnOnlineLockedOk) btnOnlineLockedOk.classList.remove("hidden");
+  if (onlineLockedMessage) {
+    onlineLockedMessage.classList.remove("hidden");
+    onlineLockedMessage.textContent = "No se pudo comprobar si tienes el modo online desbloqueado. Inténtalo de nuevo en unos segundos.";
+  }
+
+  if (screenOnlineLocked) screenOnlineLocked.classList.remove("hidden");
+}
+
+function mostrarComprobandoAccesoOnline() {
+  if (onlineLockedTitle) onlineLockedTitle.classList.add("hidden");
+  if (btnOnlineLockedOk) btnOnlineLockedOk.classList.add("hidden");
+  if (onlineLockedMessage) {
+    onlineLockedMessage.textContent = "";
+    onlineLockedMessage.classList.add("hidden");
+  }
+  if (onlineLockedLoading) onlineLockedLoading.classList.remove("hidden");
+  if (screenOnlineLocked) screenOnlineLocked.classList.remove("hidden");
+}
+
+async function registrarVictoriaContraBot() {
+  try {
+    const formData = new FormData();
+    formData.append('accion', 'registrar_victoria_bot');
+
+    const response = await fetch('../funciones_backend.php', {
+      method: 'POST',
+      body: formData,
+      credentials: 'same-origin'
+    });
+    const datos = await response.json();
+
+    if (!response.ok || !datos.exito) {
+      throw new Error(datos.error || "No se pudo registrar la victoria contra el bot.");
+    }
+
+    const progreso = datos.progreso || {};
+    window.victoriasBot = progreso.victorias_bot;
+    window.tipoUsuario = progreso.id_tipo_usuario;
+  } catch (error) {
+    console.warn("Error registrando la victoria contra el bot:", error);
+  }
+}
+
 // Asignar navegación
 function beginBasicGame() {
   btnRestart.classList.remove("hidden");
@@ -350,6 +437,10 @@ function showEndScreen(leftName, leftScore, rightName, rightScore, pointsDelta) 
   else if (rightScore > leftScore) winnerMessage = `¡Gana ${rightName}!`;
   else winnerMessage = "¡Empate!";
 
+  if (lastGameParams?.bot && leftScore > rightScore) {
+    registrarVictoriaContraBot();
+  }
+
   // Verificamos si hay variación de puntos (online)
   if (pointsDelta !== undefined && pointsDelta !== null) {
     const sign = pointsDelta >= 0 ? "+" : ""; // Ahora incluimos el 0 aquí
@@ -403,24 +494,48 @@ asignarBoton(btnTouchWarningOk, () => {
   screenTouchWarning.classList.add("hidden"); // Oculta la capa oscura
   showScreen(screenStart);                    // Te devuelve al menú inicial
 });
+asignarBoton(btnOnlineLockedOk, () => {
+  if (screenOnlineLocked) screenOnlineLocked.classList.add("hidden");
+});
 asignarBoton(btn1vBot, () => {
   beginBotGame();
 });
 
 // REEMPLAZAR EL BOTÓN JUGAR ONLINE (Ahora enciende el socket)
-asignarBoton(btn1v1Online, () => {
-  btnRestart.classList.add("hidden");
-  // Solo conectamos si estábamos desconectados, evitando arrastrar partidas
-  if (typeof socket !== 'undefined' && !socket.connected) {
-    socket.connect();
+asignarBoton(btn1v1Online, async () => {
+  if (onlineAccessCheckInProgress) return;
+
+  onlineAccessCheckInProgress = true;
+  if (btn1v1Online) btn1v1Online.disabled = true;
+  mostrarComprobandoAccesoOnline();
+
+  try {
+    const progreso = await obtenerProgresoOnline();
+
+    if (!progreso.es_avanzado) {
+      mostrarMensajeOnlineBloqueado(progreso.victorias_restantes);
+      return;
+    }
+
+    btnRestart.classList.add("hidden");
+    // Solo conectamos si estábamos desconectados, evitando arrastrar partidas
+    if (typeof socket !== 'undefined' && !socket.connected) {
+      socket.connect();
+    }
+    showScreen(screenOnlineWaiting);
+    window.Game.startOnlineGame({
+      canvas,
+      ctx,
+      scoreEl,
+      timerEl
+    });
+  } catch (error) {
+    console.warn("Error comprobando el acceso al online:", error);
+    mostrarMensajeOnlineNoVerificado();
+  } finally {
+    onlineAccessCheckInProgress = false;
+    if (btn1v1Online) btn1v1Online.disabled = false;
   }
-  showScreen(screenOnlineWaiting);
-  window.Game.startOnlineGame({
-    canvas,
-    ctx,
-    scoreEl,
-    timerEl
-  });
 });
 asignarBoton(btnBack, () => showScreen(screenStart));
 asignarBoton(btnOptions, () => showScreen(screenOptions));

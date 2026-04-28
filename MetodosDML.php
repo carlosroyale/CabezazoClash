@@ -325,4 +325,61 @@ class MetodosDML {
 
         return $puntos;
     }
+    public function registrarVictoriaBotYActualizarTipo(int $idUsuario): array {
+        $sql = "UPDATE usuario
+                SET victorias_bot = victorias_bot + 1,
+                    id_tipo_usuario = CASE
+                        WHEN victorias_bot + 1 >= 10 THEN 2
+                        ELSE id_tipo_usuario
+                    END
+                WHERE id_usuario = ?";
+
+        if ($stmt = $this->conexion->prepare($sql)) {
+            $stmt->bind_param("i", $idUsuario);
+            $stmt->execute();
+            $stmt->close();
+        }
+
+        return $this->obtenerProgresoDesbloqueoOnline($idUsuario);
+    }
+
+    public function obtenerProgresoDesbloqueoOnline(int $idUsuario): array {
+        $progreso = [
+            'victorias_bot' => 0,
+            'victorias_necesarias' => 10,
+            'victorias_restantes' => 10,
+            'id_tipo_usuario' => 1,
+            'es_avanzado' => false,
+        ];
+
+        $sql = "SELECT victorias_bot, id_tipo_usuario FROM usuario WHERE id_usuario = ? LIMIT 1";
+        if ($stmt = $this->conexion->prepare($sql)) {
+            $stmt->bind_param("i", $idUsuario);
+            $stmt->execute();
+            $res = $stmt->get_result();
+
+            if ($fila = $res->fetch_assoc()) {
+                $victoriasBot = intval($fila['victorias_bot'] ?? 0);
+                $idTipoUsuario = intval($fila['id_tipo_usuario'] ?? 1);
+
+                if ($victoriasBot >= 10 && $idTipoUsuario === 1) {
+                    $idTipoUsuario = 2;
+                    if ($stmtUpdate = $this->conexion->prepare("UPDATE usuario SET id_tipo_usuario = 2 WHERE id_usuario = ?")) {
+                        $stmtUpdate->bind_param("i", $idUsuario);
+                        $stmtUpdate->execute();
+                        $stmtUpdate->close();
+                    }
+                }
+
+                $progreso['victorias_bot'] = $victoriasBot;
+                $progreso['victorias_restantes'] = max(0, 10 - $victoriasBot);
+                $progreso['id_tipo_usuario'] = $idTipoUsuario;
+                $progreso['es_avanzado'] = $idTipoUsuario === 2;
+            }
+
+            $stmt->close();
+        }
+
+        return $progreso;
+    }
 }
