@@ -276,6 +276,12 @@ window.configurarEventosSocket = function() {
     socket.on('matchEnd', matchData => {
         if (!window.isOnlineMode) return;
         matchFinishedExternally = true;
+
+        // Limpiamos el menú de pausa y el filtro oscuro
+        const pauseMenu = document.getElementById("pause-menu");
+        if (pauseMenu) pauseMenu.classList.add("hidden");
+        document.getElementById('game-wrap').classList.remove('is-paused');
+
         if (window.Main && window.Main.hideVersusScreen) window.Main.hideVersusScreen();
         window.playSound('sfx-whistle');
         if (gameTimerEl) gameTimerEl.textContent = "0";
