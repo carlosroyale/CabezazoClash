@@ -325,6 +325,45 @@ class MetodosDML {
 
         return $puntos;
     }
+
+    public function obtenerPartidasUsuario(int $idUsuario): array {
+        $partidas = [];
+        $sql = "SELECT 
+                p.id_partida,
+                p.id_usuario_izquierda,
+                p.id_usuario_derecha,
+                p.golesIzquierda,
+                p.golesDerecha,
+                p.puntosIzquierda,
+                p.puntosDerecha,
+                p.puntosDeltaIzquierda,
+                p.puntosDeltaDerecha,
+                p.fecha,
+                ui.username AS username_izquierda,
+                ud.username AS username_derecha
+            FROM partida p
+            INNER JOIN usuario ui ON p.id_usuario_izquierda = ui.id_usuario
+            INNER JOIN usuario ud ON p.id_usuario_derecha = ud.id_usuario
+            WHERE p.id_usuario_izquierda = ? OR p.id_usuario_derecha = ?
+            ORDER BY p.fecha DESC, p.id_partida DESC
+            LIMIT 50";
+
+        if ($stmt = $this->conexion->prepare($sql)) {
+            // Ahora solo hay 2 parámetros interrogantes (?) en el WHERE
+            $stmt->bind_param("ii", $idUsuario, $idUsuario);
+            $stmt->execute();
+            $resultado = $stmt->get_result();
+
+            while ($fila = $resultado->fetch_assoc()) {
+                $partidas[] = $fila;
+            }
+
+            $stmt->close();
+        }
+
+        return $partidas;
+    }
+
     public function registrarVictoriaBotYActualizarTipo(int $idUsuario): array {
         $sql = "UPDATE usuario
                 SET victorias_bot = victorias_bot + 1,

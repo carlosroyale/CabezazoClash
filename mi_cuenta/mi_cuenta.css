@@ -203,6 +203,177 @@ body::before {
 .perfil-nombres h1 { margin: 0; font-size: 2.5rem; color: var(--primary-color); }
 .perfil-username { margin: 5px 0 0 0; color: var(--secondary-color); font-size: 1.2rem; font-weight: bold; letter-spacing: 1px; }
 
+/* =========================================
+   NUEVO HISTORIAL DE PARTIDAS (Fondo transparente y Tarjetas VS)
+   ========================================= */
+.stats-panel {
+    margin-top: 30px;
+    background: transparent; /* Quitamos el fondo blanco */
+    border-radius: 15px;
+    box-shadow: none; /* Quitamos la sombra del panel */
+    overflow: hidden;
+}
+
+.stats-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 22px 0; /* Ajustado para alinear con el margen izquierdo */
+    background: transparent;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.stats-panel-header span {
+    display: block;
+    margin-bottom: 4px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.stats-panel-header h2 {
+    color: #ffffff;
+    font-size: 1.7rem;
+    margin: 0;
+}
+
+.stats-panel-header i {
+    color: #ffffff;
+    font-size: 2rem;
+}
+
+.match-history-scroll {
+    height: 55vh; /* Aumentamos altura para tarjetas más altas */
+    min-height: 300px;
+    max-height: 600px;
+    overflow-y: auto;
+    padding: 20px 5px; /* Un poco de margen para la sombra de las tarjetas */
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    scrollbar-color: var(--primary-color) rgba(255, 255, 255, 0.1);
+}
+
+.match-history-scroll::-webkit-scrollbar { width: 8px; }
+.match-history-scroll::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.1); border-radius: 999px; }
+.match-history-scroll::-webkit-scrollbar-thumb { background: var(--primary-color); border-radius: 999px; }
+
+/* NUEVO FORMATO DE TARJETA */
+.match-history-card {
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Da la altura extra que pedías */
+    padding: 20px 25px;
+    background: rgba(0, 0, 0, 0.35); /* Fondo oscuro semitransparente para que sea legible sobre el degradado */
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-left: 6px solid #9e9e9e;
+    border-radius: 12px;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+}
+
+.match-history-card.victoria { border-left-color: #4caf50; }
+.match-history-card.derrota { border-left-color: #f44336; }
+.match-history-card.empate { border-left-color: #ffb300; }
+
+/* Fila 1: Resultado */
+.match-row-result {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.match-result-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 800;
+    font-size: 1.1rem;
+}
+
+.match-history-card.victoria .match-result-badge { color: #4caf50; }
+.match-history-card.derrota .match-result-badge { color: #f44336; }
+.match-history-card.empate .match-result-badge { color: #ffb300; }
+
+/* Filas 2 y 3: Jugadores, Nombres, Score y Puntos */
+.match-row-players {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.player-info {
+    display: flex;
+    flex-direction: column;
+    width: 35%;
+}
+
+.player-info.left { text-align: left; }
+.player-info.right { text-align: right; }
+
+.player-name {
+    color: #ffffff;
+    font-size: 1.25rem;
+    font-weight: 800;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.player-points {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+    margin-top: 4px;
+}
+
+.match-score {
+    width: 30%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: #ffffff;
+    font-size: 2.2rem;
+    font-weight: 900;
+}
+
+.match-score small {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 1.3rem;
+}
+
+/* Fila 4: Footer (Fecha y Puntos Ganados) */
+.match-row-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding-top: 15px;
+    margin-top: 5px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.15);
+}
+
+.match-date {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+}
+
+.points-delta {
+    font-size: 1.3rem;
+    font-weight: 900;
+}
+
+.points-delta.positivo { color: #4caf50; }
+.points-delta.negativo { color: #f44336; }
+.points-delta.neutral { color: #bbbbbb; }
+
+/* Adaptación del mensaje "Aún no hay partidas" al fondo oscuro */
+.match-history-empty {
+    color: #ffffff;
+}
+.match-history-empty i { color: rgba(255, 255, 255, 0.7); }
+.match-history-empty strong { color: #ffffff; }
+
 .datos-list {
     display: flex;
     flex-direction: column;
@@ -401,6 +572,15 @@ body::before {
     }
 
     .doble { flex-direction: column; gap: 0; }
+
+    .match-history-card {
+        padding: 15px;
+        gap: 10px;
+    }
+
+    .player-name { font-size: 1.1rem; }
+    .match-score { font-size: 1.8rem; }
+    .points-delta { font-size: 1.1rem; }
 }
 
 /* =========================================
