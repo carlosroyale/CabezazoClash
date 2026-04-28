@@ -179,10 +179,10 @@ class Match {
     }
 
     // cuando el jugador da al botón SALIR
-    // cuando el jugador da al botón SALIR
     handleExplicitAbandon(role, ack) {
         this.isAbandoned = true;
         this.gameState.isFinished = true; // Marcamos el partido como finalizado
+        this.gameState.isPaused = false;
 
         // 1. Forzamos el marcador 3-0 a favor del jugador que NO ha abandonado
         if (role === 'p1') {
