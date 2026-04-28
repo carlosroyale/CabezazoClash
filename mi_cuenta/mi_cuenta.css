@@ -38,7 +38,7 @@ body {
     color: var(--text-dark);
     display: flex;
     flex-direction: column;
-    overflow-x: hidden; /* Evita que el menú blanco se asome */
+    overflow: hidden; /* El scroll vive solo en la seccion activa */
 }
 
 /* TRUCO MAESTRO: Creamos una capa fija invisible SOLO para el fondo */
@@ -122,7 +122,7 @@ body::before {
     display: flex;
     flex-direction: column;
     height: 100%;
-    overflow-y: auto;
+    overflow: hidden;
     z-index: 10;
 }
 
@@ -170,7 +170,8 @@ body::before {
 .dashboard-content {
     flex: 1;
     padding: 40px;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     position: relative;
     min-height: 0;
 }
@@ -178,8 +179,6 @@ body::before {
 .tab-content {
     display: none;
     animation: fadeIn 0.4s ease-in-out;
-    height: 100%;
-    min-height: 0;
 }
 .tab-content.active {
     display: block;
@@ -191,7 +190,7 @@ body::before {
 }
 
 #tab-datos.active {
-    overflow-y: auto;
+    overflow-y: visible;
 }
 
 .header-panel { margin-bottom: 30px; border-bottom: 2px solid rgba(255,255,255,0.3); padding-bottom: 15px; }
@@ -224,11 +223,9 @@ body::before {
     background: transparent; /* Quitamos el fondo blanco */
     border-radius: 15px;
     box-shadow: none; /* Quitamos la sombra del panel */
-    overflow: hidden;
+    overflow: visible;
     display: flex;
-    flex: 1;
     flex-direction: column;
-    min-height: 0;
 }
 
 .stats-panel-header {
@@ -262,9 +259,7 @@ body::before {
 }
 
 .match-history-scroll {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
+    overflow-y: visible;
     padding: 20px 5px; /* Un poco de margen para la sombra de las tarjetas */
     display: flex;
     flex-direction: column;
@@ -548,7 +543,6 @@ body::before {
    ========================================= */
 @media (max-width: 900px) {
     body {
-        /* ¡BLOQUEAMOS LA PANTALLA! Comportamiento de App Nativa */
         height: 100vh;
         min-height: 100dvh;
         overflow: hidden;
@@ -561,12 +555,15 @@ body::before {
 
     .dashboard-container {
         flex-direction: column;
-        overflow: hidden; /* Evita que el contenedor crezca más de la cuenta */
+        overflow: hidden;
+        min-height: 0;
     }
 
     .dashboard-content {
         padding: 20px;
-        overflow: hidden;
+        overflow-y: auto;
+        overflow-x: hidden;
+        min-height: 0;
     }
 
     .dashboard-sidebar {
