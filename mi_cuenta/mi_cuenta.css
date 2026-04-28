@@ -111,6 +111,7 @@ body::before {
     width: 100%;
     background: transparent;
     overflow: hidden;
+    min-height: 0;
 }
 
 .dashboard-sidebar {
@@ -169,16 +170,28 @@ body::before {
 .dashboard-content {
     flex: 1;
     padding: 40px;
-    overflow-y: auto;
+    overflow: hidden;
     position: relative;
+    min-height: 0;
 }
 
 .tab-content {
     display: none;
     animation: fadeIn 0.4s ease-in-out;
+    height: 100%;
+    min-height: 0;
 }
 .tab-content.active {
     display: block;
+}
+
+#tab-perfil.active {
+    display: flex !important;
+    flex-direction: column;
+}
+
+#tab-datos.active {
+    overflow-y: auto;
 }
 
 .header-panel { margin-bottom: 30px; border-bottom: 2px solid rgba(255,255,255,0.3); padding-bottom: 15px; }
@@ -212,6 +225,10 @@ body::before {
     border-radius: 15px;
     box-shadow: none; /* Quitamos la sombra del panel */
     overflow: hidden;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
 }
 
 .stats-panel-header {
@@ -245,9 +262,8 @@ body::before {
 }
 
 .match-history-scroll {
-    height: 55vh; /* Aumentamos altura para tarjetas más altas */
-    min-height: 300px;
-    max-height: 600px;
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
     padding: 20px 5px; /* Un poco de margen para la sombra de las tarjetas */
     display: flex;
@@ -550,7 +566,7 @@ body::before {
 
     .dashboard-content {
         padding: 20px;
-        overflow-y: auto; /* AHORA EL SCROLL OCURRE SOLO AQUÍ DENTRO */
+        overflow: hidden;
     }
 
     .dashboard-sidebar {

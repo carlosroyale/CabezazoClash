@@ -612,9 +612,25 @@ class Match {
         if (delta > 50) delta = 50;
         if (delta < 10) delta = 10;
 
+        // Asignamos el delta (positivo para el que gana, negativo para el que pierde)
+        let leftDelta = leftScore > rightScore ? delta : -delta;
+        let rightDelta = rightScore > leftScore ? delta : -delta;
+
+        // PROTECCIÓN ANTI-NEGATIVOS:
+        // Si el jugador pierde puntos y la resta lo dejaría por debajo de 0,
+        // ajustamos el delta para que solo pierda exactamente los puntos que tiene.
+        // (Si tiene 0 puntos, el delta se convierte en -0, es decir, 0).
+        if (leftDelta < 0 && (this.p1Points + leftDelta) < 0) {
+            leftDelta = -this.p1Points;
+        }
+
+        if (rightDelta < 0 && (this.p2Points + rightDelta) < 0) {
+            rightDelta = -this.p2Points;
+        }
+
         return {
-            left: leftScore > rightScore ? delta : -delta,
-            right: rightScore > leftScore ? delta : -delta
+            left: leftDelta,
+            right: rightDelta
         };
     }
 
