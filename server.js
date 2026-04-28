@@ -35,16 +35,37 @@ const connectedUsers = new Map();
 // Mapa para saber en qué sala activa está cada jugador (userId -> roomId)
 const userMatchMap = new Map();
 
+function expulsarSesionAnterior(userId) {
+    const previousSocketId = connectedUsers.get(userId);
+    if (!previousSocketId) return;
+
+    const previousSocket = io.sockets.sockets.get(previousSocketId);
+    if (previousSocket) {
+        previousSocket.emit('sessionReplaced');
+        previousSocket.disconnect(true);
+    }
+    else {
+        connectedUsers.delete(userId);
+        waitingPlayers = waitingPlayers.filter(p => p.userId !== userId);
+    }
+}
+
 // Middleware de Socket.io. Se ejecuta ANTES de que el socket se conecte del todo
 io.use((socket, next) => {
     // Extraemos el userId que el cliente nos enviará al intentar conectar
     const userId = socket.handshake.auth.userId;
     const username = socket.handshake.auth.username;
+    const forceTakeover = socket.handshake.auth.forceTakeover === true || socket.handshake.auth.forceTakeover === 'true';
 
     if (userId) {
         if (connectedUsers.has(userId)) {
-            // Si el ID ya está en nuestro mapa, rechazamos la conexión con un error personalizado
-            return next(new Error("already_connected"));
+            if (!forceTakeover) {
+                // Si el ID ya está en nuestro mapa, rechazamos la conexión con un error personalizado
+                return next(new Error("already_connected"));
+            }
+
+            // El usuario ha pedido entrar aquí, así que cerramos la sesión anterior.
+            expulsarSesionAnterior(userId);
         }
         // Si no está, lo registramos temporalmente en el socket para saber quién es
         socket.userId = userId;
@@ -137,8 +158,10 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         // Liberamos su cuenta para que pueda volver a entrar si recarga la página
         if (socket.userId) {
-            connectedUsers.delete(socket.userId);
-            console.log(`Usuario ${socket.userId} liberado.`);
+            if (connectedUsers.get(socket.userId) === socket.id) {
+                connectedUsers.delete(socket.userId);
+                console.log(`Usuario ${socket.userId} liberado.`);
+            }
         }
 
         // Buscamos si el jugador estaba en la cola y lo eliminamos

@@ -65,8 +65,8 @@ $asset = static function (string $path) use ($basePath): string {
         <div class="card info-card" style="border: 3px solid #ff9800; box-shadow: 0 0 30px rgba(255, 152, 0, 0.4);">
             <i class="bi bi-exclamation-triangle-fill" style="font-size: 6rem; color: #ff9800; margin-bottom: 1rem;"></i>
             <h2 class="subtitle">¡CUENTA EN USO!</h2>
-            <p class="info-description">Esta cuenta ya está jugando o esperando partida en otro dispositivo o pestaña.</p>
-            <button id="btn-already-connected-ok" class="btn large-got-it-btn" style="margin-top: 1rem;">RECARGA</button>
+            <p id="already-connected-message" class="info-description">Esta cuenta ya está jugando o esperando partida en otro dispositivo o pestaña.</p>
+            <button id="btn-already-connected-ok" class="btn large-got-it-btn" style="margin-top: 1rem;">SUSTITUIR</button>
         </div>
     </section>
 
@@ -370,26 +370,72 @@ $asset = static function (string $path) use ($basePath): string {
 
             socket.on('connect', () => {
                 console.log('Conectado al servidor de WebSockets con el ID:', socket.id);
+                socket.auth.forceTakeover = false;
+
+                const alreadyConnectedScreen = document.getElementById('screen-already-connected');
+                if (alreadyConnectedScreen && alreadyConnectedScreen.classList.contains('active')) {
+                    alreadyConnectedScreen.classList.remove('active');
+                    document.getElementById('screen-online-waiting').classList.add('active');
+                }
+
+                const btnAlreadyConnected = document.getElementById('btn-already-connected-ok');
+                if (btnAlreadyConnected) {
+                    btnAlreadyConnected.disabled = false;
+                    btnAlreadyConnected.innerText = 'SUSTITUIR';
+                }
             });
+
+            function mostrarCuentaEnUso(message) {
+                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                const tapScreen = document.getElementById('screen-tap-to-start');
+                if (tapScreen) {
+                    tapScreen.classList.remove('active');
+                    tapScreen.classList.add('hidden');
+                    tapScreen.style.pointerEvents = 'none';
+                }
+
+                const messageEl = document.getElementById('already-connected-message');
+                if (messageEl && message) messageEl.innerText = message;
+
+                const btnAlreadyConnected = document.getElementById('btn-already-connected-ok');
+                if (btnAlreadyConnected) {
+                    btnAlreadyConnected.disabled = false;
+                    btnAlreadyConnected.innerText = 'SUSTITUIR';
+                }
+
+                document.getElementById('screen-already-connected').classList.add('active');
+            }
 
             socket.on('connect_error', (err) => {
                 if (err.message === "already_connected") {
-                    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-                    const tapScreen = document.getElementById('screen-tap-to-start');
-                    if (tapScreen) {
-                        tapScreen.classList.remove('active');
-                        tapScreen.classList.add('hidden');
-                        tapScreen.style.pointerEvents = 'none';
-                    }
-                    document.getElementById('screen-already-connected').classList.add('active');
+                    mostrarCuentaEnUso('Esta cuenta ya está jugando o esperando partida en otro dispositivo o pestaña.');
                 }
+            });
+
+            socket.on('sessionReplaced', () => {
+                window.isOnlineMode = false;
+                if (window.Game && window.Game.stopBasicGame) window.Game.stopBasicGame();
+                mostrarCuentaEnUso('Tu sesión se ha abierto en otro dispositivo o pestaña.');
             });
 
             // Lógica del botón para salir si la cuenta está en uso
             const btnAlreadyConnected = document.getElementById('btn-already-connected-ok');
             if (btnAlreadyConnected) {
                 btnAlreadyConnected.addEventListener('click', () => {
-                    window.location.reload();
+                    btnAlreadyConnected.disabled = true;
+                    btnAlreadyConnected.innerText = 'ENTRANDO...';
+                    socket.auth.forceTakeover = true;
+
+                    if (!window.isOnlineMode) {
+                        const btnOnlineMode = document.getElementById('btn-1v1Online');
+                        if (btnOnlineMode) {
+                            btnOnlineMode.click();
+                            return;
+                        }
+                    }
+
+                    if (socket.connected) socket.disconnect();
+                    socket.connect();
                 });
             }
 
