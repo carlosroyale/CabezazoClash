@@ -179,12 +179,34 @@ class Match {
     }
 
     // cuando el jugador da al botón SALIR
+    // cuando el jugador da al botón SALIR
     handleExplicitAbandon(role, ack) {
         this.isAbandoned = true;
-        this.io.to(this.roomId).emit('playerLeft');
+        this.gameState.isFinished = true; // Marcamos el partido como finalizado
+
+        // 1. Forzamos el marcador 3-0 a favor del jugador que NO ha abandonado
+        if (role === 'p1') {
+            this.gameState.score.left = 0;
+            this.gameState.score.right = 3;
+        } else if (role === 'p2') {
+            this.gameState.score.left = 3;
+            this.gameState.score.right = 0;
+        }
+
+        // 2. Enviamos el estado del HUD actualizado para que el rival vea el 3-0 en su pantalla
+        this.sendHUD();
+
+        // 3. En lugar de mandar 'playerLeft' (que lanza la pantalla de error),
+        // simulamos que el partido ha terminado de forma natural.
+        this.io.to(this.roomId).emit('matchEnd', {
+            leftName: this.playerNames.left,
+            rightName: this.playerNames.right
+        });
+
+        // Destruimos la sala en la memoria del servidor
         this.destroy();
 
-        // Ejecutamos el callback para avisar al cliente de que ya puede desconectarse
+        // Ejecutamos el callback para avisar al cliente que abandonó que ya puede desconectarse
         if (typeof ack === 'function') {
             ack();
         }
