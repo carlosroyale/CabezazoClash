@@ -25,13 +25,23 @@ if (empty($ranking)) {
 }
 else {
     $posicionActual = 1;
+    $indiceRanking = 0;
+    $puntosAnteriores = null;
+
     foreach ($ranking as $jugador) {
+        $indiceRanking++;
+        $puntosJugador = (int) $jugador['puntos_globales'];
+
+        if ($puntosAnteriores !== null && $puntosJugador !== $puntosAnteriores) {
+            $posicionActual = $indiceRanking;
+        }
+
         $claseMedalla = '';
         if ($posicionActual == 1) $claseMedalla = 'oro';
         elseif ($posicionActual == 2) $claseMedalla = 'plata';
         elseif ($posicionActual == 3) $claseMedalla = 'bronce';
 
-        $puntosFormateados = number_format($jugador['puntos_globales']);
+        $puntosFormateados = number_format($puntosJugador);
         $username = htmlspecialchars($jugador['username']);
 
         // LÓGICA DE TENDENCIA (FLECHAS)
@@ -76,7 +86,7 @@ else {
                 <div class='rank-points'>$puntosFormateados pts</div>
             </div>";
 
-        $posicionActual++;
+        $puntosAnteriores = $puntosJugador;
     }
 }
 
