@@ -23,6 +23,19 @@ function loadLocalEnv() {
 
 loadLocalEnv();
 
+function getMadridOffset() {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Europe/Madrid',
+        timeZoneName: 'longOffset'
+    });
+
+    const part = formatter
+        .formatToParts(new Date())
+        .find(p => p.type === 'timeZoneName');
+
+    return part.value.replace('GMT', '');
+}
+
 const pool = mysql.createPool({
     host: process.env.RAILWAY_TCP_PROXY_DOMAIN || '127.0.0.1',
     user: process.env.MYSQLUSER || 'root',
@@ -33,6 +46,10 @@ const pool = mysql.createPool({
     connectionLimit: 10,
     queueLimit: 0,
     charset: 'utf8mb4'
+});
+
+pool.on('connection', (connection) => {
+    connection.query(`SET time_zone = ${mysql.escape(getMadridOffset())}`);
 });
 
 async function registrarPartidaOnline({
