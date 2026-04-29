@@ -57,6 +57,146 @@ function isBackToBackBallSqueeze(ball, p1, p2) {
     return bodyGap < ball.r * 2 + 14 && ballBetweenBacks && ballInVerticalRange;
 }
 
+function findSegmentCircleContact(startX, startY, endX, endY, centerX, centerY, radius) {
+    const segX = endX - startX;
+    const segY = endY - startY;
+    const relX = startX - centerX;
+    const relY = startY - centerY;
+    const a = segX * segX + segY * segY;
+
+    if (a < 0.0001) return null;
+
+    const b = 2 * (relX * segX + relY * segY);
+    const c = relX * relX + relY * relY - radius * radius;
+    const disc = b * b - 4 * a * c;
+
+    if (disc < 0) return null;
+
+    const sqrtDisc = Math.sqrt(disc);
+    const invDen = 1 / (2 * a);
+    const t1 = (-b - sqrtDisc) * invDen;
+    const t2 = (-b + sqrtDisc) * invDen;
+    let t = null;
+
+    if (t1 >= 0 && t1 <= 1) t = t1;
+    else if (t2 >= 0 && t2 <= 1) t = t2;
+
+    if (t === null) return null;
+
+    const x = startX + segX * t;
+    const y = startY + segY * t;
+    let nx = x - centerX;
+    let ny = y - centerY;
+    const len = Math.hypot(nx, ny);
+
+    if (len < 0.0001) return null;
+
+    nx /= len;
+    ny /= len;
+
+    return { t, x, y, nx, ny };
+}
+
+function findSegmentExpandedRectContact(startX, startY, endX, endY, rect, radius) {
+    const minX = rect.x - radius;
+    const maxX = rect.x + rect.w + radius;
+    const minY = rect.y - radius;
+    const maxY = rect.y + rect.h + radius;
+    const dirX = endX - startX;
+    const dirY = endY - startY;
+    let tMin = 0;
+    let tMax = 1;
+    let hitAxis = null;
+
+    if (Math.abs(dirX) < 0.0001) {
+        if (startX < minX || startX > maxX) return null;
+    }
+    else {
+        const invX = 1 / dirX;
+        let tx1 = (minX - startX) * invX;
+        let tx2 = (maxX - startX) * invX;
+        let axisEntry = 'x';
+        if (tx1 > tx2) {
+            [tx1, tx2] = [tx2, tx1];
+        }
+        if (tx1 > tMin) {
+            tMin = tx1;
+            hitAxis = axisEntry;
+        }
+        tMax = Math.min(tMax, tx2);
+        if (tMin > tMax) return null;
+    }
+
+    if (Math.abs(dirY) < 0.0001) {
+        if (startY < minY || startY > maxY) return null;
+    }
+    else {
+        const invY = 1 / dirY;
+        let ty1 = (minY - startY) * invY;
+        let ty2 = (maxY - startY) * invY;
+        const axisEntry = 'y';
+        if (ty1 > ty2) {
+            [ty1, ty2] = [ty2, ty1];
+        }
+        if (ty1 > tMin) {
+            tMin = ty1;
+            hitAxis = axisEntry;
+        }
+        tMax = Math.min(tMax, ty2);
+        if (tMin > tMax) return null;
+    }
+
+    if (tMin < 0 || tMin > 1 || !hitAxis) return null;
+
+    const x = startX + dirX * tMin;
+    const y = startY + dirY * tMin;
+    const closestX = clamp(x, rect.x, rect.x + rect.w);
+    const closestY = clamp(y, rect.y, rect.y + rect.h);
+    let nx = x - closestX;
+    let ny = y - closestY;
+    const len = Math.hypot(nx, ny);
+
+    if (len >= 0.0001) {
+        nx /= len;
+        ny /= len;
+    }
+    else if (hitAxis === 'x') {
+        nx = dirX > 0 ? -1 : 1;
+        ny = 0;
+    }
+    else {
+        nx = 0;
+        ny = dirY > 0 ? -1 : 1;
+    }
+
+    return { t: tMin, x, y, nx, ny };
+}
+
+function findSweptPlayerBallContact(p, ball, h) {
+    const startX = ball.prevX !== undefined ? ball.prevX : ball.x;
+    const startY = ball.prevY !== undefined ? ball.prevY : ball.y;
+    const endX = ball.x;
+    const endY = ball.y;
+    const travel = Math.hypot(endX - startX, endY - startY);
+
+    if (travel < 0.0001) return null;
+
+    const contacts = [];
+    const bodyContact = findSegmentExpandedRectContact(startX, startY, endX, endY, h.body, ball.r);
+    if (bodyContact) contacts.push({ ...bodyContact, shape: 'body' });
+
+    const headContact = findSegmentCircleContact(startX, startY, endX, endY, h.head.x, h.head.y, ball.r + h.head.r);
+    if (headContact) contacts.push({ ...headContact, shape: 'head', shapeR: h.head.r });
+
+    const shoeContact = findSegmentCircleContact(startX, startY, endX, endY, h.shoe.x, h.shoe.y, ball.r + h.shoe.r);
+    if (shoeContact) contacts.push({ ...shoeContact, shape: 'shoe', shapeR: h.shoe.r });
+
+    if (!contacts.length) return null;
+
+    contacts.sort((a, b) => a.t - b.t);
+    return contacts[0];
+}
+
 function collidePlayerBall(p, ball) {
     if (window.currentPlayers && isBackToBackBallSqueeze(ball, window.currentPlayers[0], window.currentPlayers[1])) {
         return;
@@ -70,6 +210,42 @@ function collidePlayerBall(p, ball) {
 
     // 3. Obtenemos las hitboxes centralizadas con una sola línea de código
     const h = getPlayerHitboxes(p);
+    const sweptContact = findSweptPlayerBallContact(p, ball, h);
+
+    if (sweptContact) {
+        const skin = 0.2;
+        if (sweptContact.shape === 'body') {
+            ball.x = sweptContact.x + sweptContact.nx * (ball.r + skin);
+            ball.y = sweptContact.y + sweptContact.ny * (ball.r + skin);
+            const closestX = clamp(ball.x, h.body.x, h.body.x + h.body.w);
+            const closestY = clamp(ball.y, h.body.y, h.body.y + h.body.h);
+            const dxBody = ball.x - closestX;
+            const dyBody = ball.y - closestY;
+            const dist2Body = dxBody * dxBody + dyBody * dyBody;
+            if (dist2Body > 0.0001) {
+                resolveCircleToRect(ball, p, dxBody, dyBody, dist2Body);
+                return;
+            }
+        }
+        else {
+            const shape = sweptContact.shape === 'head' ? h.head : h.shoe;
+            const shapeR = sweptContact.shape === 'head' ? h.head.r : h.shoe.r;
+            ball.x = sweptContact.x + sweptContact.nx * (ball.r + shapeR + skin);
+            ball.y = sweptContact.y + sweptContact.ny * (ball.r + shapeR + skin);
+            const dx = ball.x - shape.x;
+            const dy = ball.y - shape.y;
+            const dist2 = dx * dx + dy * dy;
+            if (dist2 > 0.0001) {
+                if (sweptContact.shape === 'shoe') {
+                    resolveShoeToCircle(ball, p, dx, dy, dist2, shapeR);
+                }
+                else {
+                    resolveCircleToCircle(ball, p, dx, dy, dist2, shapeR);
+                }
+                return;
+            }
+        }
+    }
 
     // --- A. CHOQUE CON EL CUERPO (Rectángulo AABB) ---
     const closestX = clamp(ball.x, h.body.x, h.body.x + h.body.w);
