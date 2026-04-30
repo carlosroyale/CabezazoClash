@@ -21,7 +21,7 @@ $asset = static function (string $path) use ($basePath): string {
     <link rel="manifest" href="<?= htmlspecialchars($asset('manifest.json'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="apple-touch-icon" href="<?= htmlspecialchars($asset('assets/img/logo192.png'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="icon" type="image/x-icon" href="<?= htmlspecialchars($asset('assets/icon/favicon.ico'), ENT_QUOTES, 'UTF-8') ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars($asset('juego/juego.css?v=14'), ENT_QUOTES, 'UTF-8') ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars($asset('juego/juego.css?v=15'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 </head>
@@ -67,6 +67,15 @@ $asset = static function (string $path) use ($basePath): string {
             <h2 class="subtitle">¡CUENTA EN USO!</h2>
             <p id="already-connected-message" class="info-description">Esta cuenta ya está jugando o esperando partida en otro dispositivo o pestaña.</p>
             <button id="btn-already-connected-ok" class="btn large-got-it-btn" style="margin-top: 1rem;">SUSTITUIR</button>
+        </div>
+    </section>
+
+    <section id="screen-connection-lost" class="screen">
+        <div class="card info-card" style="border: 3px solid #ff0d72; box-shadow: 0 0 30px rgba(255, 13, 114, 0.4);">
+            <i class="bi bi-wifi-off" style="font-size: 6rem; color: #ff0d72; margin-bottom: 1rem;"></i>
+            <h2 class="subtitle">¡CONEXIÓN PERDIDA!</h2>
+            <p id="connection-lost-message" class="info-description">Se ha perdido la conexión con la partida. Recarga la página para reconectarte.</p>
+            <button id="btn-connection-lost-reload" class="btn large-got-it-btn" style="margin-top: 1rem;">RECARGAR</button>
         </div>
     </section>
 
@@ -340,6 +349,12 @@ $asset = static function (string $path) use ($basePath): string {
 
 <script>
     let socket;
+    const connectionRecoveryKey = 'cabezazo_connection_recovery';
+    const connectionRecoveryInstanceKey = 'cabezazo_connection_recovery_instance';
+    const isConnectionRecovery = sessionStorage.getItem(connectionRecoveryKey) === '1';
+    const clientInstanceId = isConnectionRecovery && sessionStorage.getItem(connectionRecoveryInstanceKey)
+        ? sessionStorage.getItem(connectionRecoveryInstanceKey)
+        : (window.crypto && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
 
     // Leemos el ID directamente de la sesión de PHP de forma segura.
     // Si no hay sesión, será null.
@@ -365,12 +380,16 @@ $asset = static function (string $path) use ($basePath): string {
                 auth: {
                     userId: miUsuarioId,
                     username: miUsername,
+                    clientInstanceId,
+                    forceTakeover: false,
                 }
             });
 
             socket.on('connect', () => {
                 console.log('Conectado al servidor de WebSockets con el ID:', socket.id);
                 socket.auth.forceTakeover = false;
+                sessionStorage.removeItem(connectionRecoveryKey);
+                sessionStorage.removeItem(connectionRecoveryInstanceKey);
 
                 const alreadyConnectedScreen = document.getElementById('screen-already-connected');
                 if (alreadyConnectedScreen && alreadyConnectedScreen.classList.contains('active')) {
@@ -384,6 +403,24 @@ $asset = static function (string $path) use ($basePath): string {
                     btnAlreadyConnected.innerText = 'SUSTITUIR';
                 }
             });
+
+            function estaEnPartidaOnlineActiva() {
+                return window.isOnlineMode === true &&
+                    (typeof matchFinishedExternally === 'undefined' || !matchFinishedExternally);
+            }
+
+            function mostrarConexionPerdida(message) {
+                const alreadyConnectedScreen = document.getElementById('screen-already-connected');
+                if (alreadyConnectedScreen) alreadyConnectedScreen.classList.remove('active');
+
+                const messageEl = document.getElementById('connection-lost-message');
+                if (messageEl && message) messageEl.innerText = message;
+
+                if (window.Main && window.Main.hideVersusScreen) window.Main.hideVersusScreen();
+
+                const connectionLostScreen = document.getElementById('screen-connection-lost');
+                if (connectionLostScreen) connectionLostScreen.classList.add('active');
+            }
 
             function mostrarCuentaEnUso(message) {
                 document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -408,7 +445,24 @@ $asset = static function (string $path) use ($basePath): string {
 
             socket.on('connect_error', (err) => {
                 if (err.message === "already_connected") {
+                    if (isConnectionRecovery && estaEnPartidaOnlineActiva()) {
+                        mostrarConexionPerdida('Se ha perdido la conexión con la partida. Recarga la página para reconectarte.');
+                        return;
+                    }
+
                     mostrarCuentaEnUso('Esta cuenta ya está jugando o esperando partida en otro dispositivo o pestaña.');
+                }
+            });
+
+            socket.on('disconnect', (reason) => {
+                if (reason !== 'io client disconnect' && estaEnPartidaOnlineActiva()) {
+                    mostrarConexionPerdida('Se ha perdido la conexión con la partida. Recarga la página para reconectarte.');
+                }
+            });
+
+            window.addEventListener('offline', () => {
+                if (estaEnPartidaOnlineActiva()) {
+                    mostrarConexionPerdida('Se ha perdido la conexión con la partida. Recarga la página para reconectarte.');
                 }
             });
 
@@ -436,6 +490,15 @@ $asset = static function (string $path) use ($basePath): string {
 
                     if (socket.connected) socket.disconnect();
                     socket.connect();
+                });
+            }
+
+            const btnConnectionLostReload = document.getElementById('btn-connection-lost-reload');
+            if (btnConnectionLostReload) {
+                btnConnectionLostReload.addEventListener('click', () => {
+                    sessionStorage.setItem(connectionRecoveryKey, '1');
+                    sessionStorage.setItem(connectionRecoveryInstanceKey, clientInstanceId);
+                    window.location.reload();
                 });
             }
 

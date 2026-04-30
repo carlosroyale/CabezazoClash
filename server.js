@@ -29,14 +29,15 @@ let waitingPlayers = [];            // Array de jugadores esperando rival
 const activeMatches = new Map();    // Diccionario de partidas activas (room_1, room_2...)
 let matchIdCounter = 0;             // Contador para crear IDs únicos
 
-// Registro global de usuarios conectados (userId -> socket.id)
+// Registro global de usuarios conectados (userId -> { socketId, clientInstanceId })
 const connectedUsers = new Map();
 
 // Mapa para saber en qué sala activa está cada jugador (userId -> roomId)
 const userMatchMap = new Map();
 
 function expulsarSesionAnterior(userId) {
-    const previousSocketId = connectedUsers.get(userId);
+    const previousSession = connectedUsers.get(userId);
+    const previousSocketId = typeof previousSession === 'string' ? previousSession : previousSession?.socketId;
     if (!previousSocketId) return;
 
     const previousSocket = io.sockets.sockets.get(previousSocketId);
@@ -55,27 +56,42 @@ io.use((socket, next) => {
     // Extraemos el userId que el cliente nos enviará al intentar conectar
     const userId = socket.handshake.auth.userId;
     const username = socket.handshake.auth.username;
+    const clientInstanceId = typeof socket.handshake.auth.clientInstanceId === 'string'
+        ? socket.handshake.auth.clientInstanceId
+        : '';
     const forceTakeover = socket.handshake.auth.forceTakeover === true || socket.handshake.auth.forceTakeover === 'true';
 
     if (userId) {
         if (connectedUsers.has(userId)) {
-            if (!forceTakeover) {
+            const currentSession = connectedUsers.get(userId);
+            const currentClientInstanceId = typeof currentSession === 'string'
+                ? ''
+                : currentSession?.clientInstanceId;
+            const isSameClientInstance = clientInstanceId && currentClientInstanceId && clientInstanceId === currentClientInstanceId;
+
+            if (!forceTakeover && !isSameClientInstance) {
                 // Si el ID ya está en nuestro mapa, rechazamos la conexión con un error personalizado
-                return next(new Error("already_connected"));
+                const error = new Error("already_connected");
+                error.data = { reason: 'duplicate_session' };
+                return next(error);
             }
 
-            // El usuario ha pedido entrar aquí, así que cerramos la sesión anterior.
+            // El usuario ha pedido entrar aquí o es la misma pestaña reconectando, así que cerramos la sesión anterior.
             expulsarSesionAnterior(userId);
         }
         // Si no está, lo registramos temporalmente en el socket para saber quién es
         socket.userId = userId;
         socket.username = typeof username === 'string' ? username : '';
+        socket.clientInstanceId = clientInstanceId;
 
         // Inicializamos los puntos a 0. ¡Se actualizarán con los reales al hacer joinMatch!
         socket.puntos = 0;
 
         // Y lo añadimos a la lista de usuarios activos
-        connectedUsers.set(userId, socket.id);
+        connectedUsers.set(userId, {
+            socketId: socket.id,
+            clientInstanceId
+        });
     }
 
     next();
@@ -158,7 +174,10 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         // Liberamos su cuenta para que pueda volver a entrar si recarga la página
         if (socket.userId) {
-            if (connectedUsers.get(socket.userId) === socket.id) {
+            const currentSession = connectedUsers.get(socket.userId);
+            const currentSocketId = typeof currentSession === 'string' ? currentSession : currentSession?.socketId;
+
+            if (currentSocketId === socket.id) {
                 connectedUsers.delete(socket.userId);
                 console.log(`Usuario ${socket.userId} liberado.`);
             }
