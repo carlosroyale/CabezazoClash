@@ -733,6 +733,41 @@ function movePlayerByRivalContact(player, dx, dy) {
     player.y += dy;
 }
 
+function wasRectAboveCircle(player, rect, circleOwner, circle, tolerance = 2) {
+    const prevPlayerY = player.prevY !== undefined ? player.prevY : player.y;
+    const prevCircleOwnerY = circleOwner.prevY !== undefined ? circleOwner.prevY : circleOwner.y;
+    const prevRectBottom = rect.y + rect.h - (player.y - prevPlayerY);
+    const prevCircleTop = circle.y - circle.r - (circleOwner.y - prevCircleOwnerY);
+
+    return prevRectBottom <= prevCircleTop + tolerance;
+}
+
+function wasCircleAboveCircle(player, playerCircle, circleOwner, ownerCircle, tolerance = 2) {
+    const prevPlayerY = player.prevY !== undefined ? player.prevY : player.y;
+    const prevCircleOwnerY = circleOwner.prevY !== undefined ? circleOwner.prevY : circleOwner.y;
+    const prevPlayerCircleBottom = playerCircle.y + playerCircle.r - (player.y - prevPlayerY);
+    const prevOwnerCircleTop = ownerCircle.y - ownerCircle.r - (circleOwner.y - prevCircleOwnerY);
+
+    return prevPlayerCircleBottom <= prevOwnerCircleTop + tolerance;
+}
+
+function movePlayerByShoeContact(pTarget, pAttacker, nx, ny, overlap, allowVerticalLift) {
+    const dx = -nx * overlap;
+    const dy = -ny * overlap;
+
+    if (dy < 0 && !allowVerticalLift) {
+        const fallbackDir = pTarget.x < pAttacker.x ? -1 : 1;
+        const horizontalDir = Math.abs(dx) > 0.001 ? Math.sign(dx) : fallbackDir;
+        const horizontalPush = Math.max(Math.abs(dx), Math.min(overlap, 8));
+
+        pTarget.x += horizontalDir * horizontalPush;
+        if (pTarget.vx * horizontalDir < 0) pTarget.vx = 0;
+        return;
+    }
+
+    movePlayerByRivalContact(pTarget, dx, dy);
+}
+
 function resolveBodyBody(p1, p2, b1, b2) {
     const overlapX = Math.max(0, Math.min(b1.x + b1.w, b2.x + b2.w) - Math.max(b1.x, b2.x));
     const overlapY = Math.max(0, Math.min(b1.y + b1.h, b2.y + b2.h) - Math.max(b1.y, b2.y));
@@ -858,11 +893,12 @@ function resolveCircRectPlayer(circ, pAttacker, pTarget, rect) {
         const nx = dx / dist;
         const ny = dy / dist;
         const overlap = circ.r - dist;
+        const canLiftTarget = ny > 0.7 && pTarget.vy >= 0 && wasRectAboveCircle(pTarget, rect, pAttacker, circ);
 
-        movePlayerByRivalContact(pTarget, -nx * overlap, -ny * overlap);
+        movePlayerByShoeContact(pTarget, pAttacker, nx, ny, overlap, canLiftTarget);
 
         // CORRECCIÓN: ny > 0.7 requiere que el zapato esté bien DEBAJO del objetivo
-        if (ny > 0.7 && pTarget.vy >= 0) {
+        if (canLiftTarget) {
             pTarget.vy = 0;
             markGroundedOnRival(pTarget);
         }
@@ -895,11 +931,12 @@ function resolveShoeHeadPlayer(shoe, pAttacker, pTarget, head) {
         const overlap = radSum - dist;
         const nx = dx / dist;
         const ny = dy / dist;
+        const canLiftTarget = ny > 0.7 && pTarget.vy >= 0 && wasCircleAboveCircle(pTarget, head, pAttacker, shoe);
 
-        movePlayerByRivalContact(pTarget, -nx * overlap, -ny * overlap);
+        movePlayerByShoeContact(pTarget, pAttacker, nx, ny, overlap, canLiftTarget);
 
         // CORRECCIÓN: Zapato debajo de la cabeza Y jugador cayendo
-        if (ny > 0.7 && pTarget.vy >= 0) {
+        if (canLiftTarget) {
             pTarget.vy = 0;
             markGroundedOnRival(pTarget);
         }
