@@ -18,13 +18,10 @@ $asset = static function (string $path) use ($basePath): string {
 <head>
     <meta charset="UTF-8" />
     <title>Cabezazo Clash</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700;800;900&display=swap" rel="stylesheet">
     <link rel="manifest" href="<?= htmlspecialchars($asset('manifest.json'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="apple-touch-icon" href="<?= htmlspecialchars($asset('assets/img/logo192.png'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="icon" type="image/x-icon" href="<?= htmlspecialchars($asset('assets/icon/favicon.ico'), ENT_QUOTES, 'UTF-8') ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars($asset('juego/juego.css?v=13'), ENT_QUOTES, 'UTF-8') ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars($asset('juego/juego.css?v=14'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 </head>
