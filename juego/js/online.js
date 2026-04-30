@@ -8,17 +8,38 @@ let bytesReceivedThisSecond = 0;
 window.pingInterval = null;
 let lastMeasuredLatency = null;
 let latestServerSimTime = 0;
+let lastServerTimestamp = 0;
+let lastLocalReceiveTime = 0;
 const DEFAULT_SCOREBOARD_LABELS = { left: 'J1', right: 'J2' };
 const DEFAULT_ONLINE_PAUSE_AVAILABILITY = { left: true, right: true };
 const pointsFormatter = new Intl.NumberFormat('es-ES');
+const CABEZAZO_GAME_ID = 8;
 
 let stateBuffer = [];
-const RENDER_DELAY = 80; // Dibujaremos a ambos jugadores y la pelota 80ms en el pasado
+const RENDER_DELAY = 120; // Dibujaremos a ambos jugadores y la pelota 80ms en el pasado
 const DEFAULT_PRESENTATION_NAMES = { left: 'Jugador 1', right: 'Jugador 2' };
+let backendModulePromise = null;
 
-function parseUserId(value) {
-    const parsed = Number.parseInt(value, 10);
-    return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
+function getBackendModule() {
+    if (!backendModulePromise) {
+        backendModulePromise = import(new URL('../funciones_backend.js?v=7', window.location.href).href);
+    }
+
+    return backendModulePromise;
+}
+
+function guardarRecordOnline(puntosFinales) {
+    const puntos = Math.max(0, Number.parseInt(puntosFinales, 10) || 0);
+    if (puntos <= 0) return;
+
+    getBackendModule()
+        .then(({ guardarPuntos1v1 }) => {
+            if (typeof guardarPuntos1v1 === 'function') {
+                return guardarPuntos1v1(CABEZAZO_GAME_ID);
+            }
+            return null;
+        })
+        .catch(error => console.warn("No se pudo guardar el récord online:", error));
 }
 
 function resetOnlineSessionState() {
@@ -27,6 +48,8 @@ function resetOnlineSessionState() {
     customPauseMessage = null;
     stateBuffer = [];
     latestServerSimTime = 0;
+    lastServerTimestamp = 0;
+    lastLocalReceiveTime = 0;
     bytesReceivedThisSecond = 0;
     if (window.Main && window.Main.hideVersusScreen) window.Main.hideVersusScreen();
     updateScoreboardLabels();
@@ -189,6 +212,9 @@ window.configurarEventosSocket = function() {
         onlineState.timestamp = view.getUint32(22, true);
         latestServerSimTime = onlineState.timestamp;
 
+        lastServerTimestamp = onlineState.timestamp;
+        lastLocalReceiveTime = performance.now();
+
         // Clonamos solo las coordenadas físicas para el buffer de interpolación
         stateBuffer.push({
             p1: { x: onlineState.p1.x, y: onlineState.p1.y, kickAngle: onlineState.p1.kickAngle },
@@ -294,6 +320,8 @@ window.configurarEventosSocket = function() {
 
         // Averiguamos cuál es nuestra variación de puntos
         const myDelta = (myRole === 'p1') ? matchData.leftPointsDelta : matchData.rightPointsDelta;
+        const myFinalPoints = (myRole === 'p1') ? matchData.leftPoints : matchData.rightPoints;
+        guardarRecordOnline(myFinalPoints);
 
         endGame(matchData.leftName || DEFAULT_SCOREBOARD_LABELS.left,
             matchData.rightName || DEFAULT_SCOREBOARD_LABELS.right,
@@ -308,7 +336,7 @@ window.configurarEventosSocket = function() {
             .then(res => res.json())
             .then(datos => {
                 if (datos.puntos !== undefined) {
-                    window.misPuntos = datos.puntos; // Lista y fresca para el siguiente partido
+                    window.misPuntos = myFinalPoints ?? datos.puntos; // Lista y fresca para el siguiente partido
                 }
             })
             .catch(err => console.warn("Error recargando puntos al final del partido:", err));
@@ -576,7 +604,9 @@ function startOnlineGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl:
             }
             else if (hasPhysicsState) {
                 if (stateBuffer.length >= 2) {
-                    const renderTime = latestServerSimTime - RENDER_DELAY;
+                    const estimatedServerTime = lastServerTimestamp + (performance.now() - lastLocalReceiveTime);
+
+                    const renderTime = estimatedServerTime - RENDER_DELAY;
                     let pastState = stateBuffer[0];
                     let futureState = stateBuffer[1];
 
