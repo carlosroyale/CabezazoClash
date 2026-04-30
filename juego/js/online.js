@@ -16,7 +16,7 @@ const pointsFormatter = new Intl.NumberFormat('es-ES');
 const CABEZAZO_GAME_ID = 8;
 
 let stateBuffer = [];
-const RENDER_DELAY = 120; // Dibujaremos a ambos jugadores y la pelota 80ms en el pasado
+const RENDER_DELAY = 80; // Dibujaremos a ambos jugadores y la pelota 80ms en el pasado
 const DEFAULT_PRESENTATION_NAMES = { left: 'Jugador 1', right: 'Jugador 2' };
 let backendModulePromise = null;
 
