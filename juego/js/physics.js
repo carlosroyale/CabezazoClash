@@ -697,14 +697,20 @@ function collidePlayers(p1, p2) {
     h2 = getPlayerHitboxes(p2);
     resolveCircCircPlayer(p1, p2, h1.head, h2.head);
 
-    // C. ZAPATO vs CUERPO (La magia para subirse encima del pie del otro)
+    // C. CABEZA vs CUERPO (Evita atravesar nuca contra espalda)
+    h1 = getPlayerHitboxes(p1);
+    h2 = getPlayerHitboxes(p2);
+    resolveHeadBodyPlayer(p1, p2, h1.head, h2.body);
+    resolveHeadBodyPlayer(p2, p1, h2.head, h1.body);
+
+    // D. ZAPATO vs CUERPO (La magia para subirse encima del pie del otro)
     h1 = getPlayerHitboxes(p1);
     h2 = getPlayerHitboxes(p2);
     // Le pasamos el jugador atacante como segundo parámetro
     resolveCircRectPlayer(h1.shoe, p1, p2, h2.body);
     resolveCircRectPlayer(h2.shoe, p2, p1, h1.body);
 
-    // D. ZAPATO vs CABEZA (Para que la cabeza no atraviese los pies)
+    // E. ZAPATO vs CABEZA (Para que la cabeza no atraviese los pies)
     h1 = getPlayerHitboxes(p1);
     h2 = getPlayerHitboxes(p2);
     // Le pasamos el atacante y el objetivo
@@ -862,6 +868,49 @@ function resolveCircCircPlayer(p1, p2, c1, c2) {
         } else if (ny < -0.7 && p2.vy >= 0) {
             p2.vy = 0; markGroundedOnRival(p2);
         }
+    }
+}
+
+function resolveHeadBodyPlayer(pHeadOwner, pBodyOwner, head, body) {
+    const closestX = clamp(head.x, body.x, body.x + body.w);
+    const closestY = clamp(head.y, body.y, body.y + body.h);
+    const dx = head.x - closestX;
+    const dy = head.y - closestY;
+    const dist2 = dx * dx + dy * dy;
+
+    if (dist2 >= head.r * head.r) return;
+
+    pHeadOwner.isTouchingRival = true;
+    pBodyOwner.isTouchingRival = true;
+    playPlayerCollideSound(pHeadOwner, pBodyOwner);
+
+    if (dist2 < 0.001) {
+        const fallbackDir = pHeadOwner.x < pBodyOwner.x ? -1 : 1;
+        pHeadOwner.x += fallbackDir * head.r;
+        pHeadOwner.vx = 0;
+        return;
+    }
+
+    const dist = Math.sqrt(dist2);
+    const nx = dx / dist;
+    const ny = dy / dist;
+    const overlap = head.r - dist;
+    const verticalPush = ny * overlap;
+
+    if (Math.abs(nx) >= Math.abs(ny) || verticalPush < 0) {
+        const fallbackDir = pHeadOwner.x < pBodyOwner.x ? -1 : 1;
+        const horizontalDir = Math.abs(nx) > 0.001 ? Math.sign(nx) : fallbackDir;
+        const horizontalPush = Math.max(Math.abs(nx * overlap), Math.min(overlap, 8));
+
+        pHeadOwner.x += horizontalDir * horizontalPush;
+        if (pHeadOwner.vx * horizontalDir < 0) pHeadOwner.vx = 0;
+        return;
+    }
+
+    movePlayerByRivalContact(pHeadOwner, nx * overlap, verticalPush);
+
+    if (ny > 0.7) {
+        pHeadOwner.vy = Math.max(0, pHeadOwner.vy);
     }
 }
 
