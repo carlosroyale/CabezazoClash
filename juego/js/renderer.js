@@ -136,7 +136,7 @@ function drawPlayer(p, bodyImg, shoeImg) {
     }
     drawingCtx.restore();
 
-    dibujarHitboxJugador(p);
+    // dibujarHitboxJugador(p);
 }
 
 function dibujarHitboxJugador(p) {
