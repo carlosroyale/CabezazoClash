@@ -256,8 +256,7 @@ function update(dt) {
     if (playersBackToBack) {
         resolveBackToBackBallSqueeze(ball, p1, p2);
     }
-    collidePlayerBall(p1, ball);
-    collidePlayerBall(p2, ball);
+    collidePlayersBallFair(p1, p2, ball);
     if (playersBackToBack) resolveBackToBackBallSqueeze(ball, p1, p2);
     else resolveBallSqueezeUp(ball, p1, p2);
 

@@ -1,6 +1,6 @@
 // Match.js - Molde para partidas individuales
 const { makePlayer, updatePlayer, updateBall, controlPlayer } = require('./juego/js/entities.js');
-const { collidePlayers, collidePlayerBall, checkGoalCollisions, collidePlayerGoals, arePlayersBackToBack, resolveBackToBackBallSqueeze, resolveBallSqueezeUp } = require('./juego/js/physics.js');
+const { collidePlayers, collidePlayersBallFair, checkGoalCollisions, collidePlayerGoals, arePlayersBackToBack, resolveBackToBackBallSqueeze, resolveBallSqueezeUp } = require('./juego/js/physics.js');
 const { registrarPartidaOnline } = require('./db.js');
 
 const W = 1845;
@@ -426,8 +426,7 @@ class Match {
                     if (playersBackToBack) resolveBackToBackBallSqueeze(this.gameState.ball, this.gameState.p1, this.gameState.p2);
 
                     // Resolvemos colisiones regulares entre jugadores y la pelota.
-                    collidePlayerBall(this.gameState.p1, this.gameState.ball);
-                    collidePlayerBall(this.gameState.p2, this.gameState.ball);
+                    collidePlayersBallFair(this.gameState.p1, this.gameState.p2, this.gameState.ball);
 
                     // Volvemos a chequear atascos de la pelota por si la colisión anterior la empujó hacia un mal lugar.
                     if (playersBackToBack) resolveBackToBackBallSqueeze(this.gameState.ball, this.gameState.p1, this.gameState.p2);

@@ -4,6 +4,8 @@ const GOAL_POST_SIZE = 8;
 const PHYSICS_SHOE_LOCAL_CENTER_X = -3.5;
 const PHYSICS_SHOE_LOCAL_CENTER_Y = 35;
 const PHYSICS_SHOE_RADIUS = 14;
+const BALL_CONTACT_TIE_EPSILON = 0.5;
+let fairBallCollisionTieBreaker = false;
 
 function getMirroredShoeHitbox(p) {
     const localShoeX = p.isRightFacing ? PHYSICS_SHOE_LOCAL_CENTER_X : -PHYSICS_SHOE_LOCAL_CENTER_X;
@@ -283,6 +285,47 @@ function collidePlayerBall(p, ball) {
     if (dist2Shoe < (ball.r + h.shoe.r) * (ball.r + h.shoe.r)) {
         resolveShoeToCircle(ball, p, dxShoe, dyShoe, dist2Shoe, h.shoe.r);
     }
+}
+
+function getCircleBallContactScore(circle, ball) {
+    return Math.hypot(ball.x - circle.x, ball.y - circle.y) - (ball.r + circle.r);
+}
+
+function getRectBallContactScore(rect, ball) {
+    const closestX = clamp(ball.x, rect.x, rect.x + rect.w);
+    const closestY = clamp(ball.y, rect.y, rect.y + rect.h);
+    return Math.hypot(ball.x - closestX, ball.y - closestY) - ball.r;
+}
+
+function getPlayerBallContactScore(p, ball) {
+    const h = getPlayerHitboxes(p);
+
+    return Math.min(
+        getRectBallContactScore(h.body, ball),
+        getCircleBallContactScore(h.head, ball),
+        getCircleBallContactScore(h.shoe, ball)
+    );
+}
+
+function collidePlayersBallFair(p1, p2, ball) {
+    const p1Score = getPlayerBallContactScore(p1, ball);
+    const p2Score = getPlayerBallContactScore(p2, ball);
+
+    let p1First = p1Score < p2Score;
+
+    if (Math.abs(p1Score - p2Score) <= BALL_CONTACT_TIE_EPSILON) {
+        fairBallCollisionTieBreaker = !fairBallCollisionTieBreaker;
+        p1First = fairBallCollisionTieBreaker;
+    }
+
+    if (p1First) {
+        collidePlayerBall(p1, ball);
+        collidePlayerBall(p2, ball);
+        return;
+    }
+
+    collidePlayerBall(p2, ball);
+    collidePlayerBall(p1, ball);
 }
 
 // --- FUNCIONES AUXILIARES DE COLISIÓN ---
@@ -996,7 +1039,7 @@ function playPlayerCollideSound(p1, p2) {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         getPlayerHitboxes, arePlayersBackToBack, isBackToBackBallSqueeze,
-        collidePlayerBall, checkGoalCollisions, collidePlayerStaticRect, collidePlayerGoals,
+        collidePlayerBall, collidePlayersBallFair, checkGoalCollisions, collidePlayerStaticRect, collidePlayerGoals,
         collidePlayers, resolveBackToBackBallSqueeze, resolveBallSqueezeUp
     };
 }
