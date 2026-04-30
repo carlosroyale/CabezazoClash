@@ -97,9 +97,9 @@ function getRenderMirroredShoeDrawOffset(p) {
     };
 }
 
-function getRenderMirroredShoeHitbox(p) {
+function getRenderMirroredShoeHitbox(p, kickAngle = p.kickAngle) {
     const center = getRenderMirroredShoeLocalCenter(p);
-    const rot = p.isRightFacing ? -p.kickAngle : p.kickAngle;
+    const rot = p.isRightFacing ? -kickAngle : kickAngle;
 
     return {
         x: p.x + (center.x * Math.cos(rot) - center.y * Math.sin(rot)),
@@ -165,11 +165,18 @@ function dibujarHitboxJugador(p) {
 
     // C. Hitbox Circular (Zapato rotatorio - Igual a physics.js)
     const shoe = getRenderMirroredShoeHitbox(p);
+    const supportShoe = getRenderMirroredShoeHitbox(p, 0);
 
     // Dibujar el círculo
     drawingCtx.beginPath();
 
     drawingCtx.arc(shoe.x, shoe.y, shoe.r, 0, Math.PI * 2);
+    drawingCtx.stroke();
+
+    // D. Hitbox Circular (Pie de apoyo fijo - Igual a physics.js)
+    drawingCtx.beginPath();
+    drawingCtx.strokeStyle = "#00d9ff";
+    drawingCtx.arc(supportShoe.x, supportShoe.y, supportShoe.r, 0, Math.PI * 2);
     drawingCtx.stroke();
 
     // Punto de pivote de la barriga (Punto morado)

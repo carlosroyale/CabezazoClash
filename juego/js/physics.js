@@ -5,12 +5,13 @@ const PHYSICS_SHOE_LOCAL_CENTER_X = -3.5;
 const PHYSICS_SHOE_LOCAL_CENTER_Y = 35;
 const PHYSICS_SHOE_RADIUS = 14;
 const BALL_CONTACT_TIE_EPSILON = 0.5;
+const KICK_SHOE_SEPARATION_ANGLE = 0.12;
 let fairBallCollisionTieBreaker = false;
 
-function getMirroredShoeHitbox(p) {
+function getMirroredShoeHitbox(p, kickAngle = p.kickAngle) {
     const localShoeX = p.isRightFacing ? PHYSICS_SHOE_LOCAL_CENTER_X : -PHYSICS_SHOE_LOCAL_CENTER_X;
     const localShoeY = PHYSICS_SHOE_LOCAL_CENTER_Y;
-    const rot = p.isRightFacing ? -p.kickAngle : p.kickAngle;
+    const rot = p.isRightFacing ? -kickAngle : kickAngle;
 
     return {
         x: p.x + (localShoeX * Math.cos(rot) - localShoeY * Math.sin(rot)),
@@ -34,7 +35,9 @@ function getPlayerHitboxes(p) {
     return {
         body: { x: rectX, y: bodyY - bodyH / 2, w: bodyW, h: bodyH },
         head: { x: headX, y: headY, r: headR },
-        shoe: getMirroredShoeHitbox(p)
+        shoe: getMirroredShoeHitbox(p),
+        supportShoe: getMirroredShoeHitbox(p, 0),
+        kickShoeSeparated: p.kickAngle > KICK_SHOE_SEPARATION_ANGLE
     };
 }
 
@@ -196,8 +199,13 @@ function findSweptPlayerBallContact(p, ball, h) {
     const headContact = findSegmentCircleContact(startX, startY, endX, endY, h.head.x, h.head.y, ball.r + h.head.r);
     if (headContact) contacts.push({ ...headContact, shape: 'head', shapeR: h.head.r });
 
-    const shoeContact = findSegmentCircleContact(startX, startY, endX, endY, h.shoe.x, h.shoe.y, ball.r + h.shoe.r);
-    if (shoeContact) contacts.push({ ...shoeContact, shape: 'shoe', shapeR: h.shoe.r });
+    const supportShoeContact = findSegmentCircleContact(startX, startY, endX, endY, h.supportShoe.x, h.supportShoe.y, ball.r + h.supportShoe.r);
+    if (supportShoeContact) contacts.push({ ...supportShoeContact, shape: 'supportShoe', shapeR: h.supportShoe.r });
+
+    if (h.kickShoeSeparated) {
+        const shoeContact = findSegmentCircleContact(startX, startY, endX, endY, h.shoe.x, h.shoe.y, ball.r + h.shoe.r);
+        if (shoeContact) contacts.push({ ...shoeContact, shape: 'shoe', shapeR: h.shoe.r });
+    }
 
     if (!contacts.length) return null;
 
@@ -236,8 +244,9 @@ function collidePlayerBall(p, ball) {
             }
         }
         else {
-            const shape = sweptContact.shape === 'head' ? h.head : h.shoe;
-            const shapeR = sweptContact.shape === 'head' ? h.head.r : h.shoe.r;
+            const shape = sweptContact.shape === 'head' ? h.head :
+                sweptContact.shape === 'supportShoe' ? h.supportShoe : h.shoe;
+            const shapeR = shape.r;
             ball.x = sweptContact.x + sweptContact.nx * (ball.r + shapeR + skin);
             ball.y = sweptContact.y + sweptContact.ny * (ball.r + shapeR + skin);
             const dx = ball.x - shape.x;
@@ -276,14 +285,24 @@ function collidePlayerBall(p, ball) {
     }
 
     // --- C. CHOQUE CON EL ZAPATO (Círculo Rotatorio y Bateador) ---
-    const dxShoe = ball.x - h.shoe.x;
-    const dyShoe = ball.y - h.shoe.y;
-    const dist2Shoe = dxShoe * dxShoe + dyShoe * dyShoe;
+    if (h.kickShoeSeparated) {
+        const dxShoe = ball.x - h.shoe.x;
+        const dyShoe = ball.y - h.shoe.y;
+        const dist2Shoe = dxShoe * dxShoe + dyShoe * dyShoe;
 
-    // Si la pelota choca con el zapato, usamos la función especial que creamos
-    // para darle los efectos de "bombeo" y "latigazo".
-    if (dist2Shoe < (ball.r + h.shoe.r) * (ball.r + h.shoe.r)) {
-        resolveShoeToCircle(ball, p, dxShoe, dyShoe, dist2Shoe, h.shoe.r);
+        // Si la pelota choca con el zapato, usamos la función especial que creamos
+        // para darle los efectos de "bombeo" y "latigazo".
+        if (dist2Shoe < (ball.r + h.shoe.r) * (ball.r + h.shoe.r)) {
+            resolveShoeToCircle(ball, p, dxShoe, dyShoe, dist2Shoe, h.shoe.r);
+        }
+    }
+
+    const dxSupportShoe = ball.x - h.supportShoe.x;
+    const dySupportShoe = ball.y - h.supportShoe.y;
+    const dist2SupportShoe = dxSupportShoe * dxSupportShoe + dySupportShoe * dySupportShoe;
+
+    if (dist2SupportShoe < (ball.r + h.supportShoe.r) * (ball.r + h.supportShoe.r)) {
+        resolveCircleToCircle(ball, p, dxSupportShoe, dySupportShoe, dist2SupportShoe, h.supportShoe.r);
     }
 }
 
@@ -300,11 +319,15 @@ function getRectBallContactScore(rect, ball) {
 function getPlayerBallContactScore(p, ball) {
     const h = getPlayerHitboxes(p);
 
-    return Math.min(
+    const scores = [
         getRectBallContactScore(h.body, ball),
         getCircleBallContactScore(h.head, ball),
-        getCircleBallContactScore(h.shoe, ball)
-    );
+        getCircleBallContactScore(h.supportShoe, ball)
+    ];
+
+    if (h.kickShoeSeparated) scores.push(getCircleBallContactScore(h.shoe, ball));
+
+    return Math.min(...scores);
 }
 
 function collidePlayersBallFair(p1, p2, ball) {
@@ -567,7 +590,8 @@ function collidePlayerStaticRect(p, rect) {
 
     // C. ZAPATO vs LARGUERO (Círculo vs Rectángulo)
     h = getPlayerHitboxes(p); // Recalculamos por si la cabeza lo movió
-    resolveCircStaticRectPlayer(p, h.shoe, rect);
+    if (h.kickShoeSeparated) resolveCircStaticRectPlayer(p, h.shoe, rect);
+    resolveCircStaticRectPlayer(p, h.supportShoe, rect);
 }
 
 // Helper: Rectángulo (Cuerpo) vs Rectángulo Estático (Portería)
@@ -697,25 +721,29 @@ function collidePlayers(p1, p2) {
     h2 = getPlayerHitboxes(p2);
     resolveCircCircPlayer(p1, p2, h1.head, h2.head);
 
-    // C. CABEZA vs CUERPO (Evita atravesar nuca contra espalda)
+    // C. ZAPATO vs CABEZA (El pie de apoyo bloquea antes de llegar al cuerpo)
+    h1 = getPlayerHitboxes(p1);
+    h2 = getPlayerHitboxes(p2);
+    // Le pasamos el atacante y el objetivo
+    if (h1.kickShoeSeparated) resolveShoeHeadPlayer(h1.shoe, p1, p2, h2.head, true);
+    resolveShoeHeadPlayer(h1.supportShoe, p1, p2, h2.head, false);
+    if (h2.kickShoeSeparated) resolveShoeHeadPlayer(h2.shoe, p2, p1, h1.head, true);
+    resolveShoeHeadPlayer(h2.supportShoe, p2, p1, h1.head, false);
+
+    // D. CABEZA vs CUERPO (Evita atravesar nuca contra espalda)
     h1 = getPlayerHitboxes(p1);
     h2 = getPlayerHitboxes(p2);
     resolveHeadBodyPlayer(p1, p2, h1.head, h2.body);
     resolveHeadBodyPlayer(p2, p1, h2.head, h1.body);
 
-    // D. ZAPATO vs CUERPO (La magia para subirse encima del pie del otro)
+    // E. ZAPATO vs CUERPO (La magia para subirse encima del pie del otro)
     h1 = getPlayerHitboxes(p1);
     h2 = getPlayerHitboxes(p2);
     // Le pasamos el jugador atacante como segundo parámetro
-    resolveCircRectPlayer(h1.shoe, p1, p2, h2.body);
-    resolveCircRectPlayer(h2.shoe, p2, p1, h1.body);
-
-    // E. ZAPATO vs CABEZA (Para que la cabeza no atraviese los pies)
-    h1 = getPlayerHitboxes(p1);
-    h2 = getPlayerHitboxes(p2);
-    // Le pasamos el atacante y el objetivo
-    resolveShoeHeadPlayer(h1.shoe, p1, p2, h2.head);
-    resolveShoeHeadPlayer(h2.shoe, p2, p1, h1.head);
+    if (h1.kickShoeSeparated) resolveCircRectPlayer(h1.shoe, p1, p2, h2.body, true);
+    resolveCircRectPlayer(h1.supportShoe, p1, p2, h2.body, false);
+    if (h2.kickShoeSeparated) resolveCircRectPlayer(h2.shoe, p2, p1, h1.body, true);
+    resolveCircRectPlayer(h2.supportShoe, p2, p1, h1.body, false);
 }
 
 // 3. Resoluciones físicas específicas para Jugador vs Jugador
@@ -914,7 +942,7 @@ function resolveHeadBodyPlayer(pHeadOwner, pBodyOwner, head, body) {
     }
 }
 
-function resolveCircRectPlayer(circ, pAttacker, pTarget, rect) {
+function resolveCircRectPlayer(circ, pAttacker, pTarget, rect, isKickFoot = true) {
     const closestX = clamp(circ.x, rect.x, rect.x + rect.w);
     const closestY = clamp(circ.y, rect.y, rect.y + rect.h);
     const dx = circ.x - closestX;
@@ -927,13 +955,13 @@ function resolveCircRectPlayer(circ, pAttacker, pTarget, rect) {
         pTarget.isTouchingRival = true;
 
         // Aviso exclusivo de contacto con la pierna levantada
-        if (pAttacker.kickAngle > 0) {
+        if (isKickFoot && pAttacker.kickAngle > 0) {
             pAttacker.isKickingRival = true;
         }
 
         // Sonido de patada a otro jugador
         // ¡Solo suena si el dueño del zapato está presionando la tecla de chutar!
-        if (pAttacker.isKicking) playPlayerKickSound(pAttacker, pTarget);
+        if (isKickFoot && pAttacker.isKicking) playPlayerKickSound(pAttacker, pTarget);
         //  Sonido de choque de cuerpos (con cooldown y velocidad mínima)
         else playPlayerCollideSound(pAttacker, pTarget);
 
@@ -955,7 +983,7 @@ function resolveCircRectPlayer(circ, pAttacker, pTarget, rect) {
     }
 }
 
-function resolveShoeHeadPlayer(shoe, pAttacker, pTarget, head) {
+function resolveShoeHeadPlayer(shoe, pAttacker, pTarget, head, isKickFoot = true) {
     const dx = shoe.x - head.x;
     const dy = shoe.y - head.y;
     const dist2 = dx * dx + dy * dy;
@@ -967,12 +995,12 @@ function resolveShoeHeadPlayer(shoe, pAttacker, pTarget, head) {
         pTarget.isTouchingRival = true;
 
         // Aviso exclusivo de contacto con la pierna levantada
-        if (pAttacker.kickAngle > 0) {
+        if (isKickFoot && pAttacker.kickAngle > 0) {
             pAttacker.isKickingRival = true;
         }
 
         //  Sonido de patada de jugadores (con cooldown y velocidad mínima)
-        if (pAttacker.isKicking) playPlayerKickSound(pAttacker, pTarget);
+        if (isKickFoot && pAttacker.isKicking) playPlayerKickSound(pAttacker, pTarget);
         //  Sonido de choque de jugadores (con cooldown y velocidad mínima)
         else playPlayerCollideSound(pAttacker, pTarget);
 
