@@ -76,6 +76,38 @@ function drawCrowd(W) {
     drawingCtx.drawImage(imgCrowd, 0, 365, W, 285);
 }
 
+const RENDER_SHOE_WIDTH = 35;
+const RENDER_SHOE_HEIGHT = 20;
+const RENDER_SHOE_LOCAL_CENTER_X = -3.5;
+const RENDER_SHOE_LOCAL_CENTER_Y = 35;
+const RENDER_SHOE_RADIUS = 14;
+
+function getRenderMirroredShoeLocalCenter(p) {
+    return {
+        x: p.isRightFacing ? RENDER_SHOE_LOCAL_CENTER_X : -RENDER_SHOE_LOCAL_CENTER_X,
+        y: RENDER_SHOE_LOCAL_CENTER_Y
+    };
+}
+
+function getRenderMirroredShoeDrawOffset(p) {
+    const center = getRenderMirroredShoeLocalCenter(p);
+    return {
+        x: center.x - RENDER_SHOE_WIDTH / 2,
+        y: center.y - RENDER_SHOE_HEIGHT / 2
+    };
+}
+
+function getRenderMirroredShoeHitbox(p) {
+    const center = getRenderMirroredShoeLocalCenter(p);
+    const rot = p.isRightFacing ? -p.kickAngle : p.kickAngle;
+
+    return {
+        x: p.x + (center.x * Math.cos(rot) - center.y * Math.sin(rot)),
+        y: p.y + (center.x * Math.sin(rot) + center.y * Math.cos(rot)),
+        r: RENDER_SHOE_RADIUS
+    };
+}
+
 function drawPlayer(p, bodyImg, shoeImg) {
     // 1. DIBUJAR CUERPO
     if (bodyImg && bodyImg.complete) {
@@ -98,14 +130,13 @@ function drawPlayer(p, bodyImg, shoeImg) {
 
     if (shoeImg && shoeImg.complete) {
         // Como el (0,0) es la barriga, empujamos el zapato hacia abajo y a los lados
-        let shoeDrawX = p.isRightFacing ? -21 : -13;
-        let shoeDrawY = p.isRightFacing ? 25 : 25;
+        const shoeDrawOffset = getRenderMirroredShoeDrawOffset(p);
 
-        drawingCtx.drawImage(shoeImg, shoeDrawX, shoeDrawY, 35, 20);
+        drawingCtx.drawImage(shoeImg, shoeDrawOffset.x, shoeDrawOffset.y, RENDER_SHOE_WIDTH, RENDER_SHOE_HEIGHT);
     }
     drawingCtx.restore();
 
-    //dibujarHitboxJugador(p);
+    dibujarHitboxJugador(p);
 }
 
 function dibujarHitboxJugador(p) {
@@ -133,25 +164,12 @@ function dibujarHitboxJugador(p) {
 
 
     // C. Hitbox Circular (Zapato rotatorio - Igual a physics.js)
-    let shoeDrawX2 = p.isRightFacing ? -21 : -13;
-    let shoeDrawY2 = p.isRightFacing ? 25 : 25;
-
-    // Centro local del zapato (Ajustado para tu imagen de 35x20)
-    const localShoeX = shoeDrawX2 + 17.5; // La mitad de 35
-    const localShoeY = shoeDrawY2 + 10;   // La mitad de 20
-
-    // Ángulo de rotación de la pierna
-    const rot = p.isRightFacing ? -p.kickAngle : p.kickAngle;
-
-    // Posición del centro en el mundo real
-    const worldShoeX = bodyX + (localShoeX * Math.cos(rot) - localShoeY * Math.sin(rot)) + 3;
-    const worldShoeY = p.y + (localShoeX * Math.sin(rot) + localShoeY * Math.cos(rot));
+    const shoe = getRenderMirroredShoeHitbox(p);
 
     // Dibujar el círculo
     drawingCtx.beginPath();
-    const shoeR = 14; // Mismo radio que en physics.js
 
-    drawingCtx.arc(worldShoeX, worldShoeY, shoeR, 0, Math.PI * 2);
+    drawingCtx.arc(shoe.x, shoe.y, shoe.r, 0, Math.PI * 2);
     drawingCtx.stroke();
 
     // Punto de pivote de la barriga (Punto morado)

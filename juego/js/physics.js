@@ -1,6 +1,22 @@
 // physics.js - Detección de colisiones y límites
 
 const GOAL_POST_SIZE = 8;
+const PHYSICS_SHOE_LOCAL_CENTER_X = -3.5;
+const PHYSICS_SHOE_LOCAL_CENTER_Y = 35;
+const PHYSICS_SHOE_RADIUS = 14;
+
+function getMirroredShoeHitbox(p) {
+    const localShoeX = p.isRightFacing ? PHYSICS_SHOE_LOCAL_CENTER_X : -PHYSICS_SHOE_LOCAL_CENTER_X;
+    const localShoeY = PHYSICS_SHOE_LOCAL_CENTER_Y;
+    const rot = p.isRightFacing ? -p.kickAngle : p.kickAngle;
+
+    return {
+        x: p.x + (localShoeX * Math.cos(rot) - localShoeY * Math.sin(rot)),
+        y: p.y + (localShoeX * Math.sin(rot) + localShoeY * Math.cos(rot)),
+        r: PHYSICS_SHOE_RADIUS
+    };
+}
+
 // 1. Helper para obtener las 3 hitboxes matemáticas (Idéntico a tu dibujarHitboxJvB)
 function getPlayerHitboxes(p) {
     const bodyW = p.w - 28;
@@ -13,20 +29,10 @@ function getPlayerHitboxes(p) {
     const headY = bodyY - bodyH;
     const headR = 21;
 
-    let shoeDrawX = p.isRightFacing ? -21 : -13;
-    let shoeDrawY = p.isRightFacing ? 25 : 25;
-    const localShoeX = shoeDrawX + 17.5;
-    const localShoeY = shoeDrawY + 10;
-    const rot = p.isRightFacing ? -p.kickAngle : p.kickAngle;
-
-    const worldShoeX = bodyX + (localShoeX * Math.cos(rot) - localShoeY * Math.sin(rot)) + 3;
-    const worldShoeY = p.y + (localShoeX * Math.sin(rot) + localShoeY * Math.cos(rot));
-    const shoeR = 14;
-
     return {
         body: { x: rectX, y: bodyY - bodyH / 2, w: bodyW, h: bodyH },
         head: { x: headX, y: headY, r: headR },
-        shoe: { x: worldShoeX, y: worldShoeY, r: shoeR }
+        shoe: getMirroredShoeHitbox(p)
     };
 }
 
