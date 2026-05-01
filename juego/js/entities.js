@@ -203,22 +203,22 @@ class BotAIUtils {
 
         const context = BotAIUtils.buildContext(bot, ball, opponent);
 
-        // Serve rival → pressió
+        // Servicio rival -> presion
         if (bot.opponentServing) {
             return bot.attackState;
         }
 
-        // Pilota molt dins porteria rival → no perseguir
+        // Pelota en la porteria rival -> no perseguir
         if (context.isBallDeepInOpponentGoalArea) {
             return bot.defendState;
         }
 
-        // ✅ CLAU: si la pilota està al meu camp → SEMPRE atacar
+        // Pelota en mi campo -> siempre atacar
         if (context.isBallOnBotSide) {
             return bot.attackState;
         }
 
-        // Si està al centre i ningú la controla → anar-hi
+        // Si esta al centro y nadie va -> ir a por ella
         const ballIsNeutral =
             ball.x > bot.aiFieldWidth * 0.4 &&
             ball.x < bot.aiFieldWidth * 0.6;
@@ -227,17 +227,17 @@ class BotAIUtils {
             return bot.attackState;
         }
 
-        // Si el jugador està molt enrere → aprofitar
+        // Si el jugador esta muy atras -> atacar
         if (context.isOpponentNearOwnGoal) {
             return bot.attackState;
         }
 
-        // Si el bot és més a prop de la pilota → anar-hi
+        // Si el bot esta mas cerca de la pelota -> ir a por ella
         if (context.isBallCloserToBot) {
             return bot.attackState;
         }
 
-        // sinó → defensar
+        // sino -> defender
         return bot.defendState;
     }
 
@@ -357,14 +357,14 @@ class AttackState extends BotState {
 
         let targetX;
 
-        // posar-se darrere la pilota
+        // Ponerse dentras de la pelota
         if (bot.x > ball.x) {
             targetX = ball.x - 25;
         } else {
             targetX = ball.x;
         }
 
-        // si controla → atacar porteria
+        // si controla -> atacar porteria
         const controllingBall =
             Math.abs(bot.x - ball.x) < 60 &&
             Math.abs(ball.vx) < 80;
