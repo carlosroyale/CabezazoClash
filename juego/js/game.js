@@ -230,7 +230,8 @@ function update(dt) {
 
     if (botEnabled) {
         const botServeChase = serveState.active && serveState.server === "right";
-        controlBot(p2, dt, ball, W, FLOOR_Y, keys, botServeChase);
+        const botShouldPressure = serveState.active && serveState.server !== "right";
+        controlBot(p2, dt, ball, W, FLOOR_Y, keys, p1, botServeChase, botShouldPressure);
     }
     else {
         controlPlayer(p2, dt, "ArrowLeft", "ArrowRight", "ArrowUp", "KeyP", keys);

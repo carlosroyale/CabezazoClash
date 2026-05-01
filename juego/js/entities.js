@@ -157,15 +157,28 @@ class BotAIUtils {
         };
     }
 
-    static buildContext(bot, ball) {
+    static buildContext(bot, ball, opponent) {
         const futureBall = BotAIUtils.predictBallPosition(ball);
         const distToBall = Math.abs(bot.x - ball.x);
+        const distToBallFull = Math.hypot(bot.x - ball.x, bot.y - ball.y);
+        const botSideLine = bot.aiFieldWidth * 0.52;
+        const playerSideLine = bot.aiFieldWidth * 0.48;
+        const opponentGoalLine = bot.aiFieldWidth * 0.12;
+
+        // Opponent awareness
+        const distOpponentToBall = opponent ? Math.hypot(opponent.x - ball.x, opponent.y - ball.y) : Infinity;
+        const isBallCloserToBot = distToBallFull < distOpponentToBall;
+        const isOpponentOnBotSide = opponent ? opponent.x > botSideLine : false;
+        const isOpponentNearOwnGoal = opponent ? opponent.x < bot.aiFieldWidth * 0.28 : false;
+        const isOpponentDeepOnPlayerSide = opponent ? opponent.x < bot.aiFieldWidth * 0.28 : false;
 
         return {
             futureBall,
             distToBall,
-            distToBallFull: Math.hypot(bot.x - ball.x, bot.y - ball.y),
-            isBallOnBotSide: ball.x > bot.aiFieldWidth * 0.55,
+            distToBallFull,
+            isBallOnBotSide: ball.x > botSideLine,
+            isBallOnPlayerSide: ball.x < playerSideLine,
+            isBallDeepInOpponentGoalArea: ball.x < opponentGoalLine,
             isBallFarFromBot: ball.x < bot.aiFieldWidth * 0.35,
             ballThreatensGoal: ball.x > bot.aiFieldWidth * 0.75 && Math.abs(ball.vx) > 50,
             ballGoingWrong: ball.vx < -200,
@@ -173,8 +186,59 @@ class BotAIUtils {
                 distToBall < BOT_AI_CONFIG.APPROACH_DIST &&
                 ball.vy > 0 &&
                 ((ball.vx > 0 && bot.x > ball.x) || (ball.vx < 0 && bot.x < ball.x)),
-            shouldJumpForShot: ball.y < bot.y - bot.h && distToBall < BOT_AI_CONFIG.APPROACH_DIST
+            shouldJumpForShot: ball.y < bot.y - bot.h && distToBall < BOT_AI_CONFIG.APPROACH_DIST,
+            // Opponent-aware logic
+            isBallCloserToBot,
+            isOpponentOnBotSide,
+            isOpponentNearOwnGoal,
+            isOpponentDeepOnPlayerSide,
+            distOpponentToBall
         };
+    }
+
+    static resolveState(bot, ball, opponent) {
+        if (bot.isServeChasing) {
+            return bot.serveState;
+        }
+
+        const context = BotAIUtils.buildContext(bot, ball, opponent);
+
+        // Servicio rival -> presion
+        if (bot.opponentServing) {
+            return bot.attackState;
+        }
+
+        // Pelota en la porteria rival -> no perseguir
+        if (context.isBallDeepInOpponentGoalArea) {
+            return bot.defendState;
+        }
+
+        // Pelota en mi campo -> siempre atacar
+        if (context.isBallOnBotSide) {
+            return bot.attackState;
+        }
+
+        // Si esta al centro y nadie va -> ir a por ella
+        const ballIsNeutral =
+            ball.x > bot.aiFieldWidth * 0.4 &&
+            ball.x < bot.aiFieldWidth * 0.6;
+
+        if (ballIsNeutral && context.isBallCloserToBot) {
+            return bot.attackState;
+        }
+
+        // Si el jugador esta muy atras -> atacar
+        if (context.isOpponentNearOwnGoal) {
+            return bot.attackState;
+        }
+
+        // Si el bot esta mas cerca de la pelota -> ir a por ella
+        if (context.isBallCloserToBot) {
+            return bot.attackState;
+        }
+
+        // sino -> defender
+        return bot.defendState;
     }
 
     static moveTowards(bot, targetX, dt) {
@@ -183,7 +247,7 @@ class BotAIUtils {
 
         if (absDx > 40) {
             const targetVx = Math.sign(dx) * bot.speed * 0.9;
-            bot.vx += (targetVx - bot.vx) * Math.min(1, dt * 8);
+            bot.vx += (targetVx - bot.vx) * Math.min(1, dt * 6);
         } else if (absDx > 15) {
             const targetVx = (dx / 40) * bot.speed * 0.9;
             bot.vx += (targetVx - bot.vx) * Math.min(1, dt * 8);
@@ -217,6 +281,8 @@ class BotAIUtils {
     }
 
     static tryJump(bot) {
+        // Prevent jumping during serve phase (either chasing own serve or opponent serve pressure)
+        if (bot.isServeChasing || bot.opponentServing) return false;
         if (!bot.onGround || bot.groundedByPlayer || !bot.canJump) return false;
 
         bot.vy = -bot.jump;
@@ -254,16 +320,21 @@ class DefendState extends BotState {
         bot.state = 'defend';
     }
 
-    execute(bot, ball, dt) {
-        if (bot.isServeChasing) {
-            bot.changeState(bot.serveState);
-            return;
-        }
-
-        const context = BotAIUtils.buildContext(bot, ball);
-
-        if (context.isBallOnBotSide || context.ballThreatensGoal) {
-            bot.changeState(bot.attackState);
+    execute(bot, ball, dt, opponent) {
+        // If opponent is serving, apply light pressure towards the ball
+        if (bot.opponentServing) {
+            // Stay offset from the ball so we don't sit on top of it or shove the player
+            let offset = 40;
+            let targetX = ball.x - Math.sign(ball.x - bot.x) * offset;
+            // Keep inside field bounds and avoid coming too close to opponent
+            targetX = clamp(targetX, 20, bot.aiFieldWidth - 60);
+            if (opponent && Math.abs(opponent.x - targetX) < 50) {
+                // move slightly away from opponent
+                targetX += Math.sign(targetX - opponent.x) * 60;
+                targetX = clamp(targetX, 20, bot.aiFieldWidth - 60);
+            }
+            BotAIUtils.moveTowards(bot, targetX, dt);
+            BotAIUtils.recoverKick(bot, dt);
             return;
         }
 
@@ -277,20 +348,40 @@ class AttackState extends BotState {
         bot.state = 'attack';
     }
 
-    execute(bot, ball, dt) {
+    execute(bot, ball, dt, opponent) {
         if (bot.isServeChasing) {
             bot.changeState(bot.serveState);
             return;
         }
+        const context = BotAIUtils.buildContext(bot, ball, opponent);
 
-        const context = BotAIUtils.buildContext(bot, ball);
+        // La pelota esta detras del bot (entre el bot y su porteria)
+        const ballIsBehind = ball.x > bot.x + 30;
 
-        if ((context.isBallFarFromBot && bot.ballEscaped) || context.ballGoingWrong) {
-            bot.changeState(bot.defendState);
-            return;
+        let targetX;
+
+        if (ballIsBehind) {
+            // Saltar por encima de la pelota hacia la derecha
+            targetX = ball.x + 100;
+
+            const distToBall = Math.abs(bot.x - ball.x);
+            if (bot.onGround && bot.canJump && distToBall < 120) {
+                bot.vy        = -bot.jump;
+                bot.vx        = -bot.speed * 0.9; // retroceder mientras salta
+                bot.onGround  = false;
+                bot.canJump   = false;
+                window.playSound('sfx-jump', 0.5);
+            }
+
+        } else if (Math.abs(bot.x - ball.x) < 60 && Math.abs(ball.vx) < 80) {
+            // Controlando la pelota -> atacar porteria contraria
+            targetX = 20;
+        } else {
+            // Aproximacion normal: colocarse ligeramente detras de la pelota
+            targetX = ball.x - 25;
         }
 
-        BotAIUtils.moveTowards(bot, context.futureBall.x, dt);
+        BotAIUtils.moveTowards(bot, targetX, dt);
 
         if (context.shouldJumpForHeader || context.shouldJumpForShot) {
             BotAIUtils.tryJump(bot);
@@ -305,13 +396,7 @@ class ServeState extends BotState {
         bot.state = 'serve';
     }
 
-    execute(bot, ball, dt) {
-        if (!bot.isServeChasing) {
-            const context = BotAIUtils.buildContext(bot, ball);
-            bot.changeState((context.isBallOnBotSide || context.ballThreatensGoal) ? bot.attackState : bot.defendState);
-            return;
-        }
-
+    execute(bot, ball, dt, opponent) {
         const futureBall = BotAIUtils.predictBallPosition(ball);
         BotAIUtils.moveTowards(bot, futureBall.x, dt);
         BotAIUtils.recoverKick(bot, dt);
@@ -370,22 +455,23 @@ class Bot {
         this.currentState.enter(this);
     }
 
-    update(ball, dt) {
-        if (!this.currentState) {
-            this.changeState(this.defendState);
-        }
+    update(ball, dt, opponent) {
+        const desiredState = BotAIUtils.resolveState(this, ball, opponent);
+        this.changeState(desiredState);
 
-        this.currentState.execute(this, ball, dt);
+        this.currentState.execute(this, ball, dt, opponent);
     }
 }
 
-function controlBot(bot, dt, ball, W, FLOOR_Y, keys, serveChaseMode = false) {
+function controlBot(bot, dt, ball, W, FLOOR_Y, keys, opponent = null, serveChaseMode = false, opponentServeMode = false) {
     if (!(bot instanceof Bot)) return;
 
     bot.setArenaContext(W, FLOOR_Y);
     bot.isServeChasing = serveChaseMode;
+    // Flag usable by AI to pressure when the opponent is serving
+    bot.opponentServing = opponentServeMode;
     BotAIUtils.refreshFrameState(bot, ball, dt);
-    bot.update(ball, dt);
+    bot.update(ball, dt, opponent);
 }
 
 // Función de utilidad para limitar un valor entre un mínimo y un máximo
