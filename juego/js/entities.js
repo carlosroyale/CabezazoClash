@@ -354,7 +354,6 @@ class AttackState extends BotState {
             return;
         }
         const context = BotAIUtils.buildContext(bot, ball, opponent);
-        const W = bot.aiFieldWidth;
 
         // La pelota esta detras del bot (entre el bot y su porteria)
         const ballIsBehind = ball.x > bot.x + 30;
@@ -362,8 +361,18 @@ class AttackState extends BotState {
         let targetX;
 
         if (ballIsBehind) {
-            // Pasar por detrás: ir a la derecha de la pelota para tenerla frente
-            targetX = ball.x + 60;
+            // Saltar por encima de la pelota hacia la derecha
+            targetX = ball.x + 100;
+
+            const distToBall = Math.abs(bot.x - ball.x);
+            if (bot.onGround && bot.canJump && distToBall < 120) {
+                bot.vy        = -bot.jump;
+                bot.vx        = -bot.speed * 0.9; // retroceder mientras salta
+                bot.onGround  = false;
+                bot.canJump   = false;
+                window.playSound('sfx-jump', 0.5);
+            }
+
         } else if (Math.abs(bot.x - ball.x) < 60 && Math.abs(ball.vx) < 80) {
             // Controlando la pelota -> atacar porteria contraria
             targetX = 20;
