@@ -193,12 +193,14 @@ function playVersusIntro({ leftName, rightName, leftLabel = "", rightLabel = "",
   }, duration);
 }
 
-function iniciarCuentaAtrasInicio(callback) {
+async function iniciarCuentaAtrasInicio(callback) {
   if (cuentaAtrasActiva) return;
   cuentaAtrasActiva = true;
 
   // 1. Ocultamos la interfaz de pausa al instante
   hidePauseMenu();
+
+  await countdownAudioWarmup;
 
   // 2. Volvemos a encender el ambiente del estadio que la pausa había cortado
   playMatchAmbient();
@@ -676,7 +678,7 @@ asignarBoton(btnExitPause, () => {
   updateLocalScoreboardLabels();
   showScreen(screenStart);
   window.Game.startIdle({ canvas, ctx });
-  if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+  if (audio) audio.resume().then();
   playMenuMusic();
 });
 asignarBoton(btnPauseOptions, () => {
@@ -793,44 +795,68 @@ function updateOptionsUI() {
    SISTEMA DE AUDIO WEB (ALTO RENDIMIENTO)
    ========================================================================== */
 let musicUnlocked = false;
-
-const AudioContext = window.AudioContext;
-const audioCtx = new AudioContext();
-const sfxBuffers = {};
+let audio = null;
 let activeSFXNodes = new Set();
+let countdownAudioWarmup = Promise.resolve();
 
-// Variables para mantener control de las pistas en bucle (Música y Ambiente)
-let bgMusicNode = null;
-let bgMusicGain = null;
-let ambientNode = null;
-let ambientGain = null;
+const MENU_AUDIO_WARMUP_IDS = [
+  'bg-music'
+];
+
+const COUNTDOWN_AUDIO_WARMUP_IDS = [
+  'sfx-crowd-ambient',
+  'sfx-jump',
+  'sfx-whistle'
+];
+
+const AUDIO_WARMUP_IDS = [
+  'bg-music',
+  'sfx-crowd-ambient',
+  'sfx-whistle',
+  'sfx-goal',
+  'sfx-rebound',
+  'sfx-ball-post',
+  'sfx-ball-grass',
+  'sfx-jump',
+  'sfx-land',
+  'sfx-player-collide',
+  'sfx-player-kick'
+];
+
+const audioReady = import('../AudioManager.js?v=3').then(({ AudioManager }) => {
+  audio = new AudioManager({
+    musicVolume: settings.musicVolume,
+    effectsVolume: settings.sfxVolume
+  });
+  return audio;
+});
 
 async function loadSound(id, url) {
-  try {
-    const response = await fetch(url);
-    const arrayBuffer = await response.arrayBuffer();
-    sfxBuffers[id] = await audioCtx.decodeAudioData(arrayBuffer);
-  }
-  catch (e) {
-    console.warn("No se pudo cargar el audio:", id, e);
-  }
+  const audioManager = await audioReady;
+  return audioManager.load(id, url);
+}
+
+function warmupAudio(ids = AUDIO_WARMUP_IDS) {
+  return audioReady
+      .then(audioManager => Promise.all(ids.map(id => audioManager.getBuffer(id))))
+      .catch(e => {
+        console.warn('No se pudo precalentar el audio', e);
+      });
 }
 
 function applyVolumes() {
-  if (bgMusicGain) bgMusicGain.gain.value = settings.musicVolume * 0.4;
-  if (ambientGain) ambientGain.gain.value = settings.sfxVolume * 0.5;
+  if (!audio) return;
+
+  audio.setMusicVolume(settings.musicVolume);
+  audio.setEffectsVolume(settings.sfxVolume);
+  audio.setLoopVolume('bg-music', 0.4);
+  audio.setLoopVolume('sfx-crowd-ambient', 0.5);
 }
 
 function stopAllSounds() {
-  // Parar música de fondo
-  if (bgMusicNode) {
-    try { bgMusicNode.stop(); } catch(e){}
-    bgMusicNode = null;
-  }
-  // Parar ambiente de estadio
-  if (ambientNode) {
-    try { ambientNode.stop(); } catch(e){}
-    ambientNode = null;
+  if (audio) {
+    audio.stopLoop('bg-music');
+    audio.stopLoop('sfx-crowd-ambient');
   }
 
   // Parar todos los efectos de Web Audio API
@@ -841,63 +867,19 @@ function stopAllSounds() {
 }
 
 function playMenuMusic() {
-  if (!musicUnlocked) return;
+  if (!musicUnlocked || !audio) return;
 
-  // Detener estadio si estaba sonando
-  if (ambientNode) {
-    try { ambientNode.stop(); } catch(e){}
-    ambientNode = null;
-  }
-
-  // Reiniciar música si ya estaba sonando
-  if (bgMusicNode) {
-    try { bgMusicNode.stop(); } catch(e){}
-  }
-
-  const buffer = sfxBuffers['bg-music'];
-  if (!buffer) return;
-
-  bgMusicNode = audioCtx.createBufferSource();
-  bgMusicNode.buffer = buffer;
-  bgMusicNode.loop = true; // Que se repita infinitamente
-
-  bgMusicGain = audioCtx.createGain();
-  bgMusicGain.gain.value = settings.musicVolume * 0.4;
-
-  bgMusicNode.connect(bgMusicGain);
-  bgMusicGain.connect(audioCtx.destination);
-
-  bgMusicNode.start(0);
+  audio.stopLoop('sfx-crowd-ambient');
+  audio.stopLoop('bg-music');
+  audio.play('bg-music', { volume: 0.4, loop: true, type: 'music' }).then();
 }
 
 function playMatchAmbient() {
-  if (!musicUnlocked) return;
+  if (!musicUnlocked || !audio) return;
 
-  // Detener música si estaba sonando
-  if (bgMusicNode) {
-    try { bgMusicNode.stop(); } catch(e){}
-    bgMusicNode = null;
-  }
-
-  // Reiniciar ambiente si ya estaba sonando
-  if (ambientNode) {
-    try { ambientNode.stop(); } catch(e){}
-  }
-
-  const buffer = sfxBuffers['sfx-crowd-ambient'];
-  if (!buffer) return;
-
-  ambientNode = audioCtx.createBufferSource();
-  ambientNode.buffer = buffer;
-  ambientNode.loop = true; // Que se repita infinitamente
-
-  ambientGain = audioCtx.createGain();
-  ambientGain.gain.value = settings.sfxVolume * 0.5;
-
-  ambientNode.connect(ambientGain);
-  ambientGain.connect(audioCtx.destination);
-
-  ambientNode.start(0);
+  audio.stopLoop('bg-music');
+  audio.stopLoop('sfx-crowd-ambient');
+  audio.play('sfx-crowd-ambient', { volume: 0.5, loop: true }).then();
 }
 
 /* ==========================================================================
@@ -963,19 +945,11 @@ screenTapToStart.addEventListener('click', async () => {
   musicUnlocked = true;
 
   // Reactivar el contexto de audio (Política obligatoria de los navegadores)
-  if (audioCtx.state === 'suspended') {
-    await audioCtx.resume();
-  }
-
-  // Reproducimos un pitido inaudible de 1 milisegundo. Esto obliga al
-  // hardware del dispositivo a enganchar la Web Audio API permanentemente.
-  const oscillator = audioCtx.createOscillator();
-  const dummyGain = audioCtx.createGain();
-  dummyGain.gain.value = 0; // Volumen 0 (mudo)
-  oscillator.connect(dummyGain);
-  dummyGain.connect(audioCtx.destination);
-  oscillator.start(0);
-  oscillator.stop(audioCtx.currentTime + 0.001);
+  const audioManager = await audioReady;
+  await audioManager.unlock();
+  await warmupAudio(MENU_AUDIO_WARMUP_IDS);
+  countdownAudioWarmup = warmupAudio(COUNTDOWN_AUDIO_WARMUP_IDS);
+  countdownAudioWarmup.then(() => warmupAudio());
 
   screenTapToStart.classList.remove('active');
   showScreen(screenStart);
@@ -992,7 +966,7 @@ screenTapToStart.addEventListener('click', async () => {
 
 // 4. Función global para reproducir efectos (Latencia Cero)
 window.playSound = function(soundId, volume = 1) {
-  if (settings.sfxVolume <= 0 || !musicUnlocked) return;
+  if (settings.sfxVolume <= 0 || !musicUnlocked || !audio) return;
 
   // SEGURIDAD: Evitar saturación acústica al conducir el balón o en rebotes ultrarrápidos
   if (soundId === 'sfx-rebound') {
@@ -1009,32 +983,14 @@ window.playSound = function(soundId, volume = 1) {
     window._lastKickTime = now;
   }
 
-  const buffer = sfxBuffers[soundId];
-  if (!buffer) return;
+  audio.play(soundId, { volume }).then((item) => {
+    if (!item) return;
 
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume().then();
-    // Si estaba suspendido, abortamos este sonido en particular en este fotograma
-    // para no causar un error interno, pero ya hemos ordenado que despierte.
-    return;
-  }
-
-  const source = audioCtx.createBufferSource();
-  source.buffer = buffer;
-
-  const gainNode = audioCtx.createGain();
-  // Multiplicamos el volumen recibido por el ajuste global de la UI
-  gainNode.gain.value = settings.sfxVolume * volume;
-
-  source.connect(gainNode);
-  gainNode.connect(audioCtx.destination);
-
-  source.start(0);
-
-  activeSFXNodes.add(source);
-  source.onended = () => {
-    activeSFXNodes.delete(source);
-  };
+    activeSFXNodes.add(item.source);
+    item.source.onended = () => {
+      activeSFXNodes.delete(item.source);
+    };
+  });
 };
 
 
@@ -1044,6 +1000,7 @@ window.playSound = function(soundId, volume = 1) {
 
 loadSettings();
 updateOptionsUI();
+audioReady.then(() => applyVolumes());
 
 // Listener de redimensión para el Canvas y la UI
 function resizeCanvas() {
@@ -1121,7 +1078,7 @@ document.addEventListener('visibilitychange', () => {
 
     // Congelamos el motor de audio entero. Esto pausa la música
     // y el ambiente exactamente en el milisegundo en el que están.
-    if (audioCtx.state === 'running') audioCtx.suspend().then();
+    if (audio) audio.suspend();
 
     // IMPORTANTE: Hemos borrado stopAllSounds() aquí para no destruir las pistas.
   }
@@ -1129,7 +1086,7 @@ document.addEventListener('visibilitychange', () => {
     if (!musicUnlocked) return;
 
     // Despertamos el motor de audio al volver a la pestaña. Todo sigue por donde iba.
-    if (audioCtx.state === 'suspended') audioCtx.resume().then();
+    if (audio) audio.resume().then();
 
     // IMPORTANTE: Hemos borrado los playMenuMusic() y playMatchAmbient()
     // porque las pistas siguen ahí, solo estaban congeladas.
@@ -1141,13 +1098,13 @@ window.addEventListener("blur", () => {
   forcePauseIfPlaying();
 
   // También congelamos el audio si pincha fuera de la ventana
-  if (audioCtx.state === 'running') audioCtx.suspend().then();
+  if (audio) audio.suspend();
 });
 
 // 3. Cuando la ventana recupera el foco
 window.addEventListener("focus", () => {
   if (!musicUnlocked) return;
-  if (audioCtx.state === 'suspended') audioCtx.resume().then();
+  if (audio) audio.resume().then();
 });
 
 // --- SISTEMA DE CARGA MAESTRO ---
