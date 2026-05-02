@@ -1002,18 +1002,42 @@ loadSettings();
 updateOptionsUI();
 audioReady.then(() => applyVolumes());
 
+const RESIZE_RETRY_DELAYS = [80, 250, 600];
+let resizeRetryTimeouts = [];
+
+function getViewportSize() {
+  const visualViewport = window.visualViewport;
+  const width = Math.round(visualViewport?.width || document.documentElement.clientWidth || window.innerWidth);
+  const height = Math.round(visualViewport?.height || document.documentElement.clientHeight || window.innerHeight);
+  const offsetLeft = Math.round(visualViewport?.offsetLeft || 0);
+  const offsetTop = Math.round(visualViewport?.offsetTop || 0);
+
+  return { width, height, offsetLeft, offsetTop };
+}
+
+function scheduleResizeCanvas() {
+  resizeRetryTimeouts.forEach(clearTimeout);
+  resizeRetryTimeouts = [];
+
+  resizeCanvas();
+  requestAnimationFrame(resizeCanvas);
+
+  resizeRetryTimeouts = RESIZE_RETRY_DELAYS.map((delay) => setTimeout(resizeCanvas, delay));
+}
+
 // Listener de redimensión para el Canvas y la UI
 function resizeCanvas() {
   const wrap = document.getElementById('game-wrap');
   const baseW = 1845;
   const baseH = 1038;
+  const viewport = getViewportSize();
 
   // 1. Calcular la escala necesaria (zoom)
-  const scale = Math.min(window.innerWidth / baseW, window.innerHeight / baseH);
+  const scale = Math.min(viewport.width / baseW, viewport.height / baseH);
 
   // 2. Centrado matemático exacto (evita el bug de CSS translate(-50%, -50%) con anchos estrechos)
-  const leftOffset = (window.innerWidth - (baseW * scale)) / 2;
-  const topOffset = (window.innerHeight - (baseH * scale)) / 2;
+  const leftOffset = viewport.offsetLeft + (viewport.width - (baseW * scale)) / 2;
+  const topOffset = viewport.offsetTop + (viewport.height - (baseH * scale)) / 2;
 
   // 3. Aplicar el desplazamiento exacto y el zoom desde la esquina superior izquierda
   wrap.style.transformOrigin = 'top left';
@@ -1036,7 +1060,7 @@ function resizeCanvas() {
 
   // En online no forzamos jamás la pausa automática por orientación.
   // El aviso visual puede mostrarse, pero la partida debe seguir viva.
-  if (!window.isOnlineMode && window.innerHeight > window.innerWidth && screenGame.classList.contains("active")) {
+  if (!window.isOnlineMode && viewport.height > viewport.width && screenGame.classList.contains("active")) {
     // Evitamos pausar si ya hay una cuenta atrás para reanudar (previene bugs visuales)
     if (!cuentaAtrasActiva && window.Game && window.Game.pauseGame) {
       window.Game.pauseGame();
@@ -1045,10 +1069,18 @@ function resizeCanvas() {
 }
 
 //Escuchar cambios de tamaño de ventana
-window.addEventListener('resize', resizeCanvas);
+window.addEventListener('resize', scheduleResizeCanvas);
+window.addEventListener('orientationchange', scheduleResizeCanvas);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', scheduleResizeCanvas);
+  window.visualViewport.addEventListener('scroll', scheduleResizeCanvas);
+}
+if (window.screen?.orientation?.addEventListener) {
+  window.screen.orientation.addEventListener('change', scheduleResizeCanvas);
+}
 
 // Forzar un primer ajuste al arrancar
-resizeCanvas();
+scheduleResizeCanvas();
 
 // Arrancar el modo reposo para ver las porterías de fondo
 if (window.Game && window.Game.startIdle) {
@@ -1163,7 +1195,6 @@ async function inicializarJuego() {
       screenTapToStart.classList.add('active');
       if (mostrarFPS) contadorFpsDiv.classList.remove('hidden');
     }
-
   } catch (error) {
     console.error("Fallo crítico en la carga inicial:", error);
     // Si algo falla catastróficamente, quitamos el bloqueo para que se pueda intentar jugar
