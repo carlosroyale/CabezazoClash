@@ -250,9 +250,9 @@ class BotAIUtils {
         }
 
         // Pelota en la porteria rival -> no perseguir
-        if (context.isBallDeepInOpponentGoalArea) {
-            return bot.defendState;
-        }
+        // if (context.isBallDeepInOpponentGoalArea) {
+        //     return bot.defendState;
+        // }
 
         // Pelota en mi campo -> siempre atacar
         if (context.isBallOnBotSide) {
@@ -364,10 +364,10 @@ class BotAIUtils {
         const opponentBallDist = opponent ? Math.hypot(opponent.x - ball.x, opponent.y - ball.y) : Infinity;
     }
 
-    static tryJump(bot) {
+    static tryJump(bot, allowGroundedByPlayer = false) {
         // Prevent jumping during serve phase (either chasing own serve or opponent serve pressure)
         if (bot.isServeChasing || bot.opponentServing) return false;
-        if (!bot.onGround || bot.groundedByPlayer || !bot.canJump) return false;
+        if (!bot.onGround || (!allowGroundedByPlayer && bot.groundedByPlayer) || !bot.canJump) return false;
 
         bot.vy = -bot.jump;
         bot.onGround = false;
@@ -388,11 +388,24 @@ class BotAIUtils {
             opponentDir === targetDir &&
             Math.abs(opponent.x - bot.x) < BOT_AI_CONFIG.BLOCKED_ATTACK_OPPONENT_DIST &&
             Math.abs(opponent.y - bot.y) < bot.h;
+        const touchingRival =
+            bot.isTouchingRival === true ||
+            bot.wasTouchingRival === true;
+        const touchingRivalAhead =
+            opponent &&
+            touchingRival &&
+            targetDir !== 0 &&
+            opponentDir === targetDir &&
+            Math.abs(opponent.y - bot.y) < bot.h;
+
+        const blockedByOpponent = opponentAhead || touchingRivalAhead;
+
         const slowedDown =
             intendedSpeed >= BOT_AI_CONFIG.BLOCKED_ATTACK_MIN_INTENDED_SPEED &&
             realSpeedTowardsTarget < intendedSpeed * BOT_AI_CONFIG.BLOCKED_ATTACK_MAX_REAL_SPEED_RATIO;
+        const blockedMovement = slowedDown || touchingRivalAhead;
 
-        if (!opponentAhead || !slowedDown || bot.blockedAttackJumpCooldown > 0) {
+        if (!blockedByOpponent || !blockedMovement || bot.blockedAttackJumpCooldown > 0) {
             bot.blockedAttackTimer = 0;
             return false;
         }
@@ -403,7 +416,7 @@ class BotAIUtils {
         }
 
         bot.blockedAttackTimer = 0;
-        if (!BotAIUtils.tryJump(bot)) return false;
+        if (!BotAIUtils.tryJump(bot, touchingRivalAhead)) return false;
 
         bot.blockedAttackJumpCooldown = BOT_AI_CONFIG.BLOCKED_ATTACK_JUMP_COOLDOWN;
         return true;

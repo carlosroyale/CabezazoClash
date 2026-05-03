@@ -1205,31 +1205,31 @@ function resolveBallFloorCrush(ball, p1, p2, floorY, worldW) {
 
     ball.y = floorY - ball.r - 3;
 
-    if (crushingPlayers.length === 2) {
-        const leftPlayer = p1.x <= p2.x ? p1 : p2;
-        const rightPlayer = p1.x <= p2.x ? p2 : p1;
-
-        const trapLeft = Math.min(crushingPlayers[0].minX, crushingPlayers[1].minX);
-        const trapRight = Math.max(crushingPlayers[0].maxX, crushingPlayers[1].maxX);
-        const pairCenter = (leftPlayer.x + rightPlayer.x) / 2;
-        let escapeDir = ball.x < pairCenter ? -1 : 1;
-
-        if (Math.abs(ball.x - pairCenter) < 1) {
-            escapeDir = ball._lastFloorCrushEscapeDir === 1 ? -1 : 1;
-        }
-        if (worldW && escapeDir < 0 && trapLeft - ball.r - 4 < 0) escapeDir = 1;
-        if (worldW && escapeDir > 0 && trapRight + ball.r + 4 > worldW) escapeDir = -1;
-
-        ball.x = escapeDir < 0 ? trapLeft - ball.r - 4 : trapRight + ball.r + 4;
-        ball.vx = escapeDir * Math.max(Math.abs(ball.vx || 0), 380);
-        ball.vy = Math.min(ball.vy || 0, -220);
-        ball._lastFloorCrushEscapeDir = escapeDir;
-
-        leftPlayer.x -= 14;
-        rightPlayer.x += 14;
-        if (leftPlayer.vx > 0) leftPlayer.vx = 0;
-        if (rightPlayer.vx < 0) rightPlayer.vx = 0;
-    }
+    // if (crushingPlayers.length === 2) {
+    //     const leftPlayer = p1.x <= p2.x ? p1 : p2;
+    //     const rightPlayer = p1.x <= p2.x ? p2 : p1;
+    //
+    //     const trapLeft = Math.min(crushingPlayers[0].minX, crushingPlayers[1].minX);
+    //     const trapRight = Math.max(crushingPlayers[0].maxX, crushingPlayers[1].maxX);
+    //     const pairCenter = (leftPlayer.x + rightPlayer.x) / 2;
+    //     let escapeDir = ball.x < pairCenter ? -1 : 1;
+    //
+    //     if (Math.abs(ball.x - pairCenter) < 1) {
+    //         escapeDir = ball._lastFloorCrushEscapeDir === 1 ? -1 : 1;
+    //     }
+    //     if (worldW && escapeDir < 0 && trapLeft - ball.r - 4 < 0) escapeDir = 1;
+    //     if (worldW && escapeDir > 0 && trapRight + ball.r + 4 > worldW) escapeDir = -1;
+    //
+    //     ball.x = escapeDir < 0 ? trapLeft - ball.r - 4 : trapRight + ball.r + 4;
+    //     ball.vx = escapeDir * Math.max(Math.abs(ball.vx || 0), 380);
+    //     ball.vy = Math.min(ball.vy || 0, -220);
+    //     ball._lastFloorCrushEscapeDir = escapeDir;
+    //
+    //     leftPlayer.x -= 14;
+    //     rightPlayer.x += 14;
+    //     if (leftPlayer.vx > 0) leftPlayer.vx = 0;
+    //     if (rightPlayer.vx < 0) rightPlayer.vx = 0;
+    // }
     // else {
     //     const crusher = crushingPlayers[0];
     //     const player = crusher.player;
