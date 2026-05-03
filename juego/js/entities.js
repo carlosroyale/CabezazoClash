@@ -154,7 +154,7 @@ const BOT_AI_CONFIG = {
     KICK_DIST: 90,
     KICK_COOLDOWN: 0.4,
     KICK_EXIT_DIST: 110,
-    MAX_NO_TOUCH_TIME_WHEN_LOSING: 5,
+    MAX_NO_TOUCH_TIME_WHEN_LOSING: 3,
     OPPONENT_FAR_FROM_BALL_RATIO: 0.25,
     BLOCKED_ATTACK_MIN_INTENDED_SPEED: 180,
     BLOCKED_ATTACK_MAX_REAL_SPEED_RATIO: 0.35,
@@ -203,7 +203,7 @@ class BotAIUtils {
         const distOpponentToBall = opponent ? Math.hypot(opponent.x - ball.x, opponent.y - ball.y) : Infinity;
         const isBallCloserToBot = distToBallFull < distOpponentToBall;
         const isOpponentOnBotSide = opponent ? opponent.x > botSideLine : false;
-        const isOpponentNearOwnGoal = opponent ? opponent.x < bot.aiFieldWidth * 0.28 : false;
+        const isBotOnOpponentSide = bot.x < bot.aiFieldWidth * 0.52;        const isOpponentNearOwnGoal = opponent ? opponent.x < bot.aiFieldWidth * 0.28 : false;
         const isOpponentDeepOnPlayerSide = opponent ? opponent.x < bot.aiFieldWidth * 0.28 : false;
         const isOpponentFarFromBall = distOpponentToBall > bot.aiFieldWidth * BOT_AI_CONFIG.OPPONENT_FAR_FROM_BALL_RATIO;
         const ballHeightAboveBot = bot.y - ball.y;
@@ -229,6 +229,7 @@ class BotAIUtils {
             // Opponent-aware logic
             isBallCloserToBot,
             isOpponentOnBotSide,
+            isBotOnOpponentSide,
             isOpponentNearOwnGoal,
             isOpponentDeepOnPlayerSide,
             isOpponentFarFromBall,
@@ -264,6 +265,11 @@ class BotAIUtils {
             ball.x < bot.aiFieldWidth * 0.6;
 
         if (ballIsNeutral && context.isBallCloserToBot) {
+            return bot.attackState;
+        }
+
+        // Si el jugador esta muy atras -> atacar
+        if (context.isOpponentNearOwnGoal && context.isBotOnOpponentSide) {
             return bot.attackState;
         }
 

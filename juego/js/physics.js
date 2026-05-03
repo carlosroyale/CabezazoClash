@@ -1229,25 +1229,26 @@ function resolveBallFloorCrush(ball, p1, p2, floorY, worldW) {
         rightPlayer.x += 14;
         if (leftPlayer.vx > 0) leftPlayer.vx = 0;
         if (rightPlayer.vx < 0) rightPlayer.vx = 0;
-    } else {
-        const crusher = crushingPlayers[0];
-        const player = crusher.player;
-        let escapeDir = ball.x < player.x ? -1 : 1;
-
-        if (Math.abs(ball.x - player.x) < 1) {
-            escapeDir = ball._lastFloorCrushEscapeDir === 1 ? -1 : 1;
-        }
-        if (worldW && escapeDir < 0 && crusher.minX - ball.r - 4 < 0) escapeDir = 1;
-        if (worldW && escapeDir > 0 && crusher.maxX + ball.r + 4 > worldW) escapeDir = -1;
-
-        ball.x = escapeDir < 0 ? crusher.minX - ball.r - 4 : crusher.maxX + ball.r + 4;
-        ball.vx = escapeDir * Math.max(Math.abs(ball.vx || 0), 320);
-        ball.vy = Math.min(ball.vy || 0, -180);
-        ball._lastFloorCrushEscapeDir = escapeDir;
-
-        player.x -= escapeDir * 18;
-        if (player.vx * escapeDir > 0) player.vx = 0;
     }
+    // else {
+    //     const crusher = crushingPlayers[0];
+    //     const player = crusher.player;
+    //     let escapeDir = ball.x < player.x ? -1 : 1;
+    //
+    //     if (Math.abs(ball.x - player.x) < 1) {
+    //         escapeDir = ball._lastFloorCrushEscapeDir === 1 ? -1 : 1;
+    //     }
+    //     if (worldW && escapeDir < 0 && crusher.minX - ball.r - 4 < 0) escapeDir = 1;
+    //     if (worldW && escapeDir > 0 && crusher.maxX + ball.r + 4 > worldW) escapeDir = -1;
+    //
+    //     ball.x = escapeDir < 0 ? crusher.minX - ball.r - 4 : crusher.maxX + ball.r + 4;
+    //     ball.vx = escapeDir * Math.max(Math.abs(ball.vx || 0), 320);
+    //     ball.vy = Math.min(ball.vy || 0, -180);
+    //     ball._lastFloorCrushEscapeDir = escapeDir;
+    //
+    //     player.x -= escapeDir * 8;
+    //     if (player.vx * escapeDir > 0) player.vx = 0;
+    // }
 
     ball._floorCrushFrames = 0;
     syncBallSweepOrigin(ball);
