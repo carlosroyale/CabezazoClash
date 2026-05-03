@@ -750,6 +750,29 @@ body {
     color: rgba(255,255,255,0.9);
 }
 
+.controls-list {
+    list-style: none;
+}
+
+.controls-list li {
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr);
+    gap: 1rem;
+    align-items: center;
+}
+
+.controls-label {
+    color: #ffce00;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.touch-controls-help i {
+    color: #ffce00;
+    font-size: 1.35rem;
+    vertical-align: -0.08em;
+}
+
 /* EL BOTÓN "CERRAR" */
 .large-got-it-btn {
     width: 300px;

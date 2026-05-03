@@ -21,7 +21,7 @@ $asset = static function (string $path) use ($basePath): string {
     <link rel="manifest" href="<?= htmlspecialchars($asset('manifest.json'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="apple-touch-icon" href="<?= htmlspecialchars($asset('assets/img/logo192.png'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="icon" type="image/x-icon" href="<?= htmlspecialchars($asset('assets/icon/favicon.ico'), ENT_QUOTES, 'UTF-8') ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars($asset('juego/juego.css?v=15'), ENT_QUOTES, 'UTF-8') ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars($asset('juego/juego.css?v=16'), ENT_QUOTES, 'UTF-8') ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 </head>
@@ -193,10 +193,14 @@ $asset = static function (string $path) use ($basePath): string {
 
             <div class="large-controls-box" style="margin-top: 0;">
                 <h3 class="large-controls-title">Controles</h3>
-                <ul class="large-controls-list">
-                    <li><b>Jugador 1:</b> A/D mover · W saltar · Espacio chutar</li>
-                    <li><b>Jugador 2:</b> ←/→ mover · ↑ saltar · P chutar</li>
-                    <li><b>Pausa:</b> R o pulsar el botón</li>
+                <ul class="large-controls-list controls-list">
+                    <li><span class="controls-label">Jugador 1</span><span>A/D mover · W saltar · Espacio chutar</span></li>
+                    <li><span class="controls-label">Jugador 2</span><span>←/→ mover · ↑ saltar · P chutar</span></li>
+                    <li class="touch-controls-help">
+                        <span class="controls-label">Táctil</span>
+                        <span><i class="bi bi-arrow-left-right"></i> mover · <i class="bi bi-arrow-up"></i> saltar · <i class="bi bi-record-circle-fill"></i> chutar</span>
+                    </li>
+                    <li><span class="controls-label">Pausa</span><span>R o botón de pausa</span></li>
                 </ul>
             </div>
 
@@ -521,12 +525,12 @@ $asset = static function (string $path) use ($basePath): string {
     else console.error("No se pudo cargar la librería Socket.io desde la CDN");
 </script>
 <script src="<?= htmlspecialchars($asset('juego/js/constants.js?v=4'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/entities.js?v=6'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/physics.js?v=10'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/entities.js?v=7'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/physics.js?v=11'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/renderer.js?v=6'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/input.js?v=5'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/game.js?v=12'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/game.js?v=13'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/online.js?v=24'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=38'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=39'), ENT_QUOTES, 'UTF-8') ?>"></script>
 </body>
 </html>

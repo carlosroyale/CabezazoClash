@@ -8,6 +8,27 @@ const BALL_CONTACT_TIE_EPSILON = 0.5;
 const KICK_SHOE_SEPARATION_ANGLE = 0.12;
 let fairBallCollisionTieBreaker = false;
 
+function syncBallSweepOrigin(ball) {
+    ball.prevX = ball.x;
+    ball.prevY = ball.y;
+}
+
+function canPlayBallReboundSound(ball, cooldownMs = 200) {
+    const now = Date.now();
+    if (ball._lastReboundSoundAt && now - ball._lastReboundSoundAt < cooldownMs) return false;
+
+    ball._lastReboundSoundAt = now;
+    return true;
+}
+
+function canPlayBallPostSound(ball, cooldownMs = 180) {
+    const now = Date.now();
+    if (ball._lastPostSoundAt && now - ball._lastPostSoundAt < cooldownMs) return false;
+
+    ball._lastPostSoundAt = now;
+    return true;
+}
+
 function getMirroredShoeHitbox(p, kickAngle = p.kickAngle) {
     const localShoeX = p.isRightFacing ? PHYSICS_SHOE_LOCAL_CENTER_X : -PHYSICS_SHOE_LOCAL_CENTER_X;
     const localShoeY = PHYSICS_SHOE_LOCAL_CENTER_Y;
@@ -79,20 +100,20 @@ function findSegmentCircleContact(startX, startY, endX, endY, centerX, centerY, 
 
     const b = 2 * (relX * segX + relY * segY);
     const c = relX * relX + relY * relY - radius * radius;
+
+    // Si el centro ya empieza dentro del radio expandido, la colisión discreta
+    // normal se encarga. El barrido solo debe capturar entradas, no salidas.
+    if (c <= 0) return null;
+
     const disc = b * b - 4 * a * c;
 
     if (disc < 0) return null;
 
     const sqrtDisc = Math.sqrt(disc);
     const invDen = 1 / (2 * a);
-    const t1 = (-b - sqrtDisc) * invDen;
-    const t2 = (-b + sqrtDisc) * invDen;
-    let t = null;
+    const t = (-b - sqrtDisc) * invDen;
 
-    if (t1 >= 0 && t1 <= 1) t = t1;
-    else if (t2 >= 0 && t2 <= 1) t = t2;
-
-    if (t === null) return null;
+    if (t < 0 || t > 1) return null;
 
     const x = startX + segX * t;
     const y = startY + segY * t;
@@ -231,36 +252,25 @@ function collidePlayerBall(p, ball) {
     if (sweptContact) {
         const skin = 0.2;
         if (sweptContact.shape === 'body') {
-            ball.x = sweptContact.x + sweptContact.nx * (ball.r + skin);
-            ball.y = sweptContact.y + sweptContact.ny * (ball.r + skin);
-            const closestX = clamp(ball.x, h.body.x, h.body.x + h.body.w);
-            const closestY = clamp(ball.y, h.body.y, h.body.y + h.body.h);
-            const dxBody = ball.x - closestX;
-            const dyBody = ball.y - closestY;
-            const dist2Body = dxBody * dxBody + dyBody * dyBody;
-            if (dist2Body > 0.0001) {
-                resolveCircleToRect(ball, p, dxBody, dyBody, dist2Body);
-                return;
-            }
+            ball.x = sweptContact.x + sweptContact.nx * skin;
+            ball.y = sweptContact.y + sweptContact.ny * skin;
+            applyBounce(ball, p, sweptContact.nx, sweptContact.ny);
+            syncBallSweepOrigin(ball);
+            return;
         }
         else {
-            const shape = sweptContact.shape === 'head' ? h.head :
-                sweptContact.shape === 'supportShoe' ? h.supportShoe : h.shoe;
-            const shapeR = shape.r;
-            ball.x = sweptContact.x + sweptContact.nx * (ball.r + shapeR + skin);
-            ball.y = sweptContact.y + sweptContact.ny * (ball.r + shapeR + skin);
-            const dx = ball.x - shape.x;
-            const dy = ball.y - shape.y;
-            const dist2 = dx * dx + dy * dy;
-            if (dist2 > 0.0001) {
-                if (sweptContact.shape === 'shoe') {
-                    resolveShoeToCircle(ball, p, dx, dy, dist2, shapeR);
-                }
-                else {
-                    resolveCircleToCircle(ball, p, dx, dy, dist2, shapeR);
-                }
-                return;
+            ball.x = sweptContact.x + sweptContact.nx * skin;
+            ball.y = sweptContact.y + sweptContact.ny * skin;
+
+            if (sweptContact.shape === 'shoe') {
+                applyShoeBounce(ball, p, sweptContact.nx, sweptContact.ny);
             }
+            else {
+                applyBounce(ball, p, sweptContact.nx, sweptContact.ny);
+            }
+
+            syncBallSweepOrigin(ball);
+            return;
         }
     }
 
@@ -273,6 +283,7 @@ function collidePlayerBall(p, ball) {
 
     if (dist2Body < ball.r * ball.r) {
         resolveCircleToRect(ball, p, dxBody, dyBody, dist2Body);
+        syncBallSweepOrigin(ball);
     }
 
     // --- B. CHOQUE CON LA CABEZA (Círculo) ---
@@ -282,6 +293,7 @@ function collidePlayerBall(p, ball) {
 
     if (dist2Head < (ball.r + h.head.r) * (ball.r + h.head.r)) {
         resolveCircleToCircle(ball, p, dxHead, dyHead, dist2Head, h.head.r);
+        syncBallSweepOrigin(ball);
     }
 
     // --- C. CHOQUE CON EL ZAPATO (Círculo Rotatorio y Bateador) ---
@@ -294,6 +306,7 @@ function collidePlayerBall(p, ball) {
         // para darle los efectos de "bombeo" y "latigazo".
         if (dist2Shoe < (ball.r + h.shoe.r) * (ball.r + h.shoe.r)) {
             resolveShoeToCircle(ball, p, dxShoe, dyShoe, dist2Shoe, h.shoe.r);
+            syncBallSweepOrigin(ball);
         }
     }
 
@@ -303,6 +316,7 @@ function collidePlayerBall(p, ball) {
 
     if (dist2SupportShoe < (ball.r + h.supportShoe.r) * (ball.r + h.supportShoe.r)) {
         resolveCircleToCircle(ball, p, dxSupportShoe, dySupportShoe, dist2SupportShoe, h.supportShoe.r);
+        syncBallSweepOrigin(ball);
     }
 }
 
@@ -344,11 +358,13 @@ function collidePlayersBallFair(p1, p2, ball) {
     if (p1First) {
         collidePlayerBall(p1, ball);
         collidePlayerBall(p2, ball);
+        collidePlayerBall(p1, ball);
         return;
     }
 
     collidePlayerBall(p2, ball);
     collidePlayerBall(p1, ball);
+    collidePlayerBall(p2, ball);
 }
 
 // --- FUNCIONES AUXILIARES DE COLISIÓN ---
@@ -356,7 +372,14 @@ function collidePlayersBallFair(p1, p2, ball) {
 
 function resolveCircleToRect(ball, p, dx, dy, dist2) {
     const dist = Math.sqrt(dist2);
-    if (dist < 0.001) return;
+    if (dist < 0.001) {
+        const nx = ball.x < p.x ? -1 : 1;
+        const ny = 0;
+        ball.x += nx * ball.r;
+        applyBounce(ball, p, nx, ny);
+        return;
+    }
+
     const nx = dx / dist;
     const ny = dy / dist;
     const overlap = ball.r - dist;
@@ -367,7 +390,14 @@ function resolveCircleToRect(ball, p, dx, dy, dist2) {
 
 function resolveCircleToCircle(ball, p, dx, dy, dist2, shapeR) {
     const dist = Math.sqrt(dist2);
-    if (dist < 0.001) return;
+    if (dist < 0.001) {
+        const nx = ball.x < p.x ? -1 : 1;
+        const ny = 0;
+        ball.x += nx * (ball.r + shapeR);
+        applyBounce(ball, p, nx, ny);
+        return;
+    }
+
     const nx = dx / dist;
     const ny = dy / dist;
     const overlap = (ball.r + shapeR) - dist;
@@ -393,7 +423,9 @@ function applyBounce(ball, p, nx, ny) {
     const realRvy = (ball.realVy || 0) - (p.realVy || 0);
     const realVelAlongNormal = realRvx * nx + realRvy * ny;
 
-    if (realVelAlongNormal < -120 && !p.wasTouchingBall) window.playSound('sfx-rebound', 0.6);
+    if (realVelAlongNormal < -150 && !p.wasTouchingBall && canPlayBallReboundSound(ball)) {
+        window.playSound('sfx-rebound', 0.6);
+    }
 
     // 3. RESOLUCIÓN DE REBOTE
     const j = -(1 + RESTITUTION) * mathVelAlongNormal;
@@ -408,31 +440,11 @@ function applyBounce(ball, p, nx, ny) {
     }
 }
 
-function checkGoalCollisions(ball, leftGoal, rightGoal) {
-    const hitboxes = getGoalCrossbarRects(leftGoal, rightGoal);
-
-    for (let box of hitboxes) {
-        collideBallStaticRect(ball, box);
-    }
-}
-
-function resolveShoeToCircle(ball, p, dx, dy, dist2, shapeR) {
+function applyShoeBounce(ball, p, nx, ny) {
     // AVISAMOS QUE HAY CONTACTO ESTE FRAME
     p.isTouchingBall = true;
 
-    const dist = Math.sqrt(dist2);
-    if (dist < 0.001) return;
-
-    // Vector de dirección del impacto (Normal)
-    let nx = dx / dist;
-    let ny = dy / dist;
-    const overlap = (ball.r + shapeR) - dist;
-
-    // 1. Evitar que la pelota atraviese el zapato (Usando la normal real geométrica)
-    ball.x += nx * overlap;
-    ball.y += ny * overlap;
-
-    // 2. Calcular la velocidad del zapato en este frame exacto
+    // Calcular la velocidad del zapato en este frame exacto
     let shoeVx = p.vx;
     let shoeVy = p.vy;
 
@@ -466,7 +478,7 @@ function resolveShoeToCircle(ball, p, dx, dy, dist2, shapeR) {
         shoeVy += 300;
     }
 
-    // 3. Aplicar el rebote con las nuevas velocidades y el nuevo ángulo
+    // Aplicar el rebote con las nuevas velocidades y el nuevo ángulo
     const rvx = ball.vx - shoeVx;
     const rvy = ball.vy - shoeVy;
     const velAlongNormal = rvx * nx + rvy * ny;
@@ -474,7 +486,7 @@ function resolveShoeToCircle(ball, p, dx, dy, dist2, shapeR) {
     if (velAlongNormal >= 0) return;
 
     // Si el impacto del zapato contra el balón es fuerte, suena el rebote
-    if (velAlongNormal < -50 && (!p.wasTouchingBall || isLegMovingUp)) {
+    if (velAlongNormal < -50 && !p.wasTouchingBall && canPlayBallReboundSound(ball)) {
         window.playSound('sfx-rebound', 0.6);
     }
 
@@ -501,6 +513,34 @@ function resolveShoeToCircle(ball, p, dx, dy, dist2, shapeR) {
         ball.vx = ball.vx * MAX_BALL_SPEED / spd;
         ball.vy = ball.vy * MAX_BALL_SPEED / spd;
     }
+}
+
+function checkGoalCollisions(ball, leftGoal, rightGoal) {
+    const hitboxes = getGoalCrossbarRects(leftGoal, rightGoal);
+
+    for (let box of hitboxes) {
+        collideBallStaticRect(ball, box);
+    }
+}
+
+function resolveShoeToCircle(ball, p, dx, dy, dist2, shapeR) {
+    // AVISAMOS QUE HAY CONTACTO ESTE FRAME
+    p.isTouchingBall = true;
+
+    const dist = Math.sqrt(dist2);
+    if (dist < 0.001) return;
+
+    // Vector de dirección del impacto (Normal)
+    let nx = dx / dist;
+    let ny = dy / dist;
+    const overlap = (ball.r + shapeR) - dist;
+
+    // 1. Evitar que la pelota atraviese el zapato (Usando la normal real geométrica)
+    ball.x += nx * overlap;
+    ball.y += ny * overlap;
+
+    // 2. Aplicar el rebote con la misma lógica que el barrido.
+    applyShoeBounce(ball, p, nx, ny);
 }
 
 function collideBallStaticRect(ball, rect) {
@@ -537,7 +577,7 @@ function collideBallStaticRect(ball, rect) {
 
         // Usamos la Velocidad Real contra los postes estáticos
         const realVelAlongNormal = (ball.realVx || 0) * nx + (ball.realVy || 0) * ny;
-        if (realVelAlongNormal < -40) {
+        if (realVelAlongNormal < -40 && canPlayBallPostSound(ball)) {
             window.playSound('sfx-ball-post');
         }
 
@@ -1035,6 +1075,7 @@ function resolveBackToBackBallSqueeze(ball, p1, p2) {
     ball.vx = 0;
     ball.vy = 0;
     ball.x = gapCenterX;
+    syncBallSweepOrigin(ball);
 }
 
 // Detecta si la pelota está atrapada entre dos jugadores que se empujan mutuamente
@@ -1083,6 +1124,13 @@ function resolveBallSqueezeUp(ball, p1, p2) {
     const safeZoneLeft = leftBodyRight + ball.r + 2;
     const safeZoneRight = rightBodyLeft - ball.r - 2;
 
+    // Si no existe hueco horizontal suficiente, colocar la pelota en X solo
+    // la deja dentro de la pinza. En ese caso se libera hacia arriba.
+    if (safeZoneLeft > safeZoneRight) {
+        resolveBallVerticalPinchEscape(ball, leftPlayer, rightPlayer, leftHitbox, rightHitbox);
+        return;
+    }
+
     // Extraer la pelota al centro seguro entre los dos cuerpos
     const centerSafeX = (safeZoneLeft + safeZoneRight) / 2;
 
@@ -1098,6 +1146,140 @@ function resolveBallSqueezeUp(ball, p1, p2) {
     else {
         ball.x = centerSafeX;
     }
+
+    syncBallSweepOrigin(ball);
+}
+
+function resolveBallVerticalPinchEscape(ball, leftPlayer, rightPlayer, leftHitbox, rightHitbox) {
+    const leftBodyRight = leftHitbox.body.x + leftHitbox.body.w;
+    const rightBodyLeft = rightHitbox.body.x;
+    const sharedBodyTop = Math.max(leftHitbox.body.y, rightHitbox.body.y);
+    const centerX = (leftBodyRight + rightBodyLeft) / 2;
+
+    ball.x = centerX;
+    ball.y = Math.min(ball.y, sharedBodyTop - ball.r - 3);
+    ball.vx = 0;
+    ball.vy = Math.min(ball.vy || 0, -360);
+
+    leftPlayer.x -= 10;
+    rightPlayer.x += 10;
+
+    if (leftPlayer.vx > 0) leftPlayer.vx = 0;
+    if (rightPlayer.vx < 0) rightPlayer.vx = 0;
+
+    syncBallSweepOrigin(ball);
+}
+
+function resolveBallFloorCrush(ball, p1, p2, floorY, worldW) {
+    const nearFloor = ball.y + ball.r > floorY - 2;
+    if (!nearFloor) {
+        ball._floorCrushFrames = 0;
+        return;
+    }
+
+    const h1 = getPlayerHitboxes(p1);
+    const h2 = getPlayerHitboxes(p2);
+    const ballTop = ball.y - ball.r;
+    const ballLeft = ball.x - ball.r;
+    const ballRight = ball.x + ball.r;
+
+    const crushingPlayers = [
+        getFloorCrushingPlayer(ball, p1, h1, floorY, ballTop, ballLeft, ballRight),
+        getFloorCrushingPlayer(ball, p2, h2, floorY, ballTop, ballLeft, ballRight)
+    ].filter(Boolean);
+
+    if (crushingPlayers.length === 0) {
+        ball._floorCrushFrames = 0;
+        return;
+    }
+
+    const ballSpeed = Math.hypot(ball.vx || 0, ball.vy || 0);
+    const twoPlayerTrap = crushingPlayers.length === 2;
+    const isStuck = ballSpeed < 110 || twoPlayerTrap;
+
+    ball._floorCrushFrames = isStuck ? (ball._floorCrushFrames || 0) + 1 : 0;
+    if (ball._floorCrushFrames < (twoPlayerTrap ? 2 : 3)) return;
+
+    ball.y = floorY - ball.r - 3;
+
+    if (crushingPlayers.length === 2) {
+        const leftPlayer = p1.x <= p2.x ? p1 : p2;
+        const rightPlayer = p1.x <= p2.x ? p2 : p1;
+
+        const trapLeft = Math.min(crushingPlayers[0].minX, crushingPlayers[1].minX);
+        const trapRight = Math.max(crushingPlayers[0].maxX, crushingPlayers[1].maxX);
+        const pairCenter = (leftPlayer.x + rightPlayer.x) / 2;
+        let escapeDir = ball.x < pairCenter ? -1 : 1;
+
+        if (Math.abs(ball.x - pairCenter) < 1) {
+            escapeDir = ball._lastFloorCrushEscapeDir === 1 ? -1 : 1;
+        }
+        if (worldW && escapeDir < 0 && trapLeft - ball.r - 4 < 0) escapeDir = 1;
+        if (worldW && escapeDir > 0 && trapRight + ball.r + 4 > worldW) escapeDir = -1;
+
+        ball.x = escapeDir < 0 ? trapLeft - ball.r - 4 : trapRight + ball.r + 4;
+        ball.vx = escapeDir * Math.max(Math.abs(ball.vx || 0), 380);
+        ball.vy = Math.min(ball.vy || 0, -220);
+        ball._lastFloorCrushEscapeDir = escapeDir;
+
+        leftPlayer.x -= 14;
+        rightPlayer.x += 14;
+        if (leftPlayer.vx > 0) leftPlayer.vx = 0;
+        if (rightPlayer.vx < 0) rightPlayer.vx = 0;
+    } else {
+        const crusher = crushingPlayers[0];
+        const player = crusher.player;
+        let escapeDir = ball.x < player.x ? -1 : 1;
+
+        if (Math.abs(ball.x - player.x) < 1) {
+            escapeDir = ball._lastFloorCrushEscapeDir === 1 ? -1 : 1;
+        }
+        if (worldW && escapeDir < 0 && crusher.minX - ball.r - 4 < 0) escapeDir = 1;
+        if (worldW && escapeDir > 0 && crusher.maxX + ball.r + 4 > worldW) escapeDir = -1;
+
+        ball.x = escapeDir < 0 ? crusher.minX - ball.r - 4 : crusher.maxX + ball.r + 4;
+        ball.vx = escapeDir * Math.max(Math.abs(ball.vx || 0), 320);
+        ball.vy = Math.min(ball.vy || 0, -180);
+        ball._lastFloorCrushEscapeDir = escapeDir;
+
+        player.x -= escapeDir * 18;
+        if (player.vx * escapeDir > 0) player.vx = 0;
+    }
+
+    ball._floorCrushFrames = 0;
+    syncBallSweepOrigin(ball);
+}
+
+function getFloorCrushingPlayer(ball, player, hitboxes, floorY, ballTop, ballLeft, ballRight) {
+    const ranges = [
+        { minX: hitboxes.body.x, maxX: hitboxes.body.x + hitboxes.body.w },
+        { minX: hitboxes.head.x - hitboxes.head.r, maxX: hitboxes.head.x + hitboxes.head.r },
+        { minX: hitboxes.supportShoe.x - hitboxes.supportShoe.r, maxX: hitboxes.supportShoe.x + hitboxes.supportShoe.r }
+    ];
+
+    const shapes = [
+        { minX: hitboxes.body.x, maxX: hitboxes.body.x + hitboxes.body.w, minY: hitboxes.body.y, maxY: hitboxes.body.y + hitboxes.body.h },
+        { minX: hitboxes.supportShoe.x - hitboxes.supportShoe.r, maxX: hitboxes.supportShoe.x + hitboxes.supportShoe.r, minY: hitboxes.supportShoe.y - hitboxes.supportShoe.r, maxY: hitboxes.supportShoe.y + hitboxes.supportShoe.r }
+    ];
+
+    if (hitboxes.kickShoeSeparated) {
+        ranges.push({ minX: hitboxes.shoe.x - hitboxes.shoe.r, maxX: hitboxes.shoe.x + hitboxes.shoe.r });
+        shapes.push({ minX: hitboxes.shoe.x - hitboxes.shoe.r, maxX: hitboxes.shoe.x + hitboxes.shoe.r, minY: hitboxes.shoe.y - hitboxes.shoe.r, maxY: hitboxes.shoe.y + hitboxes.shoe.r });
+    }
+
+    const isCrushing = shapes.some((shape) => {
+        const horizontalOverlap = ballRight > shape.minX && ballLeft < shape.maxX;
+        const verticalCrush = shape.maxY > ballTop && shape.minY < floorY;
+        return horizontalOverlap && verticalCrush;
+    });
+
+    if (!isCrushing) return null;
+
+    return {
+        player,
+        minX: Math.min(...ranges.map((range) => range.minX)),
+        maxX: Math.max(...ranges.map((range) => range.maxX))
+    };
 }
 
 function clamp(v, min, max) {
@@ -1154,6 +1336,6 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         getPlayerHitboxes, arePlayersBackToBack, isBackToBackBallSqueeze,
         collidePlayerBall, collidePlayersBallFair, checkGoalCollisions, collidePlayerStaticRect, collidePlayerGoals,
-        collidePlayers, resolveBackToBackBallSqueeze, resolveBallSqueezeUp
+        collidePlayers, resolveBackToBackBallSqueeze, resolveBallSqueezeUp, resolveBallFloorCrush
     };
 }

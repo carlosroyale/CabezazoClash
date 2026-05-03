@@ -971,16 +971,22 @@ window.playSound = function(soundId, volume = 1) {
   // SEGURIDAD: Evitar saturación acústica al conducir el balón o en rebotes ultrarrápidos
   if (soundId === 'sfx-rebound') {
     const now = Date.now();
-    // Requerimos que pasen al menos 100ms entre sonido y sonido
-    if (window._lastKickTime && now - window._lastKickTime < 50) return;
-    window._lastKickTime = now;
+    // Requerimos que pasen al menos 90ms entre rebotes audibles
+    if (window._lastReboundSoundAt && now - window._lastReboundSoundAt < 90) return;
+    window._lastReboundSoundAt = now;
   }
 
   if (soundId === 'sfx-ball-grass') {
     const now = Date.now();
     // Requerimos que pasen al menos 500ms entre sonido y sonido
-    if (window._lastKickTime && now - window._lastKickTime < 200) return;
-    window._lastKickTime = now;
+    if (window._lastGrassSoundAt && now - window._lastGrassSoundAt < 200) return;
+    window._lastGrassSoundAt = now;
+  }
+
+  if (soundId === 'sfx-ball-post') {
+    const now = Date.now();
+    if (window._lastPostSoundAt && now - window._lastPostSoundAt < 140) return;
+    window._lastPostSoundAt = now;
   }
 
   audio.play(soundId, { volume }).then((item) => {

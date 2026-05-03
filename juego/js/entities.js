@@ -53,7 +53,18 @@ function updatePlayer(p, dt, W, FLOOR_Y) {
     }
 }
 
+function canPlayBallReboundSound(ball, cooldownMs = 140) {
+    const now = Date.now();
+    if (ball._lastReboundSoundAt && now - ball._lastReboundSoundAt < cooldownMs) return false;
+
+    ball._lastReboundSoundAt = now;
+    return true;
+}
+
 function updateBall(ball, dt, W, FLOOR_Y) {
+    ball.prevX = ball.x;
+    ball.prevY = ball.y;
+
     ball.vy += GRAV * dt;
     ball.x += ball.vx * dt;
     ball.y += ball.vy * dt;
@@ -81,8 +92,10 @@ function updateBall(ball, dt, W, FLOOR_Y) {
 
     // suelo
     if (ball.y + ball.r > FLOOR_Y) {
+        const floorImpactSpeed = ball.vy;
+
         // Solo suena si el bote es contundente (tiene velocidad vertical)
-        if (ball.vy > 100) {
+        if (floorImpactSpeed > 180 && canPlayBallReboundSound(ball)) {
             window.playSound('sfx-rebound',0.5);
         }
         ball.y = FLOOR_Y - ball.r;
@@ -140,7 +153,27 @@ const BOT_AI_CONFIG = {
     APPROACH_DIST: 120,
     KICK_DIST: 90,
     KICK_COOLDOWN: 0.4,
-    KICK_EXIT_DIST: 110
+    KICK_EXIT_DIST: 110,
+    STALL_PRESSURE_TIME: 3,
+    STALL_PLAYER_BALL_DIST: 170,
+    STALL_BALL_SPEED: 85,
+    STALL_PLAYER_SPEED: 25,
+    STALL_MIDFIELD_MIN: 0.32,
+    STALL_MIDFIELD_MAX: 0.68,
+    BEHIND_RECOVERY_ENTER: 35,
+    BEHIND_RECOVERY_OFFSET: 110,
+    BEHIND_RECOVERY_CLEARANCE: 45,
+    BEHIND_RECOVERY_JUMP_DIST: 130,
+    BEHIND_RECOVERY_LOW_BALL_HEIGHT: 105,
+    HEADER_SETUP_X_RANGE: 85,
+    HEADER_SETUP_BACKSTEP_OFFSET: 52,
+    HEADER_SETUP_READY_OFFSET: 28,
+    HEADER_SETUP_LOW_TOWARDS_SPEED: 160,
+    HEADER_SETUP_MIN_HEIGHT: 24,
+    HEADER_SETUP_MAX_HEIGHT: 260,
+    HEADER_SETUP_JUMP_DIST: 115,
+    JUMP_HEADER_MIN_HEIGHT: 65,
+    JUMP_HEADER_MAX_HEIGHT: 230
 };
 
 class BotState {
@@ -171,6 +204,10 @@ class BotAIUtils {
         const isOpponentOnBotSide = opponent ? opponent.x > botSideLine : false;
         const isOpponentNearOwnGoal = opponent ? opponent.x < bot.aiFieldWidth * 0.28 : false;
         const isOpponentDeepOnPlayerSide = opponent ? opponent.x < bot.aiFieldWidth * 0.28 : false;
+        const ballHeightAboveBot = bot.y - ball.y;
+        const ballIsJumpHeaderHeight =
+            ballHeightAboveBot > BOT_AI_CONFIG.JUMP_HEADER_MIN_HEIGHT &&
+            ballHeightAboveBot < BOT_AI_CONFIG.JUMP_HEADER_MAX_HEIGHT;
 
         return {
             futureBall,
@@ -182,11 +219,12 @@ class BotAIUtils {
             isBallFarFromBot: ball.x < bot.aiFieldWidth * 0.35,
             ballThreatensGoal: ball.x > bot.aiFieldWidth * 0.75 && Math.abs(ball.vx) > 50,
             ballGoingWrong: ball.vx < -200,
-            shouldJumpForHeader: ball.y < bot.y - bot.h * 0.3 &&
+            shouldBreakStall: bot.shouldBreakStall === true,
+            shouldJumpForHeader: ballIsJumpHeaderHeight &&
                 distToBall < BOT_AI_CONFIG.APPROACH_DIST &&
                 ball.vy > 0 &&
                 ((ball.vx > 0 && bot.x > ball.x) || (ball.vx < 0 && bot.x < ball.x)),
-            shouldJumpForShot: ball.y < bot.y - bot.h && distToBall < BOT_AI_CONFIG.APPROACH_DIST,
+            shouldJumpForShot: ballIsJumpHeaderHeight && distToBall < BOT_AI_CONFIG.APPROACH_DIST,
             // Opponent-aware logic
             isBallCloserToBot,
             isOpponentOnBotSide,
@@ -205,6 +243,11 @@ class BotAIUtils {
 
         // Servicio rival -> presion
         if (bot.opponentServing) {
+            return bot.attackState;
+        }
+
+        // Si el jugador deja la pelota parada en zona media, el bot rompe la espera.
+        if (context.shouldBreakStall) {
             return bot.attackState;
         }
 
@@ -265,7 +308,7 @@ class BotAIUtils {
         }
     }
 
-    static refreshFrameState(bot, ball, dt) {
+    static refreshFrameState(bot, ball, dt, opponent) {
         if (bot.kickCooldown > 0) {
             bot.kickCooldown -= dt;
         }
@@ -278,6 +321,24 @@ class BotAIUtils {
         if (bot.onGround && !bot.groundedByPlayer) {
             bot.canJump = true;
         }
+
+        const ballSpeed = Math.hypot(ball.vx || 0, ball.vy || 0);
+        const opponentSpeed = opponent ? Math.hypot(opponent.vx || 0, opponent.vy || 0) : Infinity;
+        const opponentBallDist = opponent ? Math.hypot(opponent.x - ball.x, opponent.y - ball.y) : Infinity;
+        const ballInMidfield =
+            ball.x > bot.aiFieldWidth * BOT_AI_CONFIG.STALL_MIDFIELD_MIN &&
+            ball.x < bot.aiFieldWidth * BOT_AI_CONFIG.STALL_MIDFIELD_MAX;
+        const passiveStall =
+            opponent &&
+            ballInMidfield &&
+            opponentBallDist < BOT_AI_CONFIG.STALL_PLAYER_BALL_DIST &&
+            ballSpeed < BOT_AI_CONFIG.STALL_BALL_SPEED &&
+            opponentSpeed < BOT_AI_CONFIG.STALL_PLAYER_SPEED;
+
+        bot.stallPressureTimer = passiveStall
+            ? bot.stallPressureTimer + dt
+            : 0;
+        bot.shouldBreakStall = bot.stallPressureTimer >= BOT_AI_CONFIG.STALL_PRESSURE_TIME;
     }
 
     static tryJump(bot) {
@@ -312,6 +373,22 @@ class BotAIUtils {
             bot.lastKickBallY = ball.y;
             bot.ballEscaped = false;
         }
+    }
+
+    static shouldPrepareForwardHeader(bot, ball) {
+        const relX = ball.x - bot.x;
+        const ballHeightAboveBot = bot.y - ball.y;
+        const ballIsHeaderHeight =
+            ballHeightAboveBot > BOT_AI_CONFIG.HEADER_SETUP_MIN_HEIGHT &&
+            ballHeightAboveBot < BOT_AI_CONFIG.HEADER_SETUP_MAX_HEIGHT;
+
+        return (
+            ballIsHeaderHeight &&
+            Math.abs(relX) < BOT_AI_CONFIG.HEADER_SETUP_X_RANGE &&
+            relX <= BOT_AI_CONFIG.BEHIND_RECOVERY_ENTER &&
+            ball.vy > -120 &&
+            ball.vx < BOT_AI_CONFIG.HEADER_SETUP_LOW_TOWARDS_SPEED
+        );
     }
 }
 
@@ -355,24 +432,65 @@ class AttackState extends BotState {
         }
         const context = BotAIUtils.buildContext(bot, ball, opponent);
 
-        // La pelota esta detras del bot (entre el bot y su porteria)
-        const ballIsBehind = ball.x > bot.x + 30;
+        // La pelota esta detras del bot solo si queda claramente hacia su porteria.
+        // Una pelota justo delante no debe activar saltos de recolocacion.
+        const ballClearlyBehind = ball.x > bot.x + BOT_AI_CONFIG.BEHIND_RECOVERY_ENTER;
+        if (ballClearlyBehind) {
+            bot.recoveringBehindBall = true;
+        } else if (bot.x > ball.x + BOT_AI_CONFIG.BEHIND_RECOVERY_CLEARANCE) {
+            bot.recoveringBehindBall = false;
+        }
 
         let targetX;
 
-        if (ballIsBehind) {
-            // Saltar por encima de la pelota hacia la derecha
-            targetX = ball.x + 100;
+        if (bot.recoveringBehindBall) {
+            targetX = clamp(
+                ball.x + BOT_AI_CONFIG.BEHIND_RECOVERY_OFFSET,
+                bot.w / 2,
+                bot.aiFieldWidth - bot.w / 2
+            );
 
             const distToBall = Math.abs(bot.x - ball.x);
-            if (bot.onGround && bot.canJump && distToBall < 120) {
-                bot.vy        = -bot.jump;
-                bot.vx        = -bot.speed * 0.9; // retroceder mientras salta
-                bot.onGround  = false;
-                bot.canJump   = false;
+            const stillOnWrongSide = bot.x < ball.x + BOT_AI_CONFIG.BEHIND_RECOVERY_CLEARANCE;
+            const ballIsLow = ball.y > bot.aiFloorY - BOT_AI_CONFIG.BEHIND_RECOVERY_LOW_BALL_HEIGHT;
+            if (
+                ballClearlyBehind &&
+                ballIsLow &&
+                stillOnWrongSide &&
+                bot.onGround &&
+                bot.canJump &&
+                distToBall < BOT_AI_CONFIG.BEHIND_RECOVERY_JUMP_DIST
+            ) {
+                bot.vy = -bot.jump;
+                bot.vx = bot.speed * 0.95;
+                bot.onGround = false;
+                bot.canJump = false;
                 window.playSound('sfx-jump', 0.5);
             }
 
+            BotAIUtils.moveTowards(bot, targetX, dt);
+            BotAIUtils.recoverKick(bot, dt);
+            return;
+        } else if (BotAIUtils.shouldPrepareForwardHeader(bot, ball)) {
+            targetX = clamp(
+                ball.x + BOT_AI_CONFIG.HEADER_SETUP_BACKSTEP_OFFSET,
+                bot.w / 2,
+                bot.aiFieldWidth - bot.w / 2
+            );
+
+            BotAIUtils.moveTowards(bot, targetX, dt);
+            BotAIUtils.recoverKick(bot, dt);
+
+            const headerOffset = bot.x - ball.x;
+            const readyToHeadForward =
+                headerOffset >= BOT_AI_CONFIG.HEADER_SETUP_READY_OFFSET &&
+                headerOffset < BOT_AI_CONFIG.HEADER_SETUP_JUMP_DIST;
+
+            if (readyToHeadForward && bot.onGround && bot.canJump) {
+                BotAIUtils.tryJump(bot);
+            }
+
+            return;
         } else if (Math.abs(bot.x - ball.x) < 60 && Math.abs(ball.vx) < 80) {
             // Controlando la pelota -> atacar porteria contraria
             targetX = 20;
@@ -410,6 +528,9 @@ class Bot {
         this.aiFieldWidth = 0;
         this.aiFloorY = 0;
         this.isServeChasing = false;
+        this.shouldBreakStall = false;
+        this.stallPressureTimer = 0;
+        this.recoveringBehindBall = false;
         this.kickCooldown = 0;
         this.lastKickBallX = x;
         this.lastKickBallY = y;
@@ -434,6 +555,9 @@ class Bot {
         this.lastKickBallY = ball ? ball.y : this.y;
         this.ballEscaped = true;
         this.isServeChasing = false;
+        this.shouldBreakStall = false;
+        this.stallPressureTimer = 0;
+        this.recoveringBehindBall = false;
         this.isKicking = false;
 
         if (this.currentState) {
@@ -470,7 +594,7 @@ function controlBot(bot, dt, ball, W, FLOOR_Y, keys, opponent = null, serveChase
     bot.isServeChasing = serveChaseMode;
     // Flag usable by AI to pressure when the opponent is serving
     bot.opponentServing = opponentServeMode;
-    BotAIUtils.refreshFrameState(bot, ball, dt);
+    BotAIUtils.refreshFrameState(bot, ball, dt, opponent);
     bot.update(ball, dt, opponent);
 }
 

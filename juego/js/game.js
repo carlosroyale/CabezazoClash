@@ -28,6 +28,8 @@ let celebrationTimer = 0;
 let nextScorer = null;
 let serveState = { server: null, active: false };
 let currentMatchNames = { left: "Jugador 1", right: "Jugador 2" };
+const PHYSICS_STEP = 1 / 120;
+const MAX_PHYSICS_SUBSTEPS = 4;
 
 let frameCount = 0;
 let lastFpsTime = 0;
@@ -218,6 +220,21 @@ function gameLoop(time) {
 }
 
 function update(dt) {
+    let remaining = dt;
+    let steps = 0;
+
+    while (remaining > 0 && steps < MAX_PHYSICS_SUBSTEPS && gameRunning && !gamePaused) {
+        const subDt = Math.min(PHYSICS_STEP, remaining);
+        updatePhysicsStep(subDt);
+        remaining -= subDt;
+        steps++;
+    }
+
+    updateScore();
+    updateTimer();
+}
+
+function updatePhysicsStep(dt) {
     if (serveState.active) {
         // Cerramos la fase de saque en cuanto la pelota abandona el centro.
         if (Math.abs(ball.x - W / 2) > W * 0.08) {
@@ -260,6 +277,7 @@ function update(dt) {
     collidePlayersBallFair(p1, p2, ball);
     if (playersBackToBack) resolveBackToBackBallSqueeze(ball, p1, p2);
     else resolveBallSqueezeUp(ball, p1, p2);
+    resolveBallFloorCrush(ball, p1, p2, FLOOR_Y, W);
 
     // 5. Colisiones pelota - porterías
     checkGoalCollisions(ball, leftGoal, rightGoal);
@@ -319,8 +337,6 @@ function update(dt) {
             window.playSound('sfx-whistle');
             endGame(currentMatchNames.left, currentMatchNames.right);
         }
-        updateScore();
-        updateTimer();
     }
 }
 
