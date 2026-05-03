@@ -154,12 +154,13 @@ const BOT_AI_CONFIG = {
     KICK_DIST: 90,
     KICK_COOLDOWN: 0.4,
     KICK_EXIT_DIST: 110,
-    STALL_PRESSURE_TIME: 3,
-    STALL_PLAYER_BALL_DIST: 170,
-    STALL_BALL_SPEED: 85,
-    STALL_PLAYER_SPEED: 25,
-    STALL_MIDFIELD_MIN: 0.32,
-    STALL_MIDFIELD_MAX: 0.68,
+    MAX_NO_TOUCH_TIME_WHEN_LOSING: 5,
+    OPPONENT_FAR_FROM_BALL_RATIO: 0.25,
+    BLOCKED_ATTACK_MIN_INTENDED_SPEED: 180,
+    BLOCKED_ATTACK_MAX_REAL_SPEED_RATIO: 0.35,
+    BLOCKED_ATTACK_OPPONENT_DIST: 95,
+    BLOCKED_ATTACK_TIME: 0.18,
+    BLOCKED_ATTACK_JUMP_COOLDOWN: 0.75,
     BEHIND_RECOVERY_ENTER: 35,
     BEHIND_RECOVERY_OFFSET: 110,
     BEHIND_RECOVERY_CLEARANCE: 45,
@@ -204,6 +205,7 @@ class BotAIUtils {
         const isOpponentOnBotSide = opponent ? opponent.x > botSideLine : false;
         const isOpponentNearOwnGoal = opponent ? opponent.x < bot.aiFieldWidth * 0.28 : false;
         const isOpponentDeepOnPlayerSide = opponent ? opponent.x < bot.aiFieldWidth * 0.28 : false;
+        const isOpponentFarFromBall = distOpponentToBall > bot.aiFieldWidth * BOT_AI_CONFIG.OPPONENT_FAR_FROM_BALL_RATIO;
         const ballHeightAboveBot = bot.y - ball.y;
         const ballIsJumpHeaderHeight =
             ballHeightAboveBot > BOT_AI_CONFIG.JUMP_HEADER_MIN_HEIGHT &&
@@ -219,7 +221,6 @@ class BotAIUtils {
             isBallFarFromBot: ball.x < bot.aiFieldWidth * 0.35,
             ballThreatensGoal: ball.x > bot.aiFieldWidth * 0.75 && Math.abs(ball.vx) > 50,
             ballGoingWrong: ball.vx < -200,
-            shouldBreakStall: bot.shouldBreakStall === true,
             shouldJumpForHeader: ballIsJumpHeaderHeight &&
                 distToBall < BOT_AI_CONFIG.APPROACH_DIST &&
                 ball.vy > 0 &&
@@ -230,6 +231,7 @@ class BotAIUtils {
             isOpponentOnBotSide,
             isOpponentNearOwnGoal,
             isOpponentDeepOnPlayerSide,
+            isOpponentFarFromBall,
             distOpponentToBall
         };
     }
@@ -243,11 +245,6 @@ class BotAIUtils {
 
         // Servicio rival -> presion
         if (bot.opponentServing) {
-            return bot.attackState;
-        }
-
-        // Si el jugador deja la pelota parada en zona media, el bot rompe la espera.
-        if (context.shouldBreakStall) {
             return bot.attackState;
         }
 
@@ -270,8 +267,8 @@ class BotAIUtils {
             return bot.attackState;
         }
 
-        // Si el jugador esta muy atras -> atacar
-        if (context.isOpponentNearOwnGoal) {
+        // Si el jugador tiene la pelota lejos -> atacar
+        if (context.isOpponentFarFromBall) {
             return bot.attackState;
         }
 
@@ -282,6 +279,36 @@ class BotAIUtils {
 
         // sino -> defender
         return bot.defendState;
+    }
+
+    static applyLosingNoTouchLimit(bot, desiredState, dt) {
+        const touchedBall = bot.touchedBallSinceLastAI === true || bot.isTouchingBall === true;
+
+        if (!bot.isLosing) {
+            bot.losingNoTouchTimer = 0;
+            bot.losingForcedAttackUntilTouch = false;
+            bot.touchedBallSinceLastAI = false;
+            return desiredState;
+        }
+
+        if (touchedBall) {
+            bot.losingNoTouchTimer = 0;
+            bot.losingForcedAttackUntilTouch = false;
+            bot.touchedBallSinceLastAI = false;
+            return desiredState;
+        }
+
+        if (bot.losingForcedAttackUntilTouch) {
+            return bot.attackState;
+        }
+
+        bot.losingNoTouchTimer += dt;
+        if (bot.losingNoTouchTimer >= BOT_AI_CONFIG.MAX_NO_TOUCH_TIME_WHEN_LOSING) {
+            bot.losingForcedAttackUntilTouch = true;
+            return bot.attackState;
+        }
+
+        return desiredState;
     }
 
     static moveTowards(bot, targetX, dt) {
@@ -313,6 +340,10 @@ class BotAIUtils {
             bot.kickCooldown -= dt;
         }
 
+        if (bot.blockedAttackJumpCooldown > 0) {
+            bot.blockedAttackJumpCooldown -= dt;
+        }
+
         const distFromLastKick = Math.hypot(ball.x - bot.lastKickBallX, ball.y - bot.lastKickBallY);
         if (!bot.ballEscaped && distFromLastKick > BOT_AI_CONFIG.KICK_EXIT_DIST) {
             bot.ballEscaped = true;
@@ -325,20 +356,6 @@ class BotAIUtils {
         const ballSpeed = Math.hypot(ball.vx || 0, ball.vy || 0);
         const opponentSpeed = opponent ? Math.hypot(opponent.vx || 0, opponent.vy || 0) : Infinity;
         const opponentBallDist = opponent ? Math.hypot(opponent.x - ball.x, opponent.y - ball.y) : Infinity;
-        const ballInMidfield =
-            ball.x > bot.aiFieldWidth * BOT_AI_CONFIG.STALL_MIDFIELD_MIN &&
-            ball.x < bot.aiFieldWidth * BOT_AI_CONFIG.STALL_MIDFIELD_MAX;
-        const passiveStall =
-            opponent &&
-            ballInMidfield &&
-            opponentBallDist < BOT_AI_CONFIG.STALL_PLAYER_BALL_DIST &&
-            ballSpeed < BOT_AI_CONFIG.STALL_BALL_SPEED &&
-            opponentSpeed < BOT_AI_CONFIG.STALL_PLAYER_SPEED;
-
-        bot.stallPressureTimer = passiveStall
-            ? bot.stallPressureTimer + dt
-            : 0;
-        bot.shouldBreakStall = bot.stallPressureTimer >= BOT_AI_CONFIG.STALL_PRESSURE_TIME;
     }
 
     static tryJump(bot) {
@@ -351,6 +368,38 @@ class BotAIUtils {
         bot.groundedByPlayer = false;
         bot.canJump = false;
         window.playSound('sfx-jump');
+        return true;
+    }
+
+    static tryJumpIfBlockedInAttack(bot, targetX, opponent, dt) {
+        const targetDir = Math.sign(targetX - bot.x);
+        const opponentDir = opponent ? Math.sign(opponent.x - bot.x) : 0;
+        const intendedSpeed = Math.abs(bot.vx || 0);
+        const realSpeedTowardsTarget = (bot.realVx || 0) * targetDir;
+        const opponentAhead =
+            opponent &&
+            targetDir !== 0 &&
+            opponentDir === targetDir &&
+            Math.abs(opponent.x - bot.x) < BOT_AI_CONFIG.BLOCKED_ATTACK_OPPONENT_DIST &&
+            Math.abs(opponent.y - bot.y) < bot.h;
+        const slowedDown =
+            intendedSpeed >= BOT_AI_CONFIG.BLOCKED_ATTACK_MIN_INTENDED_SPEED &&
+            realSpeedTowardsTarget < intendedSpeed * BOT_AI_CONFIG.BLOCKED_ATTACK_MAX_REAL_SPEED_RATIO;
+
+        if (!opponentAhead || !slowedDown || bot.blockedAttackJumpCooldown > 0) {
+            bot.blockedAttackTimer = 0;
+            return false;
+        }
+
+        bot.blockedAttackTimer = (bot.blockedAttackTimer || 0) + dt;
+        if (bot.blockedAttackTimer < BOT_AI_CONFIG.BLOCKED_ATTACK_TIME) {
+            return false;
+        }
+
+        bot.blockedAttackTimer = 0;
+        if (!BotAIUtils.tryJump(bot)) return false;
+
+        bot.blockedAttackJumpCooldown = BOT_AI_CONFIG.BLOCKED_ATTACK_JUMP_COOLDOWN;
         return true;
     }
 
@@ -469,6 +518,7 @@ class AttackState extends BotState {
             }
 
             BotAIUtils.moveTowards(bot, targetX, dt);
+            BotAIUtils.tryJumpIfBlockedInAttack(bot, targetX, opponent, dt);
             BotAIUtils.recoverKick(bot, dt);
             return;
         } else if (BotAIUtils.shouldPrepareForwardHeader(bot, ball)) {
@@ -479,6 +529,7 @@ class AttackState extends BotState {
             );
 
             BotAIUtils.moveTowards(bot, targetX, dt);
+            BotAIUtils.tryJumpIfBlockedInAttack(bot, targetX, opponent, dt);
             BotAIUtils.recoverKick(bot, dt);
 
             const headerOffset = bot.x - ball.x;
@@ -500,6 +551,7 @@ class AttackState extends BotState {
         }
 
         BotAIUtils.moveTowards(bot, targetX, dt);
+        BotAIUtils.tryJumpIfBlockedInAttack(bot, targetX, opponent, dt);
 
         if (context.shouldJumpForHeader || context.shouldJumpForShot) {
             BotAIUtils.tryJump(bot);
@@ -528,8 +580,12 @@ class Bot {
         this.aiFieldWidth = 0;
         this.aiFloorY = 0;
         this.isServeChasing = false;
-        this.shouldBreakStall = false;
-        this.stallPressureTimer = 0;
+        this.isLosing = false;
+        this.losingNoTouchTimer = 0;
+        this.losingForcedAttackUntilTouch = false;
+        this.touchedBallSinceLastAI = false;
+        this.blockedAttackTimer = 0;
+        this.blockedAttackJumpCooldown = 0;
         this.recoveringBehindBall = false;
         this.kickCooldown = 0;
         this.lastKickBallX = x;
@@ -555,8 +611,13 @@ class Bot {
         this.lastKickBallY = ball ? ball.y : this.y;
         this.ballEscaped = true;
         this.isServeChasing = false;
-        this.shouldBreakStall = false;
-        this.stallPressureTimer = 0;
+        this.isLosing = false;
+        this.losingNoTouchTimer = 0;
+        this.losingForcedAttackUntilTouch = false;
+        this.touchedBallSinceLastAI = false;
+        this.isTouchingBall = false;
+        this.blockedAttackTimer = 0;
+        this.blockedAttackJumpCooldown = 0;
         this.recoveringBehindBall = false;
         this.isKicking = false;
 
@@ -580,20 +641,25 @@ class Bot {
     }
 
     update(ball, dt, opponent) {
-        const desiredState = BotAIUtils.resolveState(this, ball, opponent);
+        const desiredState = BotAIUtils.applyLosingNoTouchLimit(
+            this,
+            BotAIUtils.resolveState(this, ball, opponent),
+            dt
+        );
         this.changeState(desiredState);
 
         this.currentState.execute(this, ball, dt, opponent);
     }
 }
 
-function controlBot(bot, dt, ball, W, FLOOR_Y, keys, opponent = null, serveChaseMode = false, opponentServeMode = false) {
+function controlBot(bot, dt, ball, W, FLOOR_Y, keys, opponent = null, serveChaseMode = false, opponentServeMode = false, botIsLosing = false) {
     if (!(bot instanceof Bot)) return;
 
     bot.setArenaContext(W, FLOOR_Y);
     bot.isServeChasing = serveChaseMode;
     // Flag usable by AI to pressure when the opponent is serving
     bot.opponentServing = opponentServeMode;
+    bot.isLosing = botIsLosing;
     BotAIUtils.refreshFrameState(bot, ball, dt, opponent);
     bot.update(ball, dt, opponent);
 }

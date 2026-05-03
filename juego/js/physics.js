@@ -409,6 +409,7 @@ function resolveCircleToCircle(ball, p, dx, dy, dist2, shapeR) {
 function applyBounce(ball, p, nx, ny) {
     // AVISAMOS QUE HAY CONTACTO ESTE FRAME
     p.isTouchingBall = true;
+    p.touchedBallSinceLastAI = true;
 
     // 1. MATEMÁTICAS ARCADE
     const mathRvx = ball.vx - p.vx;
@@ -443,6 +444,7 @@ function applyBounce(ball, p, nx, ny) {
 function applyShoeBounce(ball, p, nx, ny) {
     // AVISAMOS QUE HAY CONTACTO ESTE FRAME
     p.isTouchingBall = true;
+    p.touchedBallSinceLastAI = true;
 
     // Calcular la velocidad del zapato en este frame exacto
     let shoeVx = p.vx;
@@ -526,6 +528,7 @@ function checkGoalCollisions(ball, leftGoal, rightGoal) {
 function resolveShoeToCircle(ball, p, dx, dy, dist2, shapeR) {
     // AVISAMOS QUE HAY CONTACTO ESTE FRAME
     p.isTouchingBall = true;
+    p.touchedBallSinceLastAI = true;
 
     const dist = Math.sqrt(dist2);
     if (dist < 0.001) return;

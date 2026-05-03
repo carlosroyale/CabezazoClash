@@ -248,7 +248,8 @@ function updatePhysicsStep(dt) {
     if (botEnabled) {
         const botServeChase = serveState.active && serveState.server === "right";
         const botShouldPressure = serveState.active && serveState.server !== "right";
-        controlBot(p2, dt, ball, W, FLOOR_Y, keys, p1, botServeChase, botShouldPressure);
+        const botIsLosing = score.right < score.left;
+        controlBot(p2, dt, ball, W, FLOOR_Y, keys, p1, botServeChase, botShouldPressure, botIsLosing);
     }
     else {
         controlPlayer(p2, dt, "ArrowLeft", "ArrowRight", "ArrowUp", "KeyP", keys);
