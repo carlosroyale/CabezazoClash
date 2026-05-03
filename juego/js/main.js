@@ -12,6 +12,7 @@ const screenGame = document.getElementById("screen-game");
 const screenEnd = document.getElementById("screen-end");
 const screenHowToPlay = document.getElementById("screen-how-to-play");
 const screenModeSelect = document.getElementById("screen-mode-select");
+const screenInfo = document.getElementById("screen-info");
 const screenTouchWarning = document.getElementById("screen-touch-warning");
 const screenOnlineLocked = document.getElementById("screen-online-locked");
 const screenOnlineWaiting = document.getElementById("screen-online-waiting");
@@ -33,6 +34,8 @@ const btnOptions = document.getElementById("btn-options");
 const btnOptionsBack = document.getElementById("btn-options-back");
 const btnMiCuenta = document.getElementById("btn-mi-cuenta");
 const btnRanking = document.getElementById("btn-ranking");
+const btnInfo = document.getElementById("btn-info");
+const btnCloseInfo = document.getElementById("btn-close-info");
 const btnHowToPlay = document.getElementById("btn-how-to-play");
 const btnCloseHowToPlay = document.getElementById("btn-close-how-to-play");
 const btn1v1Local = document.getElementById("btn-1v1");
@@ -549,6 +552,12 @@ asignarBoton(btnOptionsBack, () => {
   } else {
     showScreen(screenStart);
   }
+});
+asignarBoton(btnInfo, () => {
+  if (screenInfo) screenInfo.classList.remove("hidden");
+});
+asignarBoton(btnCloseInfo, () => {
+  if (screenInfo) screenInfo.classList.add("hidden");
 });
 
 asignarBoton(btnOpponentLeftOk, () => {

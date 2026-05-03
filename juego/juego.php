@@ -531,6 +531,6 @@ $asset = static function (string $path) use ($basePath): string {
 <script src="<?= htmlspecialchars($asset('juego/js/input.js?v=5'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/game.js?v=13'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($asset('juego/js/online.js?v=24'), ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=39'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($asset('juego/js/main.js?v=40'), ENT_QUOTES, 'UTF-8') ?>"></script>
 </body>
 </html>
