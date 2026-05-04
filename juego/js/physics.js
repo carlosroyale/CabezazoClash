@@ -139,6 +139,57 @@ function findSegmentExpandedRectContact(startX, startY, endX, endY, rect, radius
     let tMin = 0;
     let tMax = 1;
     let hitAxis = null;
+    const startInsideExpanded = startX >= minX && startX <= maxX && startY >= minY && startY <= maxY;
+
+    if (startInsideExpanded) {
+        const closestStartX = clamp(startX, rect.x, rect.x + rect.w);
+        const closestStartY = clamp(startY, rect.y, rect.y + rect.h);
+        let nx = startX - closestStartX;
+        let ny = startY - closestStartY;
+        const dist = Math.hypot(nx, ny);
+
+        if (dist < radius) {
+            if (dist >= 0.0001) {
+                nx /= dist;
+                ny /= dist;
+            }
+            else {
+                const left = Math.abs(startX - rect.x);
+                const right = Math.abs(rect.x + rect.w - startX);
+                const top = Math.abs(startY - rect.y);
+                const bottom = Math.abs(rect.y + rect.h - startY);
+                const minSide = Math.min(left, right, top, bottom);
+
+                if (minSide === left) {
+                    nx = -1;
+                    ny = 0;
+                }
+                else if (minSide === right) {
+                    nx = 1;
+                    ny = 0;
+                }
+                else if (minSide === top) {
+                    nx = 0;
+                    ny = -1;
+                }
+                else {
+                    nx = 0;
+                    ny = 1;
+                }
+            }
+
+            const movingIntoRect = dirX * nx + dirY * ny < -0.0001;
+            if (!movingIntoRect) return null;
+
+            return {
+                t: 0,
+                x: closestStartX + nx * radius,
+                y: closestStartY + ny * radius,
+                nx,
+                ny
+            };
+        }
+    }
 
     if (Math.abs(dirX) < 0.0001) {
         if (startX < minX || startX > maxX) return null;
