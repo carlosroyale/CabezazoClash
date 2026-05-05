@@ -485,6 +485,13 @@ function findSweptPlayerBallContact(p, ball, h) {
     const prevKickAngle = p.prevKickAngle !== undefined ? p.prevKickAngle : p.kickAngle;
     const prevH = getPlayerHitboxesAt(p, prevX, prevY, prevKickAngle);
 
+    // Excepción de fluidez para caídas casi verticales sobre el balón.
+    // Si el jugador apenas avanza en X, no usamos el pie de apoyo como obstáculo
+    // móvil: dejamos que la colisión discreta antigua haga que el balón resbale.
+    // const playerMoveX = p.x - prevX;
+    // const playerMoveY = p.y - prevY;
+    // const mostlyVerticalFall = playerMoveY > 0 && Math.abs(playerMoveX) < 0;
+
     const contacts = [];
     const bodyContact = findMovingRectBallContact(startX, startY, endX, endY, prevH.body, h.body, ball.r);
     if (bodyContact) contacts.push({ ...bodyContact, shape: 'body' });
@@ -492,7 +499,11 @@ function findSweptPlayerBallContact(p, ball, h) {
     const headContact = findMovingCircleBallContact(startX, startY, endX, endY, prevH.head, h.head, ball.r + h.head.r);
     if (headContact) contacts.push({ ...headContact, shape: 'head', shapeR: h.head.r });
 
-    const supportShoeContact = findMovingCircleBallContact(startX, startY, endX, endY, prevH.supportShoe, h.supportShoe, ball.r + h.supportShoe.r);
+    // const supportShoeContact = mostlyVerticalFall
+    //     ? findSegmentCircleContact(startX, startY, endX, endY, h.supportShoe.x, h.supportShoe.y, ball.r + h.supportShoe.r)
+    //     : findMovingCircleBallContact(startX, startY, endX, endY, prevH.supportShoe, h.supportShoe, ball.r + h.supportShoe.r);
+    // const supportShoeContact = findMovingCircleBallContact(startX, startY, endX, endY, prevH.supportShoe, h.supportShoe, ball.r + h.supportShoe.r);
+    const supportShoeContact = findSegmentCircleContact(startX, startY, endX, endY, h.supportShoe.x, h.supportShoe.y, ball.r + h.supportShoe.r);
     if (supportShoeContact) contacts.push({ ...supportShoeContact, shape: 'supportShoe', shapeR: h.supportShoe.r });
 
     if (h.kickShoeSeparated || prevH.kickShoeSeparated) {
