@@ -19,6 +19,7 @@ function makePlayer(x, y, label, isRightFacing) {
 
         isRightFacing: isRightFacing, // true = mira a la derecha (P1), false = izquierda (P2)
         kickAngle: 0,                 // Ángulo actual de la pierna en radianes
+        prevKickAngle: 0,             // Ángulo de la pierna antes del substep actual
         maxKickAngle: Math.PI / 1.8,  // Límite máximo (aprox 100 grados)
         kickSpeed: 16,                 // Velocidad a la que sube la pierna (radianes/segundo)
         justKicked: false,            // Interruptor que avisa que acaba de soltar la tecla
@@ -91,6 +92,16 @@ function updateBall(ball, dt, W, FLOOR_Y) {
     }
 
     // suelo
+    // el suelo lo hacemos directamente en el bucle de game
+
+    // Fórmula: Ángulo = (Velocidad * Tiempo) / Radio
+    // Si está presionado contra la pared, bloqueamos la rotación horizontal
+    if (!isTouchingWall) {
+        ball.angle += (ball.vx * dt) / ball.r;
+    }
+}
+
+function resolveBallFloor(ball, FLOOR_Y) {
     if (ball.y + ball.r > FLOOR_Y) {
         const floorImpactSpeed = ball.vy;
 
@@ -102,15 +113,11 @@ function updateBall(ball, dt, W, FLOOR_Y) {
         ball.vy = -ball.vy * RESTITUTION;
         ball.vx *= FRICTION;
     }
-
-    // Fórmula: Ángulo = (Velocidad * Tiempo) / Radio
-    // Si está presionado contra la pared, bloqueamos la rotación horizontal
-    if (!isTouchingWall) {
-        ball.angle += (ball.vx * dt) / ball.r;
-    }
 }
 
 function controlPlayer(p, dt, leftKey, rightKey, jumpKey, kickKey, keys) {
+    p.prevKickAngle = p.kickAngle;
+
     let dir = 0;
     if (keys.has(leftKey)) dir -= 1;
     if (keys.has(rightKey)) dir += 1;
@@ -674,6 +681,7 @@ class Bot {
 function controlBot(bot, dt, ball, W, FLOOR_Y, keys, opponent = null, serveChaseMode = false, opponentServeMode = false, botIsLosing = false) {
     if (!(bot instanceof Bot)) return;
 
+    bot.prevKickAngle = bot.kickAngle;
     bot.setArenaContext(W, FLOOR_Y);
     bot.isServeChasing = serveChaseMode;
     // Flag usable by AI to pressure when the opponent is serving
@@ -700,6 +708,7 @@ if (typeof module !== 'undefined' && module.exports) {
         Bot,
         updatePlayer,
         updateBall,
+        resolveBallFloor,
         controlPlayer,
         controlBot,
         clamp

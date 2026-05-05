@@ -59,6 +59,8 @@ function dibujar(ctx, W, H, p1, p2, ball, leftGoal, rightGoal) {
     // 4. Palos de las porterías (al frente de todo)
     drawGoalPosts(leftGoal, W);
     drawGoalPosts(rightGoal, W);
+
+    // drawFloorHitbox(W, H)
 }
 
 function drawField(W, H) {
@@ -183,6 +185,27 @@ function dibujarHitboxJugador(p) {
     drawingCtx.fillStyle = "magenta";
     const pivoteX = p.isRightFacing ? bodyX - 3 : bodyX + 7;
     drawingCtx.fillRect(pivoteX, p.y - 3, 6, 6);
+}
+
+function drawFloorHitbox(W, H) {
+    const floorY = H - 325; // mismo cálculo que game.js
+
+    drawingCtx.save();
+
+    // Línea exacta donde empieza la colisión del suelo
+    drawingCtx.beginPath();
+    drawingCtx.strokeStyle = "rgba(255, 0, 0, 0.9)";
+    drawingCtx.lineWidth = 3;
+    drawingCtx.setLineDash([10, 6]);
+    drawingCtx.moveTo(0, floorY);
+    drawingCtx.lineTo(W, floorY);
+    drawingCtx.stroke();
+
+    // Zona sólida inferior opcional
+    drawingCtx.fillStyle = "rgba(255, 0, 0, 0.12)";
+    drawingCtx.fillRect(0, floorY, W, H - floorY);
+
+    drawingCtx.restore();
 }
 
 function drawBall(ball) {

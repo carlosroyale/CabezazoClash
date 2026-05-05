@@ -499,44 +499,72 @@ class Match {
         // Solo se calculan si el partido sigue activo (incluso durante la celebración para que la pelota ruede).
         if (!this.gameState.isFinished) {
 
-            // --- Movimiento de Jugadores ---
-            // Leemos los inputs y calculamos el movimiento de los jugadores basándonos en el tiempo (dt).
+            // 1. Controles: se leen una sola vez por substep.
+            // Aquí solo cambiamos velocidades/intenciones de los jugadores.
             controlPlayer(this.gameState.p1, dt, "KeyA", "KeyD", "KeyW", "Space", this.inputs.p1);
             controlPlayer(this.gameState.p2, dt, "KeyA", "KeyD", "KeyW", "Space", this.inputs.p2);
 
-            // Actualizamos la posición en Y (gravedad, saltos) y X (fricción, límites).
+            // 2. Integración física: una sola vez por substep.
+            // Aquí se aplica gravedad y se actualizan posiciones según velocidad.
+            // Importante: no conviene repetir esto dentro del solver de colisiones.
             updatePlayer(this.gameState.p1, dt, W, FLOOR_Y);
             updatePlayer(this.gameState.p2, dt, W, FLOOR_Y);
+            updateBall(this.gameState.ball, dt, W, FLOOR_Y);
 
-            // Resolvemos la colisión entre los dos jugadores.
+            // Guardamos los jugadores actuales para las funciones que necesitan consultar
+            // el estado conjunto, por ejemplo la pinza espalda contra espalda.
+            global.window.currentPlayers = [this.gameState.p1, this.gameState.p2];
+
+            // 3. Colisiones jugador-jugador.
+            // Se resuelven antes de la pelota porque pueden mover los cuerpos y cambiar
+            // la posición final de sus hitboxes.
             collidePlayers(this.gameState.p1, this.gameState.p2);
 
-            // Evitamos que los jugadores atraviesen las porterías.
+            // 3.1 Colisiones de jugadores contra porterías.
+            // También pueden recolocar jugadores, así que van antes del solver de pelota.
             collidePlayerGoals(this.gameState.p1, this.leftGoal, this.rightGoal);
             collidePlayerGoals(this.gameState.p2, this.leftGoal, this.rightGoal);
 
-            // --- Físicas de la Pelota ---
-            updateBall(this.gameState.ball, dt, W, FLOOR_Y);
+            // 4. Solver iterativo de pelota.
+            // Repetimos solo restricciones de pelota, no movimiento.
+            // Esto evita que una colisión corregida rompa otra en el mismo substep.
+            for (let i = 0; i < 4; i++) {
+                const playersBackToBack = arePlayersBackToBack(this.gameState.p1, this.gameState.p2);
 
-            // --- Lógica Especial de Colisiones ---
-            // Se usa global.window.currentPlayers probablemente para algún cálculo auxiliar externo.
-            global.window.currentPlayers = [this.gameState.p1, this.gameState.p2];
+                // Caso especial: si los jugadores están de espaldas y la pelota queda
+                // comprimida entre ambos, se estabiliza antes de aplicar rebotes normales.
+                if (playersBackToBack) {
+                    resolveBackToBackBallSqueeze(this.gameState.ball, this.gameState.p1, this.gameState.p2);
+                }
 
-            // Comprobamos si los jugadores están espalda con espalda para evitar que la pelota se quede bugeada entre ellos.
-            const playersBackToBack = arePlayersBackToBack(this.gameState.p1, this.gameState.p2);
-            if (playersBackToBack) resolveBackToBackBallSqueeze(this.gameState.ball, this.gameState.p1, this.gameState.p2);
+                // Colisión principal jugador-pelota.
+                // Se repite para que cuerpo, cabeza, zapato y pie de apoyo converjan mejor.
+                collidePlayersBallFair(this.gameState.p1, this.gameState.p2, this.gameState.ball);
 
-            // Resolvemos colisiones regulares entre jugadores y la pelota.
-            collidePlayersBallFair(this.gameState.p1, this.gameState.p2, this.gameState.ball);
+                // Correcciones anti-pinza entre jugadores.
+                // Si están de espaldas se usa una regla específica; si no, se intenta liberar
+                // la pelota hacia una zona segura entre ambos.
+                if (playersBackToBack) {
+                    resolveBackToBackBallSqueeze(this.gameState.ball, this.gameState.p1, this.gameState.p2);
+                }
+                else {
+                    // Empuja la pelota hacia arriba si es "aplastada" entre jugadores.
+                    resolveBallSqueezeUp(this.gameState.ball, this.gameState.p1, this.gameState.p2);
+                }
 
-            // Volvemos a chequear atascos de la pelota por si la colisión anterior la empujó hacia un mal lugar.
-            if (playersBackToBack) resolveBackToBackBallSqueeze(this.gameState.ball, this.gameState.p1, this.gameState.p2);
-            else resolveBallSqueezeUp(this.gameState.ball, this.gameState.p1, this.gameState.p2); // Empuja la pelota hacia arriba si es "aplastada" entre jugadores.
+                // Rebotes de pelota contra largueros.
+                checkGoalCollisions(this.gameState.ball, this.leftGoal, this.rightGoal);
+            }
 
+            // 5. Anti-atasco con contador.
+            // Va fuera del bucle porque usa _floorCrushFrames; si se repitiese dentro,
+            // contaría varias veces en un único substep.
             resolveBallFloorCrush(this.gameState.ball, this.gameState.p1, this.gameState.p2, FLOOR_Y, W);
 
-            // Rebotes de la pelota contra las estructuras de las porterías.
-            checkGoalCollisions(this.gameState.ball, this.leftGoal, this.rightGoal);
+            // 6. Garantía final antes de dibujar.
+            // Última defensa: si alguna corrección anterior empujó el balón bajo el suelo,
+            // lo recolocamos antes de renderizar el frame.
+            resolveBallFloor(this.gameState.ball, FLOOR_Y);
 
             // --- Anti-Aplastamiento en las Paredes ---
             // Si la pelota choca contra la pared izquierda (< 0)...

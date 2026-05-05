@@ -1,18 +1,57 @@
 // physics.js - Detección de colisiones y límites
+//
+// Este archivo concentra la parte "dura" de la física del minijuego Cabezazo:
+// - Construye las hitboxes matemáticas de cada jugador.
+// - Resuelve colisiones jugador-pelota, jugador-jugador y jugador-portería.
+// - Aplica rebotes arcade, sonidos de impacto y reglas anti-atasco.
+//
+// La mayoría de funciones trabajan en coordenadas de pantalla:
+// x crece hacia la derecha, y crece hacia abajo. Por eso una velocidad vertical
+// negativa significa que algo sube y una normal con ny < 0 empuja hacia arriba.
+// Los jugadores usan p.x/p.y como centro visual aproximado, mientras que la
+// pelota y las hitboxes circulares usan x/y como centro real del círculo.
 
+// Grosor físico del larguero. Solo colisiona la parte superior visible de la portería.
 const GOAL_POST_SIZE = 8;
+
+// Centro local del zapato respecto al centro del jugador antes de aplicar giro.
+// Se refleja en X para el jugador que mira al lado contrario.
 const PHYSICS_SHOE_LOCAL_CENTER_X = -3.5;
 const PHYSICS_SHOE_LOCAL_CENTER_Y = 35;
+
+// Radio usado para tratar cada zapato como círculo, lo que simplifica choques
+// contra balón, cabeza, cuerpo y porterías.
 const PHYSICS_SHOE_RADIUS = 14;
+
+// Margen para decidir que ambos jugadores han llegado al balón "a la vez".
+// Si sus puntuaciones de contacto difieren menos que esto, se alterna el orden.
 const BALL_CONTACT_TIE_EPSILON = 0.5;
+
+// Hasta que la pierna no se separa de verdad, el zapato de golpeo no se evalúa
+// como una hitbox independiente; así se evita duplicar el pie en reposo.
 const KICK_SHOE_SEPARATION_ANGLE = 0.12;
 let fairBallCollisionTieBreaker = false;
 
+/**
+ * Actualiza el origen del barrido continuo de la pelota.
+ *
+ * El barrido usa ball.prevX/prevY para reconstruir el segmento recorrido por la
+ * pelota en el frame actual. Cuando una colisión recoloca la pelota, estos
+ * valores deben sincronizarse para que la siguiente prueba no vuelva a barrer
+ * desde una posición anterior ya corregida.
+ */
 function syncBallSweepOrigin(ball) {
     ball.prevX = ball.x;
     ball.prevY = ball.y;
 }
 
+/**
+ * Antispam para el sonido de rebote de la pelota.
+ *
+ * Varias hitboxes pueden tocar la pelota en el mismo frame o en frames
+ * consecutivos. Guardar la última reproducción en la propia pelota permite
+ * compartir el cooldown entre cuerpo, cabeza, pie, suelo y otros rebotes.
+ */
 function canPlayBallReboundSound(ball, cooldownMs = 200) {
     const now = Date.now();
     if (ball._lastReboundSoundAt && now - ball._lastReboundSoundAt < cooldownMs) return false;
@@ -21,6 +60,12 @@ function canPlayBallReboundSound(ball, cooldownMs = 200) {
     return true;
 }
 
+/**
+ * Antispam separado para impactos contra los postes/largueros.
+ *
+ * Usa otra marca de tiempo para que el golpe contra portería no bloquee ni sea
+ * bloqueado por los sonidos normales de rebote jugador-pelota.
+ */
 function canPlayBallPostSound(ball, cooldownMs = 180) {
     const now = Date.now();
     if (ball._lastPostSoundAt && now - ball._lastPostSoundAt < cooldownMs) return false;
@@ -29,24 +74,47 @@ function canPlayBallPostSound(ball, cooldownMs = 180) {
     return true;
 }
 
-function getMirroredShoeHitbox(p, kickAngle = p.kickAngle) {
+/**
+ * Calcula la hitbox circular del zapato aplicando espejo y rotación.
+ *
+ * El offset del zapato está definido en un sistema local del jugador. Para el
+ * jugador que mira a la izquierda se invierte el eje X; para el que mira a la
+ * derecha se invierte el signo del ángulo de patada. El resultado siempre queda
+ * expresado en coordenadas globales de pantalla.
+ */
+function getMirroredShoeHitboxAt(p, x, y, kickAngle = p.kickAngle) {
     const localShoeX = p.isRightFacing ? PHYSICS_SHOE_LOCAL_CENTER_X : -PHYSICS_SHOE_LOCAL_CENTER_X;
     const localShoeY = PHYSICS_SHOE_LOCAL_CENTER_Y;
     const rot = p.isRightFacing ? -kickAngle : kickAngle;
 
     return {
-        x: p.x + (localShoeX * Math.cos(rot) - localShoeY * Math.sin(rot)),
-        y: p.y + (localShoeX * Math.sin(rot) + localShoeY * Math.cos(rot)),
+        x: x + (localShoeX * Math.cos(rot) - localShoeY * Math.sin(rot)),
+        y: y + (localShoeX * Math.sin(rot) + localShoeY * Math.cos(rot)),
         r: PHYSICS_SHOE_RADIUS
     };
 }
 
-// 1. Helper para obtener las 3 hitboxes matemáticas (Idéntico a tu dibujarHitboxJvB)
-function getPlayerHitboxes(p) {
+function getMirroredShoeHitbox(p, kickAngle = p.kickAngle) {
+    return getMirroredShoeHitboxAt(p, p.x, p.y, kickAngle);
+}
+
+/**
+ * Devuelve todas las hitboxes físicas de un jugador.
+ *
+ * Se divide el jugador en piezas simples:
+ * - body: rectángulo AABB para el torso.
+ * - head: círculo para la cabeza.
+ * - shoe: círculo del pie que puede patear y rotar.
+ * - supportShoe: círculo del pie en reposo, siempre presente.
+ *
+ * Mantener esta función centralizada es importante: render, depuración y física
+ * deben usar los mismos tamaños para que la colisión coincida con lo dibujado.
+ */
+function getPlayerHitboxesAt(p, x = p.x, y = p.y, kickAngle = p.kickAngle) {
     const bodyW = p.w - 28;
     const bodyH = p.h - 55;
-    const bodyY = p.y + 10;
-    const bodyX = p.x - 5;
+    const bodyY = y + 10;
+    const bodyX = x - 5;
     const rectX = p.isRightFacing ? bodyX - bodyW / 2 : bodyX - (bodyW / 2) + 10;
 
     const headX = bodyX + 4;
@@ -56,12 +124,22 @@ function getPlayerHitboxes(p) {
     return {
         body: { x: rectX, y: bodyY - bodyH / 2, w: bodyW, h: bodyH },
         head: { x: headX, y: headY, r: headR },
-        shoe: getMirroredShoeHitbox(p),
-        supportShoe: getMirroredShoeHitbox(p, 0),
-        kickShoeSeparated: p.kickAngle > KICK_SHOE_SEPARATION_ANGLE
+        shoe: getMirroredShoeHitboxAt(p, x, y, kickAngle),
+        supportShoe: getMirroredShoeHitboxAt(p, x, y, 0),
+        kickShoeSeparated: kickAngle > KICK_SHOE_SEPARATION_ANGLE
     };
 }
 
+function getPlayerHitboxes(p) {
+    return getPlayerHitboxesAt(p);
+}
+
+/**
+ * Detecta la postura concreta en la que ambos jugadores se dan la espalda.
+ *
+ * Este caso recibe tratamiento especial porque sus cuerpos pueden formar una
+ * pinza horizontal que encierra la pelota entre las dos espaldas.
+ */
 function arePlayersBackToBack(p1, p2) {
     const leftPlayer = p1.x < p2.x ? p1 : p2;
     const rightPlayer = p1.x < p2.x ? p2 : p1;
@@ -69,6 +147,14 @@ function arePlayersBackToBack(p1, p2) {
     return !leftPlayer.isRightFacing && rightPlayer.isRightFacing;
 }
 
+/**
+ * Comprueba si el balón está comprimido entre las espaldas de dos jugadores.
+ *
+ * No basta con que los jugadores estén de espaldas: la pelota también tiene que
+ * estar entre los bordes interiores de los cuerpos y dentro de su rango vertical.
+ * Si se cumple, otras rutinas de colisión se saltan temporalmente para no
+ * introducir impulsos contradictorios.
+ */
 function isBackToBackBallSqueeze(ball, p1, p2) {
     if (!p1 || !p2 || !arePlayersBackToBack(p1, p2)) return false;
 
@@ -89,6 +175,19 @@ function isBackToBackBallSqueeze(ball, p1, p2) {
     return bodyGap < ball.r * 2 + 14 && ballBetweenBacks && ballInVerticalRange;
 }
 
+/**
+ * Busca el primer contacto entre un segmento y un círculo.
+ *
+ * Se usa para colisión continua: en vez de mirar solo la posición final de la
+ * pelota, se analiza todo el tramo desde prevX/prevY hasta x/y. El radio que
+ * recibe esta función suele ser la suma de radios pelota+hitbox, de forma que el
+ * centro de la pelota se trata como un punto contra un círculo expandido.
+ *
+ * Devuelve:
+ * - t: momento normalizado del impacto dentro del segmento, entre 0 y 1.
+ * - x/y: posición del centro de la pelota en el instante de contacto.
+ * - nx/ny: normal desde la hitbox hacia la pelota.
+ */
 function findSegmentCircleContact(startX, startY, endX, endY, centerX, centerY, radius) {
     const segX = endX - startX;
     const segY = endY - startY;
@@ -101,9 +200,31 @@ function findSegmentCircleContact(startX, startY, endX, endY, centerX, centerY, 
     const b = 2 * (relX * segX + relY * segY);
     const c = relX * relX + relY * relY - radius * radius;
 
-    // Si el centro ya empieza dentro del radio expandido, la colisión discreta
-    // normal se encarga. El barrido solo debe capturar entradas, no salidas.
-    if (c <= 0) return null;
+    // Si el centro ya empieza dentro del radio expandido, no podemos delegar
+    // siempre en la colisión discreta: con mucha velocidad puede terminar fuera
+    // por el lado opuesto y parecer que atraviesa el jugador. En ese caso se
+    // trata como contacto inicial.
+    if (c <= 0) {
+        const dist = Math.hypot(relX, relY);
+        const segLen = Math.sqrt(a);
+        const deepInside = dist < radius * 0.55;
+        let nx;
+        let ny;
+
+        if (dist >= 0.0001 && !deepInside) {
+            nx = relX / dist;
+            ny = relY / dist;
+        }
+        else {
+            nx = -segX / segLen;
+            ny = -segY / segLen;
+        }
+
+        const movingIntoCircle = segX * nx + segY * ny < -0.0001;
+        if (!movingIntoCircle && !deepInside) return null;
+
+        return { t: 0, x: startX, y: startY, nx, ny };
+    }
 
     const disc = b * b - 4 * a * c;
 
@@ -111,6 +232,9 @@ function findSegmentCircleContact(startX, startY, endX, endY, centerX, centerY, 
 
     const sqrtDisc = Math.sqrt(disc);
     const invDen = 1 / (2 * a);
+
+    // La raíz con signo negativo es la entrada al círculo expandido. La otra
+    // raíz sería la salida, que no interesa para resolver el primer impacto.
     const t = (-b - sqrtDisc) * invDen;
 
     if (t < 0 || t > 1) return null;
@@ -129,6 +253,31 @@ function findSegmentCircleContact(startX, startY, endX, endY, centerX, centerY, 
     return { t, x, y, nx, ny };
 }
 
+function getRectEscapePoint(x, y, rect, radius, nx, ny) {
+    if (Math.abs(nx) >= Math.abs(ny)) {
+        return {
+            x: nx < 0 ? rect.x - radius : rect.x + rect.w + radius,
+            y
+        };
+    }
+
+    return {
+        x,
+        y: ny < 0 ? rect.y - radius : rect.y + rect.h + radius
+    };
+}
+
+/**
+ * Busca el primer contacto entre un segmento y un rectángulo expandido.
+ *
+ * Es la versión continua de círculo contra rectángulo. En vez de mover un
+ * círculo contra el cuerpo, se expande el rectángulo por el radio de la pelota
+ * (suma de Minkowski) y se barre el centro de la pelota como si fuera un punto.
+ *
+ * La parte central usa el método de "slabs": se calcula el intervalo de t en el
+ * que el segmento está dentro de las franjas X e Y del rectángulo expandido. Si
+ * ambos intervalos se cruzan, el primer t común es el impacto.
+ */
 function findSegmentExpandedRectContact(startX, startY, endX, endY, rect, radius) {
     const minX = rect.x - radius;
     const maxX = rect.x + rect.w + radius;
@@ -142,44 +291,68 @@ function findSegmentExpandedRectContact(startX, startY, endX, endY, rect, radius
     const startInsideExpanded = startX >= minX && startX <= maxX && startY >= minY && startY <= maxY;
 
     if (startInsideExpanded) {
+        // Si el barrido empieza ya dentro del rectángulo expandido, se trata
+        // como contacto inicial cuando el movimiento entra todavía más o cuando
+        // la pelota ya está muy dentro. Si no, la colisión discreta puede no ver
+        // nada porque el centro acaba fuera por el otro lado del torso.
         const closestStartX = clamp(startX, rect.x, rect.x + rect.w);
         const closestStartY = clamp(startY, rect.y, rect.y + rect.h);
         let nx = startX - closestStartX;
         let ny = startY - closestStartY;
         const dist = Math.hypot(nx, ny);
+        const startInsideRect = startX >= rect.x && startX <= rect.x + rect.w && startY >= rect.y && startY <= rect.y + rect.h;
+        const deepInside = startInsideRect || dist < radius * 0.55;
 
         if (dist < radius) {
-            if (dist >= 0.0001) {
+            if (dist >= 0.0001 && !deepInside) {
                 nx /= dist;
                 ny /= dist;
             }
             else {
-                const left = Math.abs(startX - rect.x);
-                const right = Math.abs(rect.x + rect.w - startX);
-                const top = Math.abs(startY - rect.y);
-                const bottom = Math.abs(rect.y + rect.h - startY);
-                const minSide = Math.min(left, right, top, bottom);
-
-                if (minSide === left) {
-                    nx = -1;
-                    ny = 0;
-                }
-                else if (minSide === right) {
-                    nx = 1;
-                    ny = 0;
-                }
-                else if (minSide === top) {
-                    nx = 0;
-                    ny = -1;
+                const dirLen = Math.hypot(dirX, dirY);
+                if (dirLen >= 0.0001) {
+                    nx = -dirX / dirLen;
+                    ny = -dirY / dirLen;
                 }
                 else {
-                    nx = 0;
-                    ny = 1;
+                    const left = Math.abs(startX - rect.x);
+                    const right = Math.abs(rect.x + rect.w - startX);
+                    const top = Math.abs(startY - rect.y);
+                    const bottom = Math.abs(rect.y + rect.h - startY);
+                    const minSide = Math.min(left, right, top, bottom);
+
+                    if (minSide === left) {
+                        nx = -1;
+                        ny = 0;
+                    }
+                    else if (minSide === right) {
+                        nx = 1;
+                        ny = 0;
+                    }
+                    else if (minSide === top) {
+                        nx = 0;
+                        ny = -1;
+                    }
+                    else {
+                        nx = 0;
+                        ny = 1;
+                    }
                 }
             }
 
             const movingIntoRect = dirX * nx + dirY * ny < -0.0001;
-            if (!movingIntoRect) return null;
+            if (!movingIntoRect && !deepInside) return null;
+
+            if (startInsideRect) {
+                const escape = getRectEscapePoint(startX, startY, rect, radius, nx, ny);
+                return {
+                    t: 0,
+                    x: escape.x,
+                    y: escape.y,
+                    nx,
+                    ny
+                };
+            }
 
             return {
                 t: 0,
@@ -192,6 +365,8 @@ function findSegmentExpandedRectContact(startX, startY, endX, endY, rect, radius
     }
 
     if (Math.abs(dirX) < 0.0001) {
+        // Segmento casi vertical: si su X ni siquiera atraviesa el rectángulo
+        // expandido, no puede haber contacto.
         if (startX < minX || startX > maxX) return null;
     }
     else {
@@ -211,6 +386,7 @@ function findSegmentExpandedRectContact(startX, startY, endX, endY, rect, radius
     }
 
     if (Math.abs(dirY) < 0.0001) {
+        // Segmento casi horizontal: mismo descarte, pero para la franja Y.
         if (startY < minY || startY > maxY) return null;
     }
     else {
@@ -244,6 +420,8 @@ function findSegmentExpandedRectContact(startX, startY, endX, endY, rect, radius
         ny /= len;
     }
     else if (hitAxis === 'x') {
+        // Impacto contra una cara plana: la normal depende de la dirección de
+        // entrada porque el punto proyectado cae justo sobre el borde.
         nx = dirX > 0 ? -1 : 1;
         ny = 0;
     }
@@ -255,27 +433,70 @@ function findSegmentExpandedRectContact(startX, startY, endX, endY, rect, radius
     return { t: tMin, x, y, nx, ny };
 }
 
+function findMovingCircleBallContact(startX, startY, endX, endY, prevCircle, currCircle, radius) {
+    const relStartX = startX - prevCircle.x;
+    const relStartY = startY - prevCircle.y;
+    const relEndX = endX - currCircle.x;
+    const relEndY = endY - currCircle.y;
+    const contact = findSegmentCircleContact(relStartX, relStartY, relEndX, relEndY, 0, 0, radius);
+
+    if (!contact) return null;
+
+    const centerX = prevCircle.x + (currCircle.x - prevCircle.x) * contact.t;
+    const centerY = prevCircle.y + (currCircle.y - prevCircle.y) * contact.t;
+
+    return {
+        ...contact,
+        x: centerX + contact.x,
+        y: centerY + contact.y
+    };
+}
+
+function findMovingRectBallContact(startX, startY, endX, endY, prevRect, currRect, radius) {
+    const rectMoveX = currRect.x - prevRect.x;
+    const rectMoveY = currRect.y - prevRect.y;
+    const relEndX = endX - rectMoveX;
+    const relEndY = endY - rectMoveY;
+    const contact = findSegmentExpandedRectContact(startX, startY, relEndX, relEndY, prevRect, radius);
+
+    if (!contact) return null;
+
+    return {
+        ...contact,
+        x: contact.x + rectMoveX * contact.t,
+        y: contact.y + rectMoveY * contact.t
+    };
+}
+
+/**
+ * Calcula el primer contacto continuo entre la pelota y cualquier hitbox del jugador.
+ *
+ * Reúne candidatos contra cuerpo, cabeza y zapatos. Luego ordena por t para
+ * resolver la primera hitbox alcanzada durante el frame. Esto reduce el efecto
+ * de "tunneling", donde la pelota atraviesa una hitbox cuando va muy rápida.
+ */
 function findSweptPlayerBallContact(p, ball, h) {
     const startX = ball.prevX !== undefined ? ball.prevX : ball.x;
     const startY = ball.prevY !== undefined ? ball.prevY : ball.y;
     const endX = ball.x;
     const endY = ball.y;
-    const travel = Math.hypot(endX - startX, endY - startY);
-
-    if (travel < 0.0001) return null;
+    const prevX = p.prevX !== undefined ? p.prevX : p.x;
+    const prevY = p.prevY !== undefined ? p.prevY : p.y;
+    const prevKickAngle = p.prevKickAngle !== undefined ? p.prevKickAngle : p.kickAngle;
+    const prevH = getPlayerHitboxesAt(p, prevX, prevY, prevKickAngle);
 
     const contacts = [];
-    const bodyContact = findSegmentExpandedRectContact(startX, startY, endX, endY, h.body, ball.r);
+    const bodyContact = findMovingRectBallContact(startX, startY, endX, endY, prevH.body, h.body, ball.r);
     if (bodyContact) contacts.push({ ...bodyContact, shape: 'body' });
 
-    const headContact = findSegmentCircleContact(startX, startY, endX, endY, h.head.x, h.head.y, ball.r + h.head.r);
+    const headContact = findMovingCircleBallContact(startX, startY, endX, endY, prevH.head, h.head, ball.r + h.head.r);
     if (headContact) contacts.push({ ...headContact, shape: 'head', shapeR: h.head.r });
 
-    const supportShoeContact = findSegmentCircleContact(startX, startY, endX, endY, h.supportShoe.x, h.supportShoe.y, ball.r + h.supportShoe.r);
+    const supportShoeContact = findMovingCircleBallContact(startX, startY, endX, endY, prevH.supportShoe, h.supportShoe, ball.r + h.supportShoe.r);
     if (supportShoeContact) contacts.push({ ...supportShoeContact, shape: 'supportShoe', shapeR: h.supportShoe.r });
 
-    if (h.kickShoeSeparated) {
-        const shoeContact = findSegmentCircleContact(startX, startY, endX, endY, h.shoe.x, h.shoe.y, ball.r + h.shoe.r);
+    if (h.kickShoeSeparated || prevH.kickShoeSeparated) {
+        const shoeContact = findMovingCircleBallContact(startX, startY, endX, endY, prevH.shoe, h.shoe, ball.r + h.shoe.r);
         if (shoeContact) contacts.push({ ...shoeContact, shape: 'shoe', shapeR: h.shoe.r });
     }
 
@@ -285,8 +506,21 @@ function findSweptPlayerBallContact(p, ball, h) {
     return contacts[0];
 }
 
+/**
+ * Resuelve la colisión de un jugador contra la pelota.
+ *
+ * Orden de trabajo:
+ * 1. Gestionar estado de contacto para audio/IA.
+ * 2. Intentar colisión continua con el segmento recorrido por la pelota.
+ * 3. Si no hubo contacto barrido, aplicar pruebas discretas por solapamiento.
+ *
+ * El barrido se evalúa antes porque es el único capaz de detectar impactos que
+ * ocurren entre la posición anterior y la actual de la pelota.
+ */
 function collidePlayerBall(p, ball) {
     if (window.currentPlayers && isBackToBackBallSqueeze(ball, window.currentPlayers[0], window.currentPlayers[1])) {
+        // En la pinza espalda-espalda la pelota se estabiliza en otra rutina.
+        // Resolver aquí añadiría rebotes laterales que pueden expulsarla mal.
         return;
     }
 
@@ -301,6 +535,9 @@ function collidePlayerBall(p, ball) {
     const sweptContact = findSweptPlayerBallContact(p, ball, h);
 
     if (sweptContact) {
+        // "skin" separa la pelota una fracción mínima tras el impacto para que
+        // no quede exactamente sobre la superficie y vuelva a colisionar por
+        // error en la siguiente comprobación del mismo frame.
         const skin = 0.2;
         if (sweptContact.shape === 'body') {
             ball.x = sweptContact.x + sweptContact.nx * skin;
@@ -372,15 +609,25 @@ function collidePlayerBall(p, ball) {
 }
 
 function getCircleBallContactScore(circle, ball) {
+    // Valor negativo significa solapamiento. Cuanto menor sea, más "dentro"
+    // está la pelota de esa hitbox circular.
     return Math.hypot(ball.x - circle.x, ball.y - circle.y) - (ball.r + circle.r);
 }
 
 function getRectBallContactScore(rect, ball) {
+    // Para rectángulos se mide desde el punto más cercano del AABB al centro de
+    // la pelota. Es la misma base geométrica que se usa para resolver el choque.
     const closestX = clamp(ball.x, rect.x, rect.x + rect.w);
     const closestY = clamp(ball.y, rect.y, rect.y + rect.h);
     return Math.hypot(ball.x - closestX, ball.y - closestY) - ball.r;
 }
 
+/**
+ * Devuelve la puntuación de contacto más intensa entre un jugador y el balón.
+ *
+ * Se usa para decidir qué jugador debe resolver primero cuando ambos están
+ * cerca de la pelota. La menor puntuación indica el contacto más profundo.
+ */
 function getPlayerBallContactScore(p, ball) {
     const h = getPlayerHitboxes(p);
 
@@ -395,6 +642,14 @@ function getPlayerBallContactScore(p, ball) {
     return Math.min(...scores);
 }
 
+/**
+ * Resuelve jugador-pelota de forma equilibrada entre ambos jugadores.
+ *
+ * Resolver siempre P1 antes que P2 introduce ventaja en contactos simultáneos.
+ * Aquí se calcula quién está más cerca del balón y, en empates, se alterna el
+ * primer turno. El jugador que empieza se evalúa dos veces para corregir el
+ * pequeño cambio de posición que puede provocar la resolución del rival.
+ */
 function collidePlayersBallFair(p1, p2, ball) {
     const p1Score = getPlayerBallContactScore(p1, ball);
     const p2Score = getPlayerBallContactScore(p2, ball);
@@ -421,6 +676,13 @@ function collidePlayersBallFair(p1, p2, ball) {
 // --- FUNCIONES AUXILIARES DE COLISIÓN ---
 // Separan la pelota y calculan el rebote para no repetir código 3 veces
 
+/**
+ * Corrige un solapamiento pelota-rectángulo y aplica rebote.
+ *
+ * dx/dy apuntan desde el punto más cercano del rectángulo hacia el centro de la
+ * pelota. Al normalizarlos obtenemos la normal de salida. Si la pelota está
+ * exactamente en un punto degenerado se usa una normal horizontal de respaldo.
+ */
 function resolveCircleToRect(ball, p, dx, dy, dist2) {
     const dist = Math.sqrt(dist2);
     if (dist < 0.001) {
@@ -439,6 +701,12 @@ function resolveCircleToRect(ball, p, dx, dy, dist2) {
     applyBounce(ball, p, nx, ny);
 }
 
+/**
+ * Corrige un solapamiento pelota-círculo y aplica rebote normal.
+ *
+ * Sirve para cabeza y pie de apoyo. El zapato de golpeo usa otra función porque
+ * tiene velocidad propia derivada del ángulo de patada.
+ */
 function resolveCircleToCircle(ball, p, dx, dy, dist2, shapeR) {
     const dist = Math.sqrt(dist2);
     if (dist < 0.001) {
@@ -457,6 +725,14 @@ function resolveCircleToCircle(ball, p, dx, dy, dist2, shapeR) {
     applyBounce(ball, p, nx, ny);
 }
 
+/**
+ * Aplica un rebote arcade entre pelota y jugador sobre una normal dada.
+ *
+ * mathVelAlongNormal usa las velocidades jugables, que pueden estar capadas o
+ * corregidas por la lógica arcade. realVelAlongNormal usa la velocidad medida
+ * del frame para el sonido; así no suenan impactos cuando dos cuerpos están
+ * pegados pero realmente no se mueven.
+ */
 function applyBounce(ball, p, nx, ny) {
     // AVISAMOS QUE HAY CONTACTO ESTE FRAME
     p.isTouchingBall = true;
@@ -467,6 +743,8 @@ function applyBounce(ball, p, nx, ny) {
     const mathRvy = ball.vy - p.vy;
     const mathVelAlongNormal = mathRvx * nx + mathRvy * ny;
 
+    // Si la velocidad relativa no entra contra la superficie con suficiente
+    // fuerza, solo se mantiene la separación ya aplicada y no se añade impulso.
     if (mathVelAlongNormal >= -40) return;
 
     // 2. SISTEMA DE AUDIO (Usa la velocidad REAL)
@@ -480,10 +758,14 @@ function applyBounce(ball, p, nx, ny) {
     }
 
     // 3. RESOLUCIÓN DE REBOTE
+    // Impulso escalar de un choque elástico simplificado. No hay masa explícita:
+    // se asume masa 1 y todo el impulso se aplica a la pelota.
     const j = -(1 + RESTITUTION) * mathVelAlongNormal;
     ball.vx += j * nx;
     ball.vy += j * ny;
 
+    // Límite de seguridad para que varias colisiones encadenadas no creen
+    // velocidades imposibles y rompan la jugabilidad.
     const MAX_BALL_SPEED = 950;
     const spd = Math.hypot(ball.vx, ball.vy);
     if (spd > MAX_BALL_SPEED) {
@@ -492,6 +774,14 @@ function applyBounce(ball, p, nx, ny) {
     }
 }
 
+/**
+ * Aplica el rebote especial del zapato de golpeo.
+ *
+ * El zapato no tiene una velocidad física real independiente, así que se
+ * sintetiza una velocidad a partir del movimiento del jugador y del estado de
+ * la pierna. Cuando la pierna sube se añade fuerza hacia delante y hacia arriba
+ * para que el chut tenga sensación de latigazo.
+ */
 function applyShoeBounce(ball, p, nx, ny) {
     // AVISAMOS QUE HAY CONTACTO ESTE FRAME
     p.isTouchingBall = true;
@@ -506,6 +796,8 @@ function applyShoeBounce(ball, p, nx, ny) {
     let isLegMovingDown = !p.isKicking && p.kickAngle > 0;
 
     if (isLegMovingUp) {
+        // El jugador que mira a la derecha empuja en X positiva; el que mira a
+        // la izquierda empuja en X negativa. La Y negativa da elevación.
         let kickForceX = (p.isRightFacing ? 1 : -1) * (p.kickSpeed * 50);
         let kickForceY = -p.kickSpeed * 40;
 
@@ -527,6 +819,8 @@ function applyShoeBounce(ball, p, nx, ny) {
 
     }
     else if (isLegMovingDown) {
+        // Al bajar la pierna el pie arrastra menos hacia portería y más hacia
+        // abajo, de modo que no todos los contactos con el zapato son disparos.
         shoeVx += (p.isRightFacing ? -1 : 1) * 200;
         shoeVy += 300;
     }
@@ -568,6 +862,12 @@ function applyShoeBounce(ball, p, nx, ny) {
     }
 }
 
+/**
+ * Comprueba la pelota contra los largueros de ambas porterías.
+ *
+ * Los postes laterales no se crean aquí; el juego usa el larguero superior como
+ * rectángulo estático principal para los rebotes de la pelota.
+ */
 function checkGoalCollisions(ball, leftGoal, rightGoal) {
     const hitboxes = getGoalCrossbarRects(leftGoal, rightGoal);
 
@@ -576,6 +876,13 @@ function checkGoalCollisions(ball, leftGoal, rightGoal) {
     }
 }
 
+/**
+ * Versión discreta del choque pelota-zapato.
+ *
+ * Primero separa geométricamente la pelota con la normal real del solapamiento y
+ * después delega en applyShoeBounce para reutilizar la misma respuesta que en el
+ * barrido continuo.
+ */
 function resolveShoeToCircle(ball, p, dx, dy, dist2, shapeR) {
     // AVISAMOS QUE HAY CONTACTO ESTE FRAME
     p.isTouchingBall = true;
@@ -597,6 +904,12 @@ function resolveShoeToCircle(ball, p, dx, dy, dist2, shapeR) {
     applyShoeBounce(ball, p, nx, ny);
 }
 
+/**
+ * Resuelve colisión de pelota contra un rectángulo estático.
+ *
+ * Se usa para los largueros: se proyecta el centro de la pelota al punto más
+ * cercano del rectángulo, se separa por la normal y se refleja la velocidad.
+ */
 function collideBallStaticRect(ball, rect) {
     // Buscar el punto del rectángulo más cercano al centro de la pelota
     const closestX = clamp(ball.x, rect.x, rect.x + rect.w);
@@ -640,6 +953,12 @@ function collideBallStaticRect(ball, rect) {
     }
 }
 
+/**
+ * Crea las hitboxes físicas del larguero de cada portería.
+ *
+ * allowStand=false indica que los jugadores no deberían poder quedarse apoyados
+ * encima de estos rectángulos como si fueran plataformas.
+ */
 function getGoalCrossbarRects(leftGoal, rightGoal) {
     return [
         { x: leftGoal.x, y: leftGoal.y, w: leftGoal.w, h: GOAL_POST_SIZE, allowStand: false },
@@ -647,6 +966,13 @@ function getGoalCrossbarRects(leftGoal, rightGoal) {
     ];
 }
 
+/**
+ * Añade bloqueadores invisibles sobre las porterías para los jugadores.
+ *
+ * Los largueros detienen la pelota, pero los jugadores también necesitan una
+ * barrera vertical que impida atravesar el espacio por encima de la portería.
+ * preferHorizontalExit fuerza que la salida sea lateral y no hacia arriba/abajo.
+ */
 function getGoalPlayerCollisionRects(leftGoal, rightGoal) {
     const crossbars = getGoalCrossbarRects(leftGoal, rightGoal);
     const airBlockers = crossbars.map((crossbar) => ({
@@ -661,6 +987,9 @@ function getGoalPlayerCollisionRects(leftGoal, rightGoal) {
     return crossbars.concat(airBlockers);
 }
 
+/**
+ * Resuelve todas las colisiones de un jugador contra las porterías.
+ */
 function collidePlayerGoals(p, leftGoal, rightGoal) {
     const hitboxes = getGoalPlayerCollisionRects(leftGoal, rightGoal);
 
@@ -671,6 +1000,13 @@ function collidePlayerGoals(p, leftGoal, rightGoal) {
 
 // --- SISTEMA DE COLISIÓN: JUGADOR VS PORTERÍA (Largueros) ---
 
+/**
+ * Comprueba cuerpo, cabeza y zapatos contra un rectángulo estático.
+ *
+ * Las hitboxes se recalculan después de cada resolución porque mover el cuerpo
+ * también desplaza cabeza y zapatos. Si se usaran las coordenadas antiguas, la
+ * segunda prueba podría resolver desde una posición ya obsoleta.
+ */
 function collidePlayerStaticRect(p, rect) {
     // Obtenemos las hitboxes centralizadas
     let h = getPlayerHitboxes(p);
@@ -688,7 +1024,13 @@ function collidePlayerStaticRect(p, rect) {
     resolveCircStaticRectPlayer(p, h.supportShoe, rect);
 }
 
-// Helper: Rectángulo (Cuerpo) vs Rectángulo Estático (Portería)
+/**
+ * Resuelve cuerpo rectangular contra un rectángulo estático.
+ *
+ * Calcula cuánto se solapan en cada dirección y empuja por el eje más adecuado.
+ * Si el rectángulo no permite apoyo, o si es un bloqueador de aire, se prioriza
+ * la salida horizontal para que el jugador no pueda usar la portería como suelo.
+ */
 function resolveRectStaticRectPlayer(p, bodyBox, rect) {
     const bLeft = bodyBox.x;
     const bRight = bodyBox.x + bodyBox.w;
@@ -719,6 +1061,7 @@ function resolveRectStaticRectPlayer(p, bodyBox, rect) {
     const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
 
     if (minOverlap === overlapTop) {
+        // El jugador cae desde arriba sobre una superficie pisable.
         if (canStand && p.vy >= 0) {
             p.y -= overlapTop;
             p.vy = 0;
@@ -736,6 +1079,9 @@ function resolveRectStaticRectPlayer(p, bodyBox, rect) {
     }
 }
 
+/**
+ * Empuja un jugador fuera de un rectángulo por el lado horizontal más cercano.
+ */
 function pushPlayerRectHorizontally(p, bodyBox, rect, overlapLeft, overlapRight) {
     const bodyCenterX = bodyBox.x + bodyBox.w / 2;
     const rectCenterX = rect.x + rect.w / 2;
@@ -749,7 +1095,13 @@ function pushPlayerRectHorizontally(p, bodyBox, rect, overlapLeft, overlapRight)
     p.vx = 0;
 }
 
-// Helper: Círculo (Cabeza/Zapato) vs Rectángulo Estático (Portería)
+/**
+ * Resuelve una hitbox circular del jugador contra un rectángulo estático.
+ *
+ * Para cabeza y zapatos se vuelve a usar la proyección al punto más cercano del
+ * rectángulo. Cuando el rectángulo no admite apoyo, se fuerza salida lateral si
+ * el círculo está en la mitad superior del bloqueador.
+ */
 function resolveCircStaticRectPlayer(p, circ, rect) {
     const closestX = clamp(circ.x, rect.x, rect.x + rect.w);
     const closestY = clamp(circ.y, rect.y, rect.y + rect.h);
@@ -786,7 +1138,19 @@ function resolveCircStaticRectPlayer(p, circ, rect) {
     }
 }
 
-// 2. La nueva función principal
+/**
+ * Resuelve las colisiones entre los dos jugadores.
+ *
+ * El orden es deliberado:
+ * 1. Cuerpo-cuerpo para el empuje principal.
+ * 2. Cabeza-cabeza para choques aéreos.
+ * 3. Zapato-cabeza para patadas o bloqueos con el pie.
+ * 4. Cabeza-cuerpo para evitar atravesar espalda/nuca.
+ * 5. Zapato-cuerpo para apoyos o empujes con el pie.
+ *
+ * Tras cada bloque se recalculan hitboxes, porque cada resolución puede mover a
+ * un jugador y dejar inválidas las coordenadas calculadas antes.
+ */
 function collidePlayers(p1, p2) {
     // 1. Guardamos si se estaban tocando en el fotograma anterior
     p1.wasTouchingRival = p1.isTouchingRival || false;
@@ -842,11 +1206,25 @@ function collidePlayers(p1, p2) {
 
 // 3. Resoluciones físicas específicas para Jugador vs Jugador
 
+/**
+ * Marca que un jugador está apoyado sobre el rival, no sobre el suelo real.
+ *
+ * groundedByPlayer permite distinguir este apoyo de tocar el FLOOR_Y. Así otras
+ * rutinas pueden decidir si permitir salto, resetear estados o evitar saltos
+ * encadenados raros al deslizarse por encima del otro jugador.
+ */
 function markGroundedOnRival(player) {
     player.onGround = true;
     player.groundedByPlayer = true;
 }
 
+/**
+ * Mueve a un jugador por una resolución de contacto con el rival.
+ *
+ * La elevación vertical se limita con rivalLiftBudget para que varios contactos
+ * del mismo frame (cuerpo, cabeza, pie) no sumen elevación excesiva y lancen al
+ * jugador hacia arriba.
+ */
 function movePlayerByRivalContact(player, dx, dy) {
     player.x += dx;
 
@@ -861,6 +1239,13 @@ function movePlayerByRivalContact(player, dx, dy) {
     player.y += dy;
 }
 
+/**
+ * Comprueba si un rectángulo estaba encima de un círculo en el frame anterior.
+ *
+ * Esta prueba temporal evita interpretar como "apoyo" un choque lateral que en
+ * la posición final parece vertical. Solo se permite sostener al jugador si ya
+ * venía claramente desde arriba.
+ */
 function wasRectAboveCircle(player, rect, circleOwner, circle, tolerance = 2) {
     const prevPlayerY = player.prevY !== undefined ? player.prevY : player.y;
     const prevCircleOwnerY = circleOwner.prevY !== undefined ? circleOwner.prevY : circleOwner.y;
@@ -870,6 +1255,12 @@ function wasRectAboveCircle(player, rect, circleOwner, circle, tolerance = 2) {
     return prevRectBottom <= prevCircleTop + tolerance;
 }
 
+/**
+ * Variante círculo-círculo de la comprobación de apoyo del frame anterior.
+ *
+ * Se usa, por ejemplo, para decidir si la cabeza puede quedar apoyada sobre el
+ * zapato de otro jugador en lugar de recibir un empuje lateral.
+ */
 function wasCircleAboveCircle(player, playerCircle, circleOwner, ownerCircle, tolerance = 2) {
     const prevPlayerY = player.prevY !== undefined ? player.prevY : player.y;
     const prevCircleOwnerY = circleOwner.prevY !== undefined ? circleOwner.prevY : circleOwner.y;
@@ -879,6 +1270,13 @@ function wasCircleAboveCircle(player, playerCircle, circleOwner, ownerCircle, to
     return prevPlayerCircleBottom <= prevOwnerCircleTop + tolerance;
 }
 
+/**
+ * Aplica el desplazamiento de un contacto zapato-rival.
+ *
+ * Cuando el contacto empujaría al objetivo hacia arriba pero no está permitido
+ * tratarlo como apoyo, se convierte en empuje horizontal. Esto evita que un pie
+ * lateral levante al rival como si fuese una plataforma.
+ */
 function movePlayerByShoeContact(pTarget, pAttacker, nx, ny, overlap, allowVerticalLift) {
     const dx = -nx * overlap;
     const dy = -ny * overlap;
@@ -896,6 +1294,13 @@ function movePlayerByShoeContact(pTarget, pAttacker, nx, ny, overlap, allowVerti
     movePlayerByRivalContact(pTarget, dx, dy);
 }
 
+/**
+ * Resuelve el solapamiento entre los cuerpos rectangulares de ambos jugadores.
+ *
+ * Por defecto separa horizontalmente, que es lo más estable para choques de
+ * carrera. Solo resuelve verticalmente cuando el frame anterior demuestra que un
+ * jugador estaba claramente encima y cayendo sobre el otro.
+ */
 function resolveBodyBody(p1, p2, b1, b2) {
     const overlapX = Math.max(0, Math.min(b1.x + b1.w, b2.x + b2.w) - Math.max(b1.x, b2.x));
     const overlapY = Math.max(0, Math.min(b1.y + b1.h, b2.y + b2.h) - Math.max(b1.y, b2.y));
@@ -945,6 +1350,13 @@ function resolveBodyBody(p1, p2, b1, b2) {
     }
 }
 
+/**
+ * Resuelve choques entre dos hitboxes circulares de jugadores.
+ *
+ * Principalmente cabeza-cabeza. Si el choque era lateral, separa en X para no
+ * generar apoyos falsos. Si había apilamiento vertical, reparte el empuje sobre
+ * ambos jugadores y puede marcar como apoyado al que cae encima.
+ */
 function resolveCircCircPlayer(p1, p2, c1, c2) {
     const dx = c2.x - c1.x;
     const dy = c2.y - c1.y;
@@ -993,6 +1405,13 @@ function resolveCircCircPlayer(p1, p2, c1, c2) {
     }
 }
 
+/**
+ * Resuelve cabeza de un jugador contra cuerpo rectangular del rival.
+ *
+ * Protege los casos donde la cabeza queda metida en el torso contrario. Los
+ * choques laterales se sacan horizontalmente para no levantar al jugador; los
+ * contactos desde arriba/abajo usan la normal real.
+ */
 function resolveHeadBodyPlayer(pHeadOwner, pBodyOwner, head, body) {
     const closestX = clamp(head.x, body.x, body.x + body.w);
     const closestY = clamp(head.y, body.y, body.y + body.h);
@@ -1036,6 +1455,13 @@ function resolveHeadBodyPlayer(pHeadOwner, pBodyOwner, head, body) {
     }
 }
 
+/**
+ * Resuelve zapato circular contra cuerpo rectangular del rival.
+ *
+ * Esta función cubre tanto el pie de golpeo como el pie de apoyo. Si el zapato
+ * está realmente debajo del rival y este cae sobre él, puede actuar como apoyo.
+ * En otros ángulos se usa como empuje para evitar atraviesos sin crear saltos.
+ */
 function resolveCircRectPlayer(circ, pAttacker, pTarget, rect, isKickFoot = true) {
     const closestX = clamp(circ.x, rect.x, rect.x + rect.w);
     const closestY = clamp(circ.y, rect.y, rect.y + rect.h);
@@ -1077,6 +1503,13 @@ function resolveCircRectPlayer(circ, pAttacker, pTarget, rect, isKickFoot = true
     }
 }
 
+/**
+ * Resuelve zapato contra cabeza del rival.
+ *
+ * Además de separar las hitboxes, registra si la pierna levantada ha golpeado al
+ * rival para disparar el sonido adecuado y para que la IA pueda saber que hubo
+ * contacto ofensivo.
+ */
 function resolveShoeHeadPlayer(shoe, pAttacker, pTarget, head, isKickFoot = true) {
     const dx = shoe.x - head.x;
     const dy = shoe.y - head.y;
@@ -1114,6 +1547,13 @@ function resolveShoeHeadPlayer(shoe, pAttacker, pTarget, head, isKickFoot = true
     }
 }
 
+/**
+ * Estabiliza la pelota cuando queda entre dos jugadores espalda contra espalda.
+ *
+ * En ese caso se elimina la velocidad y se recentra la pelota en el hueco entre
+ * los cuerpos. Es una regla de estabilidad: mejor congelar la pelota un instante
+ * que permitir que una doble resolución la dispare o la meta dentro de un torso.
+ */
 function resolveBackToBackBallSqueeze(ball, p1, p2) {
     if (!isBackToBackBallSqueeze(ball, p1, p2)) return;
 
@@ -1132,8 +1572,13 @@ function resolveBackToBackBallSqueeze(ball, p1, p2) {
     syncBallSweepOrigin(ball);
 }
 
-// Detecta si la pelota está atrapada entre dos jugadores que se empujan mutuamente
-// y la protege para evitar que se atraviese. Funciona de frente Y de espaldas.
+/**
+ * Detecta y corrige una pelota atrapada entre dos jugadores.
+ *
+ * Funciona cuando los cuerpos comprimen la pelota horizontalmente. Si todavía
+ * existe hueco, recoloca la pelota dentro de una zona segura entre ambos. Si no
+ * hay hueco suficiente, delega en una salida vertical hacia arriba.
+ */
 function resolveBallSqueezeUp(ball, p1, p2) {
     const h1 = getPlayerHitboxes(p1);
     const h2 = getPlayerHitboxes(p2);
@@ -1204,6 +1649,13 @@ function resolveBallSqueezeUp(ball, p1, p2) {
     syncBallSweepOrigin(ball);
 }
 
+/**
+ * Escapa de una pinza horizontal sin hueco suficiente.
+ *
+ * La pelota se coloca justo por encima de la parte común de los cuerpos y se le
+ * da una velocidad vertical mínima hacia arriba. También separa un poco a los
+ * jugadores para que en el frame siguiente no vuelvan a cerrar la pinza.
+ */
 function resolveBallVerticalPinchEscape(ball, leftPlayer, rightPlayer, leftHitbox, rightHitbox) {
     const leftBodyRight = leftHitbox.body.x + leftHitbox.body.w;
     const rightBodyLeft = rightHitbox.body.x;
@@ -1224,6 +1676,13 @@ function resolveBallVerticalPinchEscape(ball, leftPlayer, rightPlayer, leftHitbo
     syncBallSweepOrigin(ball);
 }
 
+/**
+ * Evita que la pelota quede aplastada entre un jugador y el suelo.
+ *
+ * Cuando la pelota está casi en el suelo y una o dos hitboxes de jugador la
+ * cubren por encima durante varios frames, se levanta ligeramente. El contador
+ * _floorCrushFrames evita activar la corrección por contactos instantáneos.
+ */
 function resolveBallFloorCrush(ball, p1, p2, floorY, worldW) {
     const nearFloor = ball.y + ball.r > floorY - 2;
     if (!nearFloor) {
@@ -1254,6 +1713,8 @@ function resolveBallFloorCrush(ball, p1, p2, floorY, worldW) {
     ball._floorCrushFrames = isStuck ? (ball._floorCrushFrames || 0) + 1 : 0;
     if (ball._floorCrushFrames < (twoPlayerTrap ? 2 : 3)) return;
 
+    // La salida lateral completa queda comentada más abajo. La corrección activa
+    // actual es conservadora: sube la pelota unos píxeles y reinicia el barrido.
     ball.y = floorY - ball.r - 3;
 
     // if (crushingPlayers.length === 2) {
@@ -1305,6 +1766,13 @@ function resolveBallFloorCrush(ball, p1, p2, floorY, worldW) {
     syncBallSweepOrigin(ball);
 }
 
+/**
+ * Determina si un jugador está aplastando la pelota contra el suelo.
+ *
+ * Devuelve el rango horizontal total de sus hitboxes relevantes. Ese rango se
+ * conserva para posibles estrategias de escape lateral y para saber desde dónde
+ * se está cerrando la trampa.
+ */
 function getFloorCrushingPlayer(ball, player, hitboxes, floorY, ballTop, ballLeft, ballRight) {
     const ranges = [
         { minX: hitboxes.body.x, maxX: hitboxes.body.x + hitboxes.body.w },
@@ -1337,13 +1805,22 @@ function getFloorCrushingPlayer(ball, player, hitboxes, floorY, ballTop, ballLef
     };
 }
 
+/**
+ * Limita v al intervalo [min, max].
+ */
 function clamp(v, min, max) {
     return Math.max(min, Math.min(max, v));
 }
 
-// Función centralizada para reproducir el sonido de patadas entre jugadores
+/**
+ * Reproduce el sonido de patada entre jugadores con filtros de repetición.
+ *
+ * Solo suena si el contacto no venía ya del frame anterior y si hay movimiento
+ * real suficiente, o si la pierna está en pleno gesto de golpeo. Se guarda el
+ * cooldown en el objetivo para no repetir el audio cada frame de contacto.
+ */
 function playPlayerKickSound(pAttacker, pTarget) {
-    // Si YA estaban tenía la pierna levantada en el frame anterior, ignoramos el sonido
+    // Si ya venía golpeando al rival en el frame anterior, ignoramos el sonido.
     if (pAttacker.wasKickingRival) return;
 
     if (!pTarget.lastKickHit || performance.now() - pTarget.lastKickHit > 300) {
@@ -1365,7 +1842,13 @@ function playPlayerKickSound(pAttacker, pTarget) {
     }
 }
 
-// Función centralizada para reproducir el sonido de impacto entre jugadores
+/**
+ * Reproduce el sonido de choque entre jugadores con cooldown y umbral físico.
+ *
+ * Usa velocidades reales del último frame para diferenciar un impacto de dos
+ * jugadores simplemente empujándose. El cooldown se marca en ambos cuerpos para
+ * que el sonido no se duplique al resolver varias hitboxes en cadena.
+ */
 function playPlayerCollideSound(p1, p2) {
     // Si YA estaban tocándose en el frame anterior, ignoramos el sonido
     if (p1.wasTouchingRival) return;
@@ -1388,6 +1871,8 @@ function playPlayerCollideSound(p1, p2) {
 
 // --- EXPORTACIÓN PARA NODE.JS ---
 if (typeof module !== 'undefined' && module.exports) {
+    // Export mínimo para pruebas o simulaciones en Node. En navegador estas
+    // funciones quedan disponibles en el ámbito global al cargar el script.
     module.exports = {
         getPlayerHitboxes, arePlayersBackToBack, isBackToBackBallSqueeze,
         collidePlayerBall, collidePlayersBallFair, checkGoalCollisions, collidePlayerStaticRect, collidePlayerGoals,

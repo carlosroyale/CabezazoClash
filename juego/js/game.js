@@ -242,46 +242,81 @@ function updatePhysicsStep(dt) {
         }
     }
 
-    // 1. Controles
+    // 1. Controles: se leen una sola vez por substep.
+    // Aquí solo cambiamos velocidades/intenciones de los jugadores.
     controlPlayer(p1, dt, "KeyA", "KeyD", "KeyW", "Space", keys);
 
     if (botEnabled) {
         const botServeChase = serveState.active && serveState.server === "right";
         const botShouldPressure = serveState.active && serveState.server !== "right";
         const botIsLosing = score.right < score.left;
+
         controlBot(p2, dt, ball, W, FLOOR_Y, keys, p1, botServeChase, botShouldPressure, botIsLosing);
     }
     else {
         controlPlayer(p2, dt, "ArrowLeft", "ArrowRight", "ArrowUp", "KeyP", keys);
     }
 
-    // 2. Física jugadores
+    // 2. Integración física: una sola vez por substep.
+    // Aquí se aplica gravedad y se actualizan posiciones según velocidad.
+    // Importante: no conviene repetir esto dentro del solver de colisiones.
     updatePlayer(p1, dt, W, FLOOR_Y);
     updatePlayer(p2, dt, W, FLOOR_Y);
+    updateBall(ball, dt, W, FLOOR_Y);
 
-    // 2.1 Colisiones entre jugadores
+    // Guardamos los jugadores actuales para las funciones que necesitan consultar
+    // el estado conjunto, por ejemplo la pinza espalda contra espalda.
+    window.currentPlayers = [p1, p2];
+
+    // 3. Colisiones jugador-jugador.
+    // Se resuelven antes de la pelota porque pueden mover los cuerpos y cambiar
+    // la posición final de sus hitboxes.
     collidePlayers(p1, p2);
 
-    // 2.2 Colisiones del jugador con la portería
+    // 3.1 Colisiones de jugadores contra porterías.
+    // También pueden recolocar jugadores, así que van antes del solver de pelota.
     collidePlayerGoals(p1, leftGoal, rightGoal);
     collidePlayerGoals(p2, leftGoal, rightGoal);
 
-    // 3. Física pelota
-    updateBall(ball, dt, W, FLOOR_Y);
+    // 4. Solver iterativo de pelota.
+    // Repetimos solo restricciones de pelota, no movimiento.
+    // Esto evita que una colisión corregida rompa otra en el mismo substep.
+    for (let i = 0; i < 4; i++) {
+        const playersBackToBack = arePlayersBackToBack(p1, p2);
 
-    // 4. Colisiones jugador-pelota
-    window.currentPlayers = [p1, p2];
-    const playersBackToBack = arePlayersBackToBack(p1, p2);
-    if (playersBackToBack) {
-        resolveBackToBackBallSqueeze(ball, p1, p2);
+        // Caso especial: si los jugadores están de espaldas y la pelota queda
+        // comprimida entre ambos, se estabiliza antes de aplicar rebotes normales.
+        if (playersBackToBack) {
+            resolveBackToBackBallSqueeze(ball, p1, p2);
+        }
+
+        // Colisión principal jugador-pelota.
+        // Se repite para que cuerpo, cabeza, zapato y pie de apoyo converjan mejor.
+        collidePlayersBallFair(p1, p2, ball);
+
+        // Correcciones anti-pinza entre jugadores.
+        // Si están de espaldas se usa una regla específica; si no, se intenta liberar
+        // la pelota hacia una zona segura entre ambos.
+        if (playersBackToBack) {
+            resolveBackToBackBallSqueeze(ball, p1, p2);
+        }
+        else {
+            resolveBallSqueezeUp(ball, p1, p2);
+        }
+
+        // Rebotes de pelota contra largueros.
+        checkGoalCollisions(ball, leftGoal, rightGoal);
     }
-    collidePlayersBallFair(p1, p2, ball);
-    if (playersBackToBack) resolveBackToBackBallSqueeze(ball, p1, p2);
-    else resolveBallSqueezeUp(ball, p1, p2);
+
+    // 5. Anti-atasco con contador.
+    // Va fuera del bucle porque usa _floorCrushFrames; si se repitiese dentro,
+    // contaría varias veces en un único substep.
     resolveBallFloorCrush(ball, p1, p2, FLOOR_Y, W);
 
-    // 5. Colisiones pelota - porterías
-    checkGoalCollisions(ball, leftGoal, rightGoal);
+    // 6. Garantía final antes de dibujar.
+    // Última defensa: si alguna corrección anterior empujó el balón bajo el suelo,
+    // lo recolocamos antes de renderizar el frame.
+    resolveBallFloor(ball, FLOOR_Y);
 
     // --- 5.1 MURO DE CONTENCIÓN ABSOLUTO (EL TRUCO PARA LA VELOCIDAD REAL) ---
     // Si la pelota es empujada fuera del mapa, devolvemos la pelota a su sitio,
