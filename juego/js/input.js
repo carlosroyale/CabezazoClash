@@ -2,7 +2,22 @@
 
 const keys = new Set();
 
+const gameKeyCodes = new Set([
+    "KeyA",
+    "KeyD",
+    "KeyW",
+    "Space",
+    "ArrowLeft",
+    "ArrowRight",
+    "ArrowUp",
+    "KeyP",
+    "KeyR"
+]);
+
 const onKeyDown = (e) => {
+    if (gameKeyCodes.has(e.code) && e.cancelable) {
+        e.preventDefault();
+    }
 
     // Si el juego ha terminado o no ha empezado, ignoramos las teclas
     if (!window.Game || !window.Game.isRunning() || window.Game.isFinished()) return;
@@ -31,6 +46,8 @@ const onKeyDown = (e) => {
                 }
             }
         }
+
+        return;
     }
 
     keys.add(e.code);
@@ -115,6 +132,10 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 const onKeyUp = (e) => {
+    if (gameKeyCodes.has(e.code) && e.cancelable) {
+        e.preventDefault();
+    }
+
     // Bloqueamos también el levantamiento de tecla si el juego no corre
     if (!window.Game || !window.Game.isRunning() || window.Game.isFinished()) {
         keys.clear();
@@ -131,4 +152,4 @@ const onKeyUp = (e) => {
 
 // Añadimos { passive: false } para que el preventDefault del espacio funcione correctamente
 window.addEventListener("keydown", onKeyDown, { passive: false });
-window.addEventListener("keyup", onKeyUp);
+window.addEventListener("keyup", onKeyUp, { passive: false });

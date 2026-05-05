@@ -187,7 +187,7 @@ window.configurarEventosSocket = function() {
                 p1: {}, p2: {}, ball: {},
                 score: {left: 0, right: 0}, // ¡Vital para que no crashee!
                 countdown: 3.0,
-                gameTime: 60,
+                gameTime: MATCH_DURATION_SECONDS,
                 isPaused: false,
                 pauseAvailability: { ...DEFAULT_ONLINE_PAUSE_AVAILABILITY }
             };
@@ -245,7 +245,7 @@ window.configurarEventosSocket = function() {
                 p1: {}, p2: {}, ball: {},
                 score: {left: 0, right: 0}, // ¡Vital para que no crashee!
                 countdown: 3.0,
-                gameTime: 60,
+                gameTime: MATCH_DURATION_SECONDS,
                 isPaused: false,
                 pauseTimeRemaining: 0,
                 resumeRequests: { p1: false, p2: false },

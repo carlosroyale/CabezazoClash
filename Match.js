@@ -2,6 +2,7 @@
 const { makePlayer, updatePlayer, updateBall, controlPlayer } = require('./juego/js/entities.js');
 const { collidePlayers, collidePlayersBallFair, checkGoalCollisions, collidePlayerGoals, arePlayersBackToBack, resolveBackToBackBallSqueeze, resolveBallSqueezeUp, resolveBallFloorCrush } = require('./juego/js/physics.js');
 const { registrarPartidaOnline } = require('./db.js');
+const { MATCH_DURATION_SECONDS } = require('./juego/js/constants.js');
 
 const W = 1845;
 const H = 1038;
@@ -68,7 +69,7 @@ class Match {
             p2: makePlayer(W - 180, FLOOR_Y - 90, "J2", false),
             ball: { r: 18, x: W / 2, y: FLOOR_Y - 200, vx: 0, vy: 0, angle: 0 },
             score: { left: 0, right: 0 },
-            gameTime: 60,
+            gameTime: MATCH_DURATION_SECONDS,
             isPaused: false,
             pauseTimeRemaining: 0,
             resumeRequests: { p1: false, p2: false },

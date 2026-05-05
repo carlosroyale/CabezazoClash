@@ -12,7 +12,7 @@ let ball = {r: 18, x: 0, y: 0, vx: 0, vy: 0, angle: 0};
 let p1 = {};
 let p2 = {};
 let score = {left: 0, right: 0};
-let gameTime = 60; // 60 segundos
+let gameTime = MATCH_DURATION_SECONDS;
 let matchFinishedExternally = false;
 
 // Variables de Juego y Bucle
@@ -139,7 +139,7 @@ function startBasicGame({canvas, ctx: ctxParam, scoreEl: scoreElParam, timerEl: 
 
     // Reiniciar valores
     score = {left: 0, right: 0};
-    gameTime = 60;
+    gameTime = MATCH_DURATION_SECONDS;
     updateScore();
     updateTimer();
     serveState = { server: null, active: false };
