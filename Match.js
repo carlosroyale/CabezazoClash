@@ -1,5 +1,5 @@
 // Match.js - Molde para partidas individuales
-const { makePlayer, updatePlayer, updateBall, controlPlayer } = require('./juego/js/entities.js');
+const { makePlayer, updatePlayer, updateBall, resolveBallFloor, controlPlayer } = require('./juego/js/entities.js');
 const { collidePlayers, collidePlayersBallFair, checkGoalCollisions, collidePlayerGoals, arePlayersBackToBack, resolveBackToBackBallSqueeze, resolveBallSqueezeUp, resolveBallFloorCrush } = require('./juego/js/physics.js');
 const { registrarPartidaOnline } = require('./db.js');
 const { MATCH_DURATION_SECONDS } = require('./juego/js/constants.js');
