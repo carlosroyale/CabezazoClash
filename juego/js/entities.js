@@ -65,6 +65,8 @@ function canPlayBallReboundSound(ball, cooldownMs = 140) {
 function updateBall(ball, dt, W, FLOOR_Y) {
     ball.prevX = ball.x;
     ball.prevY = ball.y;
+    ball.staticPrevX = ball.x;
+    ball.staticPrevY = ball.y;
 
     ball.vy += GRAV * dt;
     ball.x += ball.vx * dt;
@@ -115,7 +117,223 @@ function resolveBallFloor(ball, FLOOR_Y) {
     }
 }
 
-function controlPlayer(p, dt, leftKey, rightKey, jumpKey, kickKey, keys) {
+const RETURN_SHOE_LOCAL_CENTER_X = -3.5;
+const RETURN_SHOE_LOCAL_CENTER_Y = 35;
+const RETURN_SHOE_RADIUS = 14;
+const RETURN_BALL_BLOCK_MARGIN = 1.5;
+const KICK_ADVANCE_BLOCK_MARGIN = 1.5;
+const CONTROL_KICK_SHOE_SEPARATION_ANGLE = 0.12;
+
+/**
+ * Calcula el centro físico del zapato para un ángulo concreto de pierna.
+ *
+ * Esta función replica la misma geometría que usa la física del zapato: el
+ * centro local del zapato se rota alrededor del centro del jugador y se espeja
+ * según el lado al que mira. Se usa aquí, en control de entrada, porque las
+ * decisiones de "puede subir/bajar la pierna" ocurren antes del solver de
+ * colisiones. Así podemos impedir que la animación de la pierna atraviese el
+ * balón en vez de esperar a corregirlo cuando ya hay solapamiento.
+ */
+function getReturnShoeCenterAtAngle(p, kickAngle) {
+    const localShoeX = p.isRightFacing ? RETURN_SHOE_LOCAL_CENTER_X : -RETURN_SHOE_LOCAL_CENTER_X;
+    const localShoeY = RETURN_SHOE_LOCAL_CENTER_Y;
+    const rot = p.isRightFacing ? -kickAngle : kickAngle;
+
+    return {
+        x: p.x + (localShoeX * Math.cos(rot) - localShoeY * Math.sin(rot)),
+        y: p.y + (localShoeX * Math.sin(rot) + localShoeY * Math.cos(rot))
+    };
+}
+
+/**
+ * Bloquea el RETORNO de la pierna cuando el zapato tiene el balón debajo.
+ *
+ * Problema que evita:
+ * - El jugador suelta la tecla de chute.
+ * - La pierna empieza a bajar hacia reposo.
+ * - Si hay un balón justo debajo, el zapato cinemático seguiría bajando aunque
+ *   la pelota esté ocupando ese espacio.
+ * - Visualmente parece que el zapato atraviesa el balón.
+ *
+ * La comprobación se hace mirando el siguiente ángulo posible:
+ * - Solo actúa si el ángulo va a disminuir, es decir, la pierna vuelve.
+ * - Solo actúa si el centro del zapato bajaría en pantalla.
+ * - Solo actúa si el balón está por debajo del zapato actual.
+ * - Solo bloquea si el siguiente centro del zapato invadiría el radio combinado
+ *   zapato + balón, con un pequeño margen.
+ */
+function shouldBlockKickReturnOnBall(p, ball, nextKickAngle) {
+    // Sin balón, sin pierna levantada o sin reducción real de ángulo no hay retorno que bloquear.
+    if (!ball || p.kickAngle <= 0 || nextKickAngle >= p.kickAngle) return false;
+
+    const currentShoe = getReturnShoeCenterAtAngle(p, p.kickAngle);
+    const nextShoe = getReturnShoeCenterAtAngle(p, nextKickAngle);
+
+    // En canvas, Y crece hacia abajo. Si el siguiente centro no baja, no es el caso problemático.
+    if (nextShoe.y <= currentShoe.y) return false;
+
+    // Esta protección solo aplica cuando el balón está debajo del zapato, no a contactos laterales o por arriba.
+    if (ball.y < currentShoe.y) return false;
+
+    const dx = ball.x - nextShoe.x;
+    const dy = ball.y - nextShoe.y;
+    const blockDist = (ball.r || 0) + RETURN_SHOE_RADIUS + RETURN_BALL_BLOCK_MARGIN;
+
+    // Si el siguiente paso metería el zapato dentro del balón, no dejamos bajar la pierna este frame.
+    return dx * dx + dy * dy < blockDist * blockDist;
+}
+
+/**
+ * Devuelve el ángulo de retorno permitido para este frame.
+ *
+ * Normalmente reduce el ángulo a la velocidad de recuperación. Si el siguiente
+ * paso atravesaría un balón colocado debajo del zapato, conserva el ángulo
+ * actual y produce el efecto de que el pie se queda apoyado contra el balón.
+ */
+function getKickReturnAngle(p, dt, ball) {
+    const nextKickAngle = Math.max(0, p.kickAngle - (p.kickSpeed / 3) * dt);
+    return shouldBlockKickReturnOnBall(p, ball, nextKickAngle) ? p.kickAngle : nextKickAngle;
+}
+
+/**
+ * Construye una versión mínima de las hitboxes del jugador para controles.
+ *
+ * No reutiliza directamente physics.js porque este archivo también se ejecuta
+ * en Node desde Match.js, y aquí necesitamos decidir si la pierna puede avanzar
+ * antes de que el solver de físicas resuelva colisiones. Las medidas coinciden
+ * con las hitboxes principales: cuerpo, cabeza, pie de apoyo y zapato de chute.
+ */
+function getControlHitboxesAt(player, kickAngle = player.kickAngle) {
+    const bodyW = player.w - 28;
+    const bodyH = player.h - 55;
+    const bodyY = player.y + 10;
+    const bodyX = player.x - 5;
+    const rectX = player.isRightFacing ? bodyX - bodyW / 2 : bodyX - (bodyW / 2) + 10;
+
+    return {
+        body: { x: rectX, y: bodyY - bodyH / 2, w: bodyW, h: bodyH },
+        head: { x: bodyX + 4, y: bodyY - bodyH, r: 21 },
+        supportShoe: { ...getReturnShoeCenterAtAngle(player, 0), r: RETURN_SHOE_RADIUS },
+        shoe: { ...getReturnShoeCenterAtAngle(player, kickAngle), r: RETURN_SHOE_RADIUS },
+        kickShoeSeparated: kickAngle > CONTROL_KICK_SHOE_SEPARATION_ANGLE
+    };
+}
+
+/**
+ * Detecta si un rectángulo está bloqueando el balón por arriba.
+ *
+ * Se usa para saber si el balón no tiene salida vertical cuando el zapato de
+ * chute intenta subir desde abajo. dy > 0 significa que el centro del balón está
+ * por debajo del punto más cercano del rectángulo, por tanto el obstáculo está
+ * por encima del balón.
+ */
+function isBallBlockedAboveByRect(ball, rect) {
+    const closestX = clamp(ball.x, rect.x, rect.x + rect.w);
+    const closestY = clamp(ball.y, rect.y, rect.y + rect.h);
+    const dx = ball.x - closestX;
+    const dy = ball.y - closestY;
+
+    return dy > 0 && dx * dx + dy * dy < ball.r * ball.r;
+}
+
+/**
+ * Detecta si una hitbox circular está bloqueando el balón por arriba.
+ *
+ * Sirve para cabezas y zapatos. Igual que en el rectángulo, dy > 0 indica que
+ * el centro del balón está por debajo del centro de la hitbox que lo solapa.
+ */
+function isBallBlockedAboveByCircle(ball, circle) {
+    const dx = ball.x - circle.x;
+    const dy = ball.y - circle.y;
+    const radSum = ball.r + circle.r;
+
+    return dy > 0 && dx * dx + dy * dy < radSum * radSum;
+}
+
+/**
+ * Comprueba si el balón está pinzado por arriba por cualquier jugador.
+ *
+ * Esta es la condición que distingue un chute normal de un caso peligroso. Si
+ * el balón puede escapar hacia arriba, dejamos que el zapato suba y el solver lo
+ * impulse. Si ya hay cabeza, cuerpo o zapato encima, subir más el pie solo
+ * comprimiría el balón y puede acabar en atravesamiento.
+ *
+ * El zapato de chute del propio atacante se ignora aquí para no contarse a sí
+ * mismo como obstáculo superior. El zapato de chute del rival sí puede bloquear.
+ */
+function isBallBlockedAbove(ball, players = [], attacker = null) {
+    if (!ball || !Array.isArray(players)) return false;
+
+    for (const player of players) {
+        if (!player) continue;
+
+        const h = getControlHitboxesAt(player);
+        if (isBallBlockedAboveByRect(ball, h.body)) return true;
+        if (isBallBlockedAboveByCircle(ball, h.head)) return true;
+        if (isBallBlockedAboveByCircle(ball, h.supportShoe)) return true;
+        if (player !== attacker && h.kickShoeSeparated && isBallBlockedAboveByCircle(ball, h.shoe)) return true;
+    }
+
+    return false;
+}
+
+/**
+ * Bloquea la SUBIDA de la pierna cuando el balón está pinzado por arriba.
+ *
+ * Problema que evita:
+ * - El jugador pulsa chute y el zapato sube desde abajo.
+ * - El balón tiene una cabeza, cuerpo o zapato encima, así que no puede salir en
+ *   la dirección opuesta al impacto.
+ * - Como el zapato es cinemático, seguiría subiendo dentro del balón y parecería
+ *   que lo atraviesa.
+ *
+ * Para no matar chutes normales, el bloqueo solo se activa cuando:
+ * - El balón está realmente bloqueado por arriba.
+ * - El siguiente paso del zapato sube en pantalla.
+ * - El balón está por encima del zapato actual.
+ * - El siguiente paso acercaría más el zapato al balón y entraría en su radio.
+ */
+function shouldBlockKickAdvanceOnPinnedBall(p, ball, nextKickAngle, players) {
+    // Sin balón, sin aumento real de ángulo o sin obstáculo superior, el chute avanza normal.
+    if (!ball || nextKickAngle <= p.kickAngle || !isBallBlockedAbove(ball, players, p)) return false;
+
+    const currentShoe = getReturnShoeCenterAtAngle(p, p.kickAngle);
+    const nextShoe = getReturnShoeCenterAtAngle(p, nextKickAngle);
+
+    // En canvas, subir significa que Y disminuye. Si no sube, este no es el caso de chute desde abajo.
+    if (nextShoe.y >= currentShoe.y) return false;
+
+    // Esta protección solo aplica cuando el balón está encima del zapato de chute.
+    if (ball.y > currentShoe.y) return false;
+
+    const currentDx = ball.x - currentShoe.x;
+    const currentDy = ball.y - currentShoe.y;
+    const nextDx = ball.x - nextShoe.x;
+    const nextDy = ball.y - nextShoe.y;
+    const blockDist = (ball.r || 0) + RETURN_SHOE_RADIUS + KICK_ADVANCE_BLOCK_MARGIN;
+    const nextDist2 = nextDx * nextDx + nextDy * nextDy;
+
+    if (nextDist2 >= blockDist * blockDist) return false;
+
+    const currentDist2 = currentDx * currentDx + currentDy * currentDy;
+
+    // Solo bloqueamos si el siguiente paso mete el zapato más dentro del balón que el estado actual.
+    return nextDist2 < currentDist2;
+}
+
+/**
+ * Devuelve el ángulo de avance permitido para este frame de chute.
+ *
+ * Normalmente aumenta el ángulo hasta el máximo. Si el balón está pinzado por
+ * arriba y el siguiente paso del zapato lo atravesaría, conserva el ángulo
+ * actual para que el pie se quede detenido contra el balón.
+ */
+function getKickAdvanceAngle(p, dt, ball, players) {
+    const nextKickAngle = Math.min(p.maxKickAngle, p.kickAngle + p.kickSpeed * dt);
+    return shouldBlockKickAdvanceOnPinnedBall(p, ball, nextKickAngle, players) ? p.kickAngle : nextKickAngle;
+}
+
+function controlPlayer(p, dt, leftKey, rightKey, jumpKey, kickKey, keys, ball = null, players = []) {
     p.prevKickAngle = p.kickAngle;
 
     let dir = 0;
@@ -135,22 +353,16 @@ function controlPlayer(p, dt, leftKey, rightKey, jumpKey, kickKey, keys) {
     // --- LÓGICA DE CARGA DE PIERNA ---
     if (keys.has(kickKey)) {
         p.isKicking = true;
-        p.kickAngle += p.kickSpeed * dt;
-        // Topar en el ángulo máximo
-        if (p.kickAngle > p.maxKickAngle) p.kickAngle = p.maxKickAngle;
+        p.kickAngle = getKickAdvanceAngle(p, dt, ball, players);
     }
     else {
         p.isKicking = false;
 
         // RETORNO PROGRESIVO DE LA PIERNA
         if (p.kickAngle > 0) {
-            // Dividimos por 3 para que baje el triple de lento de lo que subió
-            p.kickAngle -= (p.kickSpeed / 3) * dt;
-
-            // Si nos pasamos de cero, lo clavamos en cero para que no gire hacia atrás
-            if (p.kickAngle < 0) {
-                p.kickAngle = 0;
-            }
+            // Dividimos por 3 para que baje el triple de lento de lo que subió.
+            // Si el zapato tiene el balón debajo, no dejamos que lo atraviese al volver.
+            p.kickAngle = getKickReturnAngle(p, dt, ball);
         }
     }
 }
@@ -339,12 +551,11 @@ class BotAIUtils {
         }
     }
 
-    static recoverKick(bot, dt) {
+    static recoverKick(bot, dt, ball = null) {
         bot.isKicking = false;
 
         if (bot.kickAngle > 0) {
-            bot.kickAngle -= (bot.kickSpeed / 3) * dt;
-            if (bot.kickAngle < 0) bot.kickAngle = 0;
+            bot.kickAngle = getKickReturnAngle(bot, dt, ball);
         }
     }
 
@@ -429,17 +640,17 @@ class BotAIUtils {
         return true;
     }
 
-    static handleKickLogic(bot, ball, dt, context) {
+    static handleKickLogic(bot, ball, dt, context, opponent = null) {
         const canKick = bot.kickCooldown <= 0 && bot.ballEscaped;
         const wantsToKick = context.distToBallFull < BOT_AI_CONFIG.KICK_DIST && !context.ballGoingWrong;
 
         if (!wantsToKick || !canKick) {
-            BotAIUtils.recoverKick(bot, dt);
+            BotAIUtils.recoverKick(bot, dt, ball);
             return;
         }
 
         bot.isKicking = true;
-        bot.kickAngle += bot.kickSpeed * dt;
+        bot.kickAngle = getKickAdvanceAngle(bot, dt, ball, [bot, opponent]);
 
         if (bot.kickAngle >= bot.maxKickAngle) {
             bot.kickAngle = bot.maxKickAngle;
@@ -486,12 +697,12 @@ class DefendState extends BotState {
                 targetX = clamp(targetX, 20, bot.aiFieldWidth - 60);
             }
             BotAIUtils.moveTowards(bot, targetX, dt);
-            BotAIUtils.recoverKick(bot, dt);
+            BotAIUtils.recoverKick(bot, dt, ball);
             return;
         }
 
         BotAIUtils.moveTowards(bot, bot.aiFieldWidth - 180, dt);
-        BotAIUtils.recoverKick(bot, dt);
+        BotAIUtils.recoverKick(bot, dt, ball);
     }
 }
 
@@ -545,7 +756,7 @@ class AttackState extends BotState {
 
             BotAIUtils.moveTowards(bot, targetX, dt);
             BotAIUtils.tryJumpIfBlockedInAttack(bot, targetX, opponent, dt);
-            BotAIUtils.recoverKick(bot, dt);
+            BotAIUtils.recoverKick(bot, dt, ball);
             return;
         } else if (BotAIUtils.shouldPrepareForwardHeader(bot, ball)) {
             targetX = clamp(
@@ -556,7 +767,7 @@ class AttackState extends BotState {
 
             BotAIUtils.moveTowards(bot, targetX, dt);
             BotAIUtils.tryJumpIfBlockedInAttack(bot, targetX, opponent, dt);
-            BotAIUtils.recoverKick(bot, dt);
+            BotAIUtils.recoverKick(bot, dt, ball);
 
             const headerOffset = bot.x - ball.x;
             const readyToHeadForward =
@@ -583,7 +794,7 @@ class AttackState extends BotState {
             BotAIUtils.tryJump(bot);
         }
 
-        BotAIUtils.handleKickLogic(bot, ball, dt, context);
+        BotAIUtils.handleKickLogic(bot, ball, dt, context, opponent);
     }
 }
 
@@ -595,7 +806,7 @@ class ServeState extends BotState {
     execute(bot, ball, dt, opponent) {
         const futureBall = BotAIUtils.predictBallPosition(ball);
         BotAIUtils.moveTowards(bot, futureBall.x, dt);
-        BotAIUtils.recoverKick(bot, dt);
+        BotAIUtils.recoverKick(bot, dt, ball);
     }
 }
 

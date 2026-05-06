@@ -502,8 +502,8 @@ class Match {
 
             // 1. Controles: se leen una sola vez por substep.
             // Aquí solo cambiamos velocidades/intenciones de los jugadores.
-            controlPlayer(this.gameState.p1, dt, "KeyA", "KeyD", "KeyW", "Space", this.inputs.p1);
-            controlPlayer(this.gameState.p2, dt, "KeyA", "KeyD", "KeyW", "Space", this.inputs.p2);
+            controlPlayer(this.gameState.p1, dt, "KeyA", "KeyD", "KeyW", "Space", this.inputs.p1, this.gameState.ball, [this.gameState.p1, this.gameState.p2]);
+            controlPlayer(this.gameState.p2, dt, "KeyA", "KeyD", "KeyW", "Space", this.inputs.p2, this.gameState.ball, [this.gameState.p1, this.gameState.p2]);
 
             // 2. Integración física: una sola vez por substep.
             // Aquí se aplica gravedad y se actualizan posiciones según velocidad.

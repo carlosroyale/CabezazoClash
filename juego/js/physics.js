@@ -45,6 +45,11 @@ function syncBallSweepOrigin(ball) {
     ball.prevY = ball.y;
 }
 
+function syncBallStaticSweepOrigin(ball) {
+    ball.staticPrevX = ball.x;
+    ball.staticPrevY = ball.y;
+}
+
 /**
  * Antispam para el sonido de rebote de la pelota.
  *
@@ -883,7 +888,7 @@ function checkGoalCollisions(ball, leftGoal, rightGoal) {
     const hitboxes = getGoalCrossbarRects(leftGoal, rightGoal);
 
     for (let box of hitboxes) {
-        collideBallStaticRect(ball, box);
+        collideBallStaticRectSwept(ball, box);
     }
 }
 
@@ -921,7 +926,54 @@ function resolveShoeToCircle(ball, p, dx, dy, dist2, shapeR) {
  * Se usa para los largueros: se proyecta el centro de la pelota al punto más
  * cercano del rectángulo, se separa por la normal y se refleja la velocidad.
  */
-function collideBallStaticRect(ball, rect) {
+function resolveBallStaticRectBounce(ball, nx, ny) {
+    const velAlongNormal = ball.vx * nx + ball.vy * ny;
+
+    // Sonido contra poste/larguero usando velocidad real cuando está disponible.
+    const realVelAlongNormal = (ball.realVx || 0) * nx + (ball.realVy || 0) * ny;
+    if (realVelAlongNormal < -40 && canPlayBallPostSound(ball)) {
+        window.playSound('sfx-ball-post');
+    }
+
+    // Si la pelota ya se está separando de la superficie, solo dejamos la
+    // corrección geométrica. Reflejar aquí podría reintroducirla en el larguero.
+    if (velAlongNormal >= 0) return;
+
+    ball.vx -= 2 * velAlongNormal * nx * RESTITUTION;
+    ball.vy -= 2 * velAlongNormal * ny * RESTITUTION;
+}
+
+function getStaticRectFallbackNormal(ball, rect) {
+    const startX = ball.staticPrevX !== undefined ? ball.staticPrevX : (ball.prevX !== undefined ? ball.prevX : ball.x);
+    const startY = ball.staticPrevY !== undefined ? ball.staticPrevY : (ball.prevY !== undefined ? ball.prevY : ball.y);
+
+    if (startX < rect.x) return { nx: -1, ny: 0 };
+    if (startX > rect.x + rect.w) return { nx: 1, ny: 0 };
+    if (startY < rect.y) return { nx: 0, ny: -1 };
+    if (startY > rect.y + rect.h) return { nx: 0, ny: 1 };
+
+    const moveX = ball.x - startX;
+    const moveY = ball.y - startY;
+    if (Math.abs(moveX) > Math.abs(moveY) && Math.abs(moveX) > 0.0001) {
+        return { nx: moveX > 0 ? -1 : 1, ny: 0 };
+    }
+    if (Math.abs(moveY) > 0.0001) {
+        return { nx: 0, ny: moveY > 0 ? -1 : 1 };
+    }
+
+    const left = Math.abs(ball.x - rect.x);
+    const right = Math.abs(rect.x + rect.w - ball.x);
+    const top = Math.abs(ball.y - rect.y);
+    const bottom = Math.abs(rect.y + rect.h - ball.y);
+    const minSide = Math.min(left, right, top, bottom);
+
+    if (minSide === left) return { nx: -1, ny: 0 };
+    if (minSide === right) return { nx: 1, ny: 0 };
+    if (minSide === top) return { nx: 0, ny: -1 };
+    return { nx: 0, ny: 1 };
+}
+
+function resolveBallStaticRectDiscrete(ball, rect) {
     // Buscar el punto del rectángulo más cercano al centro de la pelota
     const closestX = clamp(ball.x, rect.x, rect.x + rect.w);
     const closestY = clamp(ball.y, rect.y, rect.y + rect.h);
@@ -935,33 +987,54 @@ function collideBallStaticRect(ball, rect) {
     if (dist2 < ball.r * ball.r) {
         // Calcular la normal
         const dist = Math.sqrt(dist2);
-        if (dist < 0.001) return; // Evitar división por cero
+        let nx;
+        let ny;
 
-        const nx = dx / dist;
-        const ny = dy / dist;
+        if (dist < 0.001) {
+            ({ nx, ny } = getStaticRectFallbackNormal(ball, rect));
+            const escape = getRectEscapePoint(ball.x, ball.y, rect, ball.r, nx, ny);
+            ball.x = escape.x;
+            ball.y = escape.y;
+        }
+        else {
+            nx = dx / dist;
+            ny = dy / dist;
 
-        // Separar
-        const overlap = ball.r - dist;
-        ball.x += nx * overlap;
-        ball.y += ny * overlap;
-
-        // Reflejar velocidad
-        const velAlongNormal = ball.vx * nx + ball.vy * ny;
-        //
-        // // Solo suena si el golpe es un poco fuerte (evita ruidos si la pelota rueda por encima)
-        // if (velAlongNormal < -40) {
-        //     window.playSound('sfx-ball-post');
-        // }
-
-        // Usamos la Velocidad Real contra los postes estáticos
-        const realVelAlongNormal = (ball.realVx || 0) * nx + (ball.realVy || 0) * ny;
-        if (realVelAlongNormal < -40 && canPlayBallPostSound(ball)) {
-            window.playSound('sfx-ball-post');
+            // Separar
+            const overlap = ball.r - dist;
+            ball.x += nx * overlap;
+            ball.y += ny * overlap;
         }
 
-        ball.vx -= 2 * velAlongNormal * nx * RESTITUTION;
-        ball.vy -= 2 * velAlongNormal * ny * RESTITUTION;
+        resolveBallStaticRectBounce(ball, nx, ny);
+        syncBallSweepOrigin(ball);
+        syncBallStaticSweepOrigin(ball);
+        return true;
     }
+
+    return false;
+}
+
+function collideBallStaticRectSwept(ball, rect) {
+    const startX = ball.staticPrevX !== undefined ? ball.staticPrevX : (ball.prevX !== undefined ? ball.prevX : ball.x);
+    const startY = ball.staticPrevY !== undefined ? ball.staticPrevY : (ball.prevY !== undefined ? ball.prevY : ball.y);
+    const contact = findSegmentExpandedRectContact(startX, startY, ball.x, ball.y, rect, ball.r);
+
+    if (contact) {
+        const skin = 0.2;
+        ball.x = contact.x + contact.nx * skin;
+        ball.y = contact.y + contact.ny * skin;
+        resolveBallStaticRectBounce(ball, contact.nx, contact.ny);
+        syncBallSweepOrigin(ball);
+        syncBallStaticSweepOrigin(ball);
+        return;
+    }
+
+    resolveBallStaticRectDiscrete(ball, rect);
+}
+
+function collideBallStaticRect(ball, rect) {
+    collideBallStaticRectSwept(ball, rect);
 }
 
 /**

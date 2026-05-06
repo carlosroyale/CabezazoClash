@@ -244,7 +244,7 @@ function updatePhysicsStep(dt) {
 
     // 1. Controles: se leen una sola vez por substep.
     // Aquí solo cambiamos velocidades/intenciones de los jugadores.
-    controlPlayer(p1, dt, "KeyA", "KeyD", "KeyW", "Space", keys);
+    controlPlayer(p1, dt, "KeyA", "KeyD", "KeyW", "Space", keys, ball, [p1, p2]);
 
     if (botEnabled) {
         const botServeChase = serveState.active && serveState.server === "right";
@@ -254,7 +254,7 @@ function updatePhysicsStep(dt) {
         controlBot(p2, dt, ball, W, FLOOR_Y, keys, p1, botServeChase, botShouldPressure, botIsLosing);
     }
     else {
-        controlPlayer(p2, dt, "ArrowLeft", "ArrowRight", "ArrowUp", "KeyP", keys);
+        controlPlayer(p2, dt, "ArrowLeft", "ArrowRight", "ArrowUp", "KeyP", keys, ball, [p1, p2]);
     }
 
     // 2. Integración física: una sola vez por substep.
