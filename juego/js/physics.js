@@ -1626,7 +1626,6 @@ function resolveBallSqueezeUp(ball, p1, p2) {
         ball.y - ball.r < Math.min(leftHitbox.body.y + leftHitbox.body.h, rightHitbox.body.y + rightHitbox.body.h));
 
     if (!ballInVerticalRange) return;
-
     // PROTECCIÓN: Detener completamente y posicionar de forma segura
     ball.vx = 0;
     ball.vy = 0;
@@ -1670,11 +1669,14 @@ function resolveBallSqueezeUp(ball, p1, p2) {
 function resolveBallVerticalPinchEscape(ball, leftPlayer, rightPlayer, leftHitbox, rightHitbox) {
     const leftBodyRight = leftHitbox.body.x + leftHitbox.body.w;
     const rightBodyLeft = rightHitbox.body.x;
-    const sharedBodyTop = Math.max(leftHitbox.body.y, rightHitbox.body.y);
+    const sharedHeadTop = Math.min(
+        leftHitbox.head.y - leftHitbox.head.r,
+        rightHitbox.head.y - rightHitbox.head.r
+    );
     const centerX = (leftBodyRight + rightBodyLeft) / 2;
 
     ball.x = centerX;
-    ball.y = Math.min(ball.y, sharedBodyTop - ball.r - 3);
+    ball.y = Math.min(ball.y, sharedHeadTop - ball.r - 3);
     ball.vx = 0;
     ball.vy = Math.min(ball.vy || 0, -360);
 
