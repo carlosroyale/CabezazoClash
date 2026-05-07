@@ -590,6 +590,7 @@ function collidePlayerBall(p, ball) {
             }
 
             syncBallSweepOrigin(ball);
+            syncBallStaticSweepOrigin(ball);
             return;
         }
     }
@@ -627,6 +628,7 @@ function collidePlayerBall(p, ball) {
         if (dist2Shoe < (ball.r + h.shoe.r) * (ball.r + h.shoe.r)) {
             resolveShoeToCircle(ball, p, dxShoe, dyShoe, dist2Shoe, h.shoe.r);
             syncBallSweepOrigin(ball);
+            syncBallStaticSweepOrigin(ball);
         }
     }
 
@@ -1085,7 +1087,7 @@ function collideBallStaticRectSwept(ball, rect) {
         // Si la distancia al cuadrado es mayor que el radio al cuadrado, significa
         // que el barrido ha chocado con la "repisa invisible" (la esquina puntiaguda
         // de la expansión matemática).
-        if (dist2 > ball.r * ball.r + 0.1) {
+        if (dist2 > ball.r * ball.r + 0.25) {
             // Ignoramos este falso positivo y dejamos que la función discreta
             // gestione la caída redondeada de forma natural.
             resolveBallStaticRectDiscrete(ball, rect);
