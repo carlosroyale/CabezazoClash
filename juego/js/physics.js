@@ -1076,6 +1076,22 @@ function collideBallStaticRectSwept(ball, rect) {
     const contact = findSegmentExpandedRectContact(startX, startY, ball.x, ball.y, rect, ball.r);
 
     if (contact) {
+        // Calculamos a qué distancia real está el punto de contacto continuo
+        // del rectángulo físico original.
+        const closestX = clamp(contact.x, rect.x, rect.x + rect.w);
+        const closestY = clamp(contact.y, rect.y, rect.y + rect.h);
+        const dist2 = (contact.x - closestX) ** 2 + (contact.y - closestY) ** 2;
+
+        // Si la distancia al cuadrado es mayor que el radio al cuadrado, significa
+        // que el barrido ha chocado con la "repisa invisible" (la esquina puntiaguda
+        // de la expansión matemática).
+        if (dist2 > ball.r * ball.r + 0.1) {
+            // Ignoramos este falso positivo y dejamos que la función discreta
+            // gestione la caída redondeada de forma natural.
+            resolveBallStaticRectDiscrete(ball, rect);
+            return;
+        }
+
         const skin = 0.2;
         ball.x = contact.x + contact.nx * skin;
         ball.y = contact.y + contact.ny * skin;
