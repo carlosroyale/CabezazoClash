@@ -1356,26 +1356,35 @@ function wasCircleAboveCircle(player, playerCircle, circleOwner, ownerCircle, to
 
 /**
  * Aplica el desplazamiento de un contacto zapato-rival.
- *
- * Cuando el contacto empujaría al objetivo hacia arriba pero no está permitido
- * tratarlo como apoyo, se convierte en empuje horizontal. Esto evita que un pie
- * lateral levante al rival como si fuese una plataforma.
+ * Ahora reparte el empuje horizontal entre ambos para evitar
+ * el efecto "Bulldozer" de masa infinita con la pierna levantada.
  */
 function movePlayerByShoeContact(pTarget, pAttacker, nx, ny, overlap, allowVerticalLift) {
     const dx = -nx * overlap;
     const dy = -ny * overlap;
 
+    // Si el impacto empuja en horizontal (y no está permitido usarlo como plataforma)
     if (dy < 0 && !allowVerticalLift) {
         const fallbackDir = pTarget.x < pAttacker.x ? -1 : 1;
         const horizontalDir = Math.abs(dx) > 0.001 ? Math.sign(dx) : fallbackDir;
-        const horizontalPush = Math.max(Math.abs(dx), Math.min(overlap, 8));
 
+        // Dividimos el empuje máximo entre 2 para repartirlo
+        const horizontalPush = Math.max(Math.abs(dx), Math.min(overlap, 8)) / 2;
+
+        // Separamos a AMBOS jugadores
         pTarget.x += horizontalDir * horizontalPush;
+        pAttacker.x -= horizontalDir * horizontalPush; // Novedad: el atacante retrocede
+
+        // Frenamos la velocidad de ambos si están yendo en contra del empuje
         if (pTarget.vx * horizontalDir < 0) pTarget.vx = 0;
+        if (pAttacker.vx * -horizontalDir < 0) pAttacker.vx = 0;
         return;
     }
 
-    movePlayerByRivalContact(pTarget, dx, dy);
+    // Si hay elevación (el target se sube al pie), el Target sube (dy),
+    // pero el impacto horizontal (dx) se sigue repartiendo a partes iguales.
+    movePlayerByRivalContact(pTarget, dx / 2, dy);
+    movePlayerByRivalContact(pAttacker, -dx / 2, 0); // El atacante no se eleva, pero cede en X
 }
 
 /**

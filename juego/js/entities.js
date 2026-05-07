@@ -190,11 +190,22 @@ function shouldBlockKickReturnOnBall(p, ball, nextKickAngle) {
  * paso atravesaría un balón colocado debajo del zapato, conserva el ángulo
  * actual y produce el efecto de que el pie se queda apoyado contra el balón.
  */
+// function getKickReturnAngle(p, dt, ball) {
+//     const nextKickAngle = Math.max(0, p.kickAngle - (p.kickSpeed / 3) * dt);
+//     return shouldBlockKickReturnOnBall(p, ball, nextKickAngle) ? p.kickAngle : nextKickAngle;
+// }
+/**
+ * Devuelve el ángulo de retorno permitido para este frame.
+ * MODIFICADO: Quitamos el bloqueo para que la pierna baje siempre y
+ * obligue al motor de físicas a escupir la pelota hacia los lados.
+ */
 function getKickReturnAngle(p, dt, ball) {
+    // Calculamos el siguiente ángulo bajando la pierna
     const nextKickAngle = Math.max(0, p.kickAngle - (p.kickSpeed / 3) * dt);
-    return shouldBlockKickReturnOnBall(p, ball, nextKickAngle) ? p.kickAngle : nextKickAngle;
-}
 
+    // Devolvemos el ángulo directamente, ignorando el bloqueo
+    return nextKickAngle;
+}
 /**
  * Construye una versión mínima de las hitboxes del jugador para controles.
  *
@@ -352,16 +363,28 @@ function controlPlayer(p, dt, leftKey, rightKey, jumpKey, kickKey, keys, ball = 
 
     // --- LÓGICA DE CARGA DE PIERNA ---
     if (keys.has(kickKey)) {
-        p.isKicking = true;
-        p.kickAngle = getKickAdvanceAngle(p, dt, ball, players);
+        // Sumamos el tiempo que lleva pulsada la tecla
+        p.kickHoldTime = (p.kickHoldTime || 0) + dt;
+
+        // Si lleva 3 segundos o menos, la pierna funciona normal
+        if (p.kickHoldTime <= 3) {
+            p.isKicking = true;
+            p.kickAngle = getKickAdvanceAngle(p, dt, ball, players);
+        } else {
+            // Si supera los 3 segundos, se "cansa" y la pierna baja obligatoriamente
+            p.isKicking = false;
+            if (p.kickAngle > 0) {
+                p.kickAngle = getKickReturnAngle(p, dt, ball);
+            }
+        }
     }
     else {
+        // Al soltar la tecla, reseteamos el tiempo para que pueda volver a chutar
+        p.kickHoldTime = 0;
         p.isKicking = false;
 
         // RETORNO PROGRESIVO DE LA PIERNA
         if (p.kickAngle > 0) {
-            // Dividimos por 3 para que baje el triple de lento de lo que subió.
-            // Si el zapato tiene el balón debajo, no dejamos que lo atraviese al volver.
             p.kickAngle = getKickReturnAngle(p, dt, ball);
         }
     }
