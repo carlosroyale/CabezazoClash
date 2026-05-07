@@ -379,8 +379,10 @@ function controlPlayer(p, dt, leftKey, rightKey, jumpKey, kickKey, keys, ball = 
 }
 
 const BOT_AI_CONFIG = {
-    REACTION_TIME: 0.24,
-    APPROACH_DIST: 145,
+    // REACTION_TIME: 0.24,
+    // APPROACH_DIST: 145,
+    REACTION_TIME: 0.18,
+    APPROACH_DIST: 120,
     KICK_DIST: 90,
     KICK_COOLDOWN: 0.4,
     KICK_EXIT_DIST: 110,
@@ -453,7 +455,7 @@ class BotAIUtils {
             ballGoingWrong: ball.vx < -200,
             shouldJumpForHeader: ballIsJumpHeaderHeight &&
                 distToBall < BOT_AI_CONFIG.APPROACH_DIST &&
-                ball.vy > -100 &&
+                ball.vy > 0 &&
                 ((ball.vx > 0 && bot.x > ball.x) || (ball.vx < 0 && bot.x < ball.x)),
             shouldJumpForShot: ballIsJumpHeaderHeight && distToBall < BOT_AI_CONFIG.APPROACH_DIST,
             // Opponent-aware logic
