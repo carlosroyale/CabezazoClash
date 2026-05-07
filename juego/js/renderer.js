@@ -46,9 +46,14 @@ function dibujar(ctx, W, H, p1, p2, ball, leftGoal, rightGoal) {
         drawCrowd(W);
     }
 
-    // 2. Jugadores y pelota (Solo se dibujan si no son null)
-    if (p1) drawPlayer(p1, imgP1Body, imgP1Shoe);
-    if (p2) drawPlayer(p2, imgP2Body, imgP2Shoe);
+    // 2. Cuerpos de jugadores
+    if (p1) drawPlayerBody(p1, imgP1Body);
+    if (p2) drawPlayerBody(p2, imgP2Body);
+
+    // 2.5. Zapatos en una capa independiente para que no queden tapados por
+    // el cuerpo del rival cuando los jugadores se solapan.
+    if (p1) drawPlayerShoe(p1, imgP1Shoe);
+    if (p2) drawPlayerShoe(p2, imgP2Shoe);
 
     if (ball) drawBall(ball);
 
@@ -110,13 +115,13 @@ function getRenderMirroredShoeHitbox(p, kickAngle = p.kickAngle) {
     };
 }
 
-function drawPlayer(p, bodyImg, shoeImg) {
-    // 1. DIBUJAR CUERPO
+function drawPlayerBody(p, bodyImg) {
     if (bodyImg && bodyImg.complete) {
         drawingCtx.drawImage(bodyImg, p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
     }
+}
 
-    // 2. DIBUJAR PIERNA ROTADA
+function drawPlayerShoe(p, shoeImg) {
     drawingCtx.save();
 
     // Ponemos el pivote exactamente en el centro del jugador (0 de offset)

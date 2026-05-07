@@ -11,7 +11,7 @@ const GOAL_W = global.GOAL_W || 80;
 const GOAL_H = global.GOAL_H || 200;
 const DT_MAX = global.DT_MAX || 1/30;
 const PHYSICS_STEP = 1 / 120;
-const MAX_PHYSICS_SUBSTEPS = 2;
+const MAX_PHYSICS_SUBSTEPS = 4;
 
 class Match {
     constructor(p1Socket, p2Socket, io, roomId, onMatchEndCallback) {

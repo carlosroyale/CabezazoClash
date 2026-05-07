@@ -29,7 +29,7 @@ const BALL_CONTACT_TIE_EPSILON = 0.5;
 
 // Hasta que la pierna no se separa de verdad, el zapato de golpeo no se evalúa
 // como una hitbox independiente; así se evita duplicar el pie en reposo.
-const KICK_SHOE_SEPARATION_ANGLE = 0.12;
+const KICK_SHOE_SEPARATION_ANGLE = 0.0;
 let fairBallCollisionTieBreaker = false;
 
 /**
@@ -228,7 +228,15 @@ function findSegmentCircleContact(startX, startY, endX, endY, centerX, centerY, 
         const movingIntoCircle = segX * nx + segY * ny < -0.0001;
         if (!movingIntoCircle && !deepInside) return null;
 
-        return { t: 0, x: startX, y: startY, nx, ny };
+        // Calculamos el punto de escape en el perímetro del círculo
+        // en lugar de devolver startX y startY que dejaban la pelota atascada.
+        return {
+            t: 0,
+            x: centerX + nx * radius,
+            y: centerY + ny * radius,
+            nx,
+            ny
+        };
     }
 
     const disc = b * b - 4 * a * c;
@@ -566,10 +574,18 @@ function collidePlayerBall(p, ball) {
             ball.x = sweptContact.x + sweptContact.nx * skin;
             ball.y = sweptContact.y + sweptContact.ny * skin;
 
+            // Si el impacto barrido fue contra el zapato de chute...
             if (sweptContact.shape === 'shoe') {
+                // 1. Aplicamos la fuerza y el rebote especial del latigazo.
                 applyShoeBounce(ball, p, sweptContact.nx, sweptContact.ny);
+
+                // 2. SAFEGUARD: Como el zapato es cinemático y se mueve instantáneamente
+                // a su nueva posición final en este frame, forzamos la extracción
+                // física de la pelota. Esto evita que la bota se "coma" la pelota.
+                separateBallFromFinalShoe(ball, h.shoe, sweptContact.nx, sweptContact.ny);
             }
             else {
+                // Para cabeza y pie de apoyo, el rebote estándar es suficiente.
                 applyBounce(ball, p, sweptContact.nx, sweptContact.ny);
             }
 
@@ -622,6 +638,45 @@ function collidePlayerBall(p, ball) {
         resolveCircleToCircle(ball, p, dxSupportShoe, dySupportShoe, dist2SupportShoe, h.supportShoe.r);
         syncBallSweepOrigin(ball);
     }
+}
+
+/**
+ * Extrae de forma segura la pelota si ha quedado atrapada dentro de la
+ * posición final de la bota de chute tras el barrido continuo.
+ * Sirve como escudo anti-clipping para animaciones cinemáticas rápidas.
+ */
+function separateBallFromFinalShoe(ball, shoe, fallbackNx, fallbackNy) {
+    // Calculamos la distancia actual entre el centro de la pelota y la bota
+    const dx = ball.x - shoe.x;
+    const dy = ball.y - shoe.y;
+    const minDist = ball.r + shoe.r; // La distancia mínima permitida (suma de radios)
+    const dist2 = dx * dx + dy * dy;
+
+    // Si la distancia al cuadrado es mayor o igual a la mínima, están separados. Salimos.
+    if (dist2 >= minDist * minDist) return false;
+
+    const dist = Math.sqrt(dist2);
+
+    // Por defecto, usamos la normal del impacto inicial (del barrido) como salvavidas.
+    // Esto evita que el cálculo explote (división por cero) si los centros coinciden exactamente.
+    let nx = fallbackNx;
+    let ny = fallbackNy;
+
+    // Si hay una distancia mínima real, calculamos la dirección exacta de escape (la normal geométrica)
+    if (dist >= 0.001) {
+        nx = dx / dist;
+        ny = dy / dist;
+    }
+
+    // Un margen extra de seguridad (skin) ligeramente más agresivo (0.6px).
+    // Garantiza que en el siguiente substep del motor físico no vuelvan a detectarse como solapados.
+    const skin = 0.6;
+
+    // Empujamos la pelota justo al borde exterior de la bota + el margen de seguridad
+    ball.x = shoe.x + nx * (minDist + skin);
+    ball.y = shoe.y + ny * (minDist + skin);
+
+    return true;
 }
 
 function getCircleBallContactScore(circle, ball) {
@@ -1264,12 +1319,15 @@ function collidePlayers(p1, p2) {
     resolveCircCircPlayer(p1, p2, h1.head, h2.head);
 
     // C. ZAPATO vs CABEZA (El pie de apoyo bloquea antes de llegar al cuerpo)
+    // El pie de chute levantado no colisiona contra el rival.
+    // Así evitamos que un jugador pueda retener la pelota contra el césped
+    // usando la pierna como una pared que empuja al otro jugador.
     h1 = getPlayerHitboxes(p1);
     h2 = getPlayerHitboxes(p2);
     // Le pasamos el atacante y el objetivo
-    if (h1.kickShoeSeparated) resolveShoeHeadPlayer(h1.shoe, p1, p2, h2.head, true);
+    //if (h1.kickShoeSeparated) resolveShoeHeadPlayer(h1.shoe, p1, p2, h2.head, true);
     resolveShoeHeadPlayer(h1.supportShoe, p1, p2, h2.head, false);
-    if (h2.kickShoeSeparated) resolveShoeHeadPlayer(h2.shoe, p2, p1, h1.head, true);
+    // if (h2.kickShoeSeparated) resolveShoeHeadPlayer(h2.shoe, p2, p1, h1.head, true);
     resolveShoeHeadPlayer(h2.supportShoe, p2, p1, h1.head, false);
 
     // D. CABEZA vs CUERPO (Evita atravesar nuca contra espalda)
@@ -1279,12 +1337,14 @@ function collidePlayers(p1, p2) {
     resolveHeadBodyPlayer(p2, p1, h2.head, h1.body);
 
     // E. ZAPATO vs CUERPO (La magia para subirse encima del pie del otro)
+    // Solo el pie de apoyo bloquea al rival. El pie de chute sigue golpeando
+    // la pelota, pero deja de actuar como una barrera física contra jugadores.
     h1 = getPlayerHitboxes(p1);
     h2 = getPlayerHitboxes(p2);
     // Le pasamos el jugador atacante como segundo parámetro
-    if (h1.kickShoeSeparated) resolveCircRectPlayer(h1.shoe, p1, p2, h2.body, true);
+    // if (h1.kickShoeSeparated) resolveCircRectPlayer(h1.shoe, p1, p2, h2.body, true);
     resolveCircRectPlayer(h1.supportShoe, p1, p2, h2.body, false);
-    if (h2.kickShoeSeparated) resolveCircRectPlayer(h2.shoe, p2, p1, h1.body, true);
+    // if (h2.kickShoeSeparated) resolveCircRectPlayer(h2.shoe, p2, p1, h1.body, true);
     resolveCircRectPlayer(h2.supportShoe, p2, p1, h1.body, false);
 }
 
