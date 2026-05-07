@@ -778,6 +778,14 @@ function saveSettings() {
   localStorage.setItem("cabezazo_settings", JSON.stringify(settings));
 }
 
+function shouldShowPingDebug() {
+  const onlineMatchFinished = window.Game &&
+      typeof window.Game.isFinished === "function" &&
+      window.Game.isFinished();
+
+  return settings.mostrarPing && window.isOnlineMode === true && !onlineMatchFinished;
+}
+
 // Actualizar toda la UI de opciones
 function updateOptionsUI() {
   if (sliderMusica) sliderMusica.value = settings.musicVolume;
@@ -794,7 +802,7 @@ function updateOptionsUI() {
 
   if (switchPing) switchPing.checked = settings.mostrarPing;
   if (debugPanel) {
-    if (settings.mostrarPing && window.isOnlineMode) debugPanel.classList.remove('hidden');
+    if (shouldShowPingDebug()) debugPanel.classList.remove('hidden');
     else debugPanel.classList.add('hidden');
   }
 }
@@ -943,7 +951,7 @@ switchFps.addEventListener('change', (e) => {
 switchPing.addEventListener('change', (e) => {
   settings.mostrarPing = e.target.checked;
   saveSettings();
-  if (settings.mostrarPing && window.isOnlineMode) debugPanel.classList.remove('hidden');
+  if (shouldShowPingDebug()) debugPanel.classList.remove('hidden');
   else debugPanel.classList.add('hidden');
   switchPing.blur();
 });

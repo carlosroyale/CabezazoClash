@@ -142,6 +142,11 @@ function stopNetworkDebugInterval() {
 
     const bytesEl = document.getElementById('debug-bytes');
     if (bytesEl) bytesEl.textContent = '0';
+
+    const debugPanel = document.getElementById('debug-panel');
+    if (debugPanel) debugPanel.classList.add('hidden');
+
+    if (window.Main && window.Main.updateOptionsUI) window.Main.updateOptionsUI();
 }
 
 function startNetworkDebugInterval() {
@@ -302,6 +307,7 @@ window.configurarEventosSocket = function() {
     socket.on('matchEnd', matchData => {
         if (!window.isOnlineMode) return;
         matchFinishedExternally = true;
+        stopNetworkDebugInterval();
 
         // Apagamos la pausa en la memoria local para que el onlineLoop no vuelva a abrir el menú rebelde
         if (onlineState) {
