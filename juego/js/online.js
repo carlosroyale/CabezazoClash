@@ -16,7 +16,7 @@ const pointsFormatter = new Intl.NumberFormat('es-ES');
 const CABEZAZO_GAME_ID = 8;
 
 let stateBuffer = [];
-const RENDER_DELAY = 60; // Dibujaremos a ambos jugadores y la pelota 80ms en el pasado
+const RENDER_DELAY = 80; // Dibujaremos a ambos jugadores y la pelota 80ms en el pasado
 const DEFAULT_PRESENTATION_NAMES = { left: 'Jugador 1', right: 'Jugador 2' };
 let backendModulePromise = null;
 
@@ -171,37 +171,7 @@ function startNetworkDebugInterval() {
         bytesReceivedThisSecond = 0;
     }, 1000);
 }
-let lastSnapshotReceiveTime = null;
-let jitterSamples = [];
 
-function recordSnapshotJitter() {
-    const now = performance.now();
-
-    if (lastSnapshotReceiveTime !== null) {
-        const receiveInterval = now - lastSnapshotReceiveTime;
-        const jitter = Math.abs(receiveInterval - (1000 / 60));
-
-        jitterSamples.push(jitter);
-
-        // Mantener solo las últimas muestras, por ejemplo unos 10 segundos a 60Hz
-        if (jitterSamples.length > 600) {
-            jitterSamples.shift();
-        }
-    }
-
-    lastSnapshotReceiveTime = now;
-}
-function getP95Jitter() {
-    if (jitterSamples.length === 0) return 0;
-
-    const sorted = [...jitterSamples].sort((a, b) => a - b);
-    const index = Math.floor(sorted.length * 0.95);
-
-    return sorted[Math.min(index, sorted.length - 1)];
-}
-setInterval(() => {
-    console.log('RENDER_TIME:', Math.round(getP95Jitter())+25, 'ms');
-}, 1000);
 // Exponemos la función al entorno global (window) para que el HTML pueda llamarla
 window.configurarEventosSocket = function() {
     if (typeof socket === 'undefined') return;
@@ -209,8 +179,6 @@ window.configurarEventosSocket = function() {
     // Escuchamos el estado físico del juego en formato binario
     socket.on('gameSync', (arrayBuffer) => {
         if (matchFinishedExternally) return;
-
-        recordSnapshotJitter();
 
         // Sumamos el peso real de los bytes que acaban de llegar
         bytesReceivedThisSecond += arrayBuffer.byteLength;
