@@ -62,6 +62,14 @@ async function registrarPartidaOnline({
     idUsuarioIzquierda,
     idUsuarioDerecha
 }) {
+    const usuariosSinRegistro = new Set([7]);
+    const izquierdaSinRegistro = usuariosSinRegistro.has(Number.parseInt(idUsuarioIzquierda, 10));
+    const derechaSinRegistro = usuariosSinRegistro.has(Number.parseInt(idUsuarioDerecha, 10));
+
+    if (izquierdaSinRegistro || derechaSinRegistro) {
+        return;
+    }
+
     const connection = await pool.getConnection();
     const sql = `
         INSERT INTO partida (
